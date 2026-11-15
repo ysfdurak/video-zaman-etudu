@@ -58,6 +58,8 @@ git tag v1.2.0
 git push origin v1.2.0
 ```
 
+Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workflow** ile `surum` alanına `v1.2.0` yazarak da aynı sürümü çıkarabilirsin.
+
 ## İlk etüt
 
 1. Çalışmalar ekranında ad ve kod yaz. MP4 video seç ve yeni çalışmayı başlat. Video oynatma Windows codec desteğine bağlıdır.

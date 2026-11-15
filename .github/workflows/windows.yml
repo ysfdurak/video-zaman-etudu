@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      surum:
+        description: 'Yayınlanacak sürüm etiketi (ör. v1.2.0). Boş bırakılırsa yalnız derlenir.'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -49,11 +54,12 @@ jobs:
           name: VideoZamanEtudu_Windows_x64
           path: ${{ runner.temp }}/VideoZamanEtudu_Windows_x64.zip
           if-no-files-found: error
-      - name: GitHub sürümünü yayınla (yalnız v* etiketi)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: GitHub sürümünü yayınla (v* etiketi veya elle çalıştırmada sürüm girildiyse)
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && startsWith(inputs.surum, 'v'))
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          SURUM: ${{ inputs.surum }}
         run: |
           $ErrorActionPreference = 'Stop'
           # Sürüm notu: RELEASE_NOTES.md'deki ilk "# v" bölümü
@@ -64,7 +70,12 @@ jobs:
           $lines[1..$last] | Set-Content -Encoding utf8 $notesFile
           $title = $lines[0].TrimStart('#', ' ')
           $zip = Join-Path $env:RUNNER_TEMP 'VideoZamanEtudu_Windows_x64.zip'
-          gh release create $env:GITHUB_REF_NAME $zip --title $title --notes-file $notesFile --verify-tag
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+            # Etiket yoksa bu derlemenin commit'inde oluşturulur.
+            gh release create $env:SURUM $zip --title $title --notes-file $notesFile --target $env:GITHUB_SHA
+          } else {
+            gh release create $env:GITHUB_REF_NAME $zip --title $title --notes-file $notesFile --verify-tag
+          }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   web:
