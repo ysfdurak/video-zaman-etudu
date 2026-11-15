@@ -1,9 +1,6 @@
-using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -11,234 +8,401 @@ using Microsoft.Win32;
 
 namespace VideoZamanEtudu;
 
+// Tablo satırları: değerler geçerli dilde biçimlenmiş metindir (WPF bağlaması için türler public).
+public sealed record StudyRow(Study Source, string Code, string Name, string Where, string Count, string Cycles, string State, string Video, string Updated);
+public sealed record ObservationRow(Observation Source, string Start, string End, string Duration, string Step, string Class, string Excluded, string Cycle, string Note);
+public sealed record ResultRow(StepResult Source, string Step, string Count, string Excluded, string Mean, string Median, string Min, string Max,
+    string Deviation, string CriticalT, string ErrorPercent, string Sufficiency, string Base, string Pace, string Normal, string Standard,
+    string Every, string Contribution, string Method);
+public sealed record CycleRow(string Cycle, string Elapsed, string Workload, string Diff);
+public sealed record GroupRow(string Seconds, string Count);
+public sealed record CompareViewRow(string Step, string Before, string After, string Diff, string DiffPercent);
+
+/// <summary>
+/// Ana pencere (v2). Arayüz kodla kurulur; üç bölüm: Çalışmalar, Video ve ölçüm, Analiz ve rapor.
+/// Akış ve metinler tarayıcı sürümüyle (Web/js/app.js) aynıdır. Dil değişince pencere yeni dilde yeniden kurulur.
+/// Bu dosya: genel yapı, dil, Çalışmalar bölümü. Ölçüm: MainWindow.Measure.cs. Analiz: MainWindow.Analysis.cs.
+/// </summary>
 public partial class MainWindow : Window
 {
     private readonly StudyStore store = new();
-    private readonly TabControl tabs = new();
-    private readonly DataGrid studies = Table();
-    private readonly DataGrid observations = Table();
-    private readonly DataGrid results = Table();
-    private readonly DataGrid cycles = Table();
-    private readonly DataGrid groups = Table();
-    private readonly MediaElement video = new() { LoadedBehavior = MediaState.Manual, UnloadedBehavior = MediaState.Manual, Stretch = Stretch.Uniform };
-    private readonly Slider timeline = new() { IsMoveToPointEnabled = true, IsEnabled = false };
-    private readonly TextBlock position = Label("00:00.000");
-    private readonly TextBlock status = Label("");
-    private readonly TextBlock analysisStatus = Label("");
-    private readonly TextBox step = Input(150, "Adım");
-    private readonly TextBox cycle = Input(55, "1");
-    private readonly ComboBox classification = new() { Width = 95, ItemsSource = new[] { "", "VA", "SVA", "NVA" }, SelectedIndex = 0 };
-    private readonly CheckBox excluded = new() { Content = "Kapsam dışı" };
-    private readonly TextBox confidence = Input(65);
-    private readonly TextBox target = Input(65);
-    private readonly TextBox pace = Input(65);
-    private readonly TextBox allowance = Input(65);
-    private readonly TextBox groupMs = Input(65);
-    private readonly TextBox every = Input(65, "1");
-    private readonly CheckBox stable = new() { Content = "Süreç kararlı" };
-    private readonly ComboBox method = new() { Width = 230, ItemsSource = new[] { "Aritmetik ortalama", "En çok tekrar eden en küçük süre" } };
-    private readonly Button measure = new() { Content = "Başla" };
-    private readonly TextBlock header = Label("");
-    private static readonly double[] Speeds = { 0.25, 0.5, 1, 1.5, 2 };
-    private readonly ComboBox speed = new() { Width = 80, ItemsSource = new[] { "0,25×", "0,5×", "1×", "1,5×", "2×" }, SelectedIndex = 2 };
-    private const long NudgeMaxMs = 1000;
+    private readonly TabControl tabs = new() { Margin = new Thickness(0, 8, 0, 0) };
+    private readonly TextBlock header = new() { FontSize = 23, FontWeight = FontWeights.SemiBold, Foreground = Ui.Ink };
     private readonly DispatcherTimer clock = new() { Interval = TimeSpan.FromMilliseconds(80) };
+    private List<Study> studyList = new();
     private Study? current;
-    private long? anchor;
-    private long? selectedStart;
-    private bool ready, playing, syncingTimeline, suppressSelection;
+    private Guid? selectedStudyId;
+
+    // Dil değişince yeni pencerede açılacak etüt ve bölüm.
+    private static Guid? reopenId;
+    private static int reopenTab;
+
+    // Çalışmalar bölümü
+    private readonly DataGrid studies = Ui.Table();
+    private readonly TextBox newName = Ui.Input(260);
+    private readonly TextBox newCode = Ui.Input(140);
+    private readonly TextBox newVideo = Ui.Input(460);
+    private readonly TextBox newSteps = new() { Width = 460, Height = 96, AcceptsReturn = true, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, TextWrapping = TextWrapping.NoWrap };
+    private readonly Dictionary<string, TextBox> newInfo = new();
+    private readonly TextBlock studiesStatus = Ui.Text("", 13.5, true, Ui.Accent);
+    private Button openButton = null!, exportButton = null!, deleteButton = null!, compareButton = null!;
 
     public MainWindow()
     {
         InitializeComponent();
-        var shell = new DockPanel { Margin = new Thickness(20) };
-        header.FontSize = 23;
-        header.FontWeight = FontWeights.SemiBold;
-        UpdateHeader();
-        DockPanel.SetDock(header, Dock.Top);
-        shell.Children.Add(header);
+        Title = L.T("app.title");
+        Language = System.Windows.Markup.XmlLanguage.GetLanguage(L.Culture.IetfLanguageTag);
+
+        var top = new DockPanel();
+        var lang = new Button { Content = L.T("lang.switch"), ToolTip = L.T("lang.switchTitle"), Padding = new Thickness(12, 4, 12, 4), VerticalAlignment = VerticalAlignment.Top };
+        lang.Click += (_, _) => Guard(SwitchLanguage);
+        DockPanel.SetDock(lang, Dock.Right);
+        top.Children.Add(lang);
+        top.Children.Add(Ui.Stack(header, Ui.Hint(L.T("edition"))));
+        DockPanel.SetDock(top, Dock.Top);
+        var shell = new DockPanel { Margin = new Thickness(20, 14, 20, 14) };
+        shell.Children.Add(top);
         shell.Children.Add(tabs);
         Content = shell;
-        tabs.Items.Add(new TabItem { Header = "1  Çalışmalar", Content = BuildHome() });
-        tabs.Items.Add(new TabItem { Header = "2  Video ve ölçüm", Content = BuildMeasure(), IsEnabled = false });
-        tabs.Items.Add(new TabItem { Header = "3  Analiz ve rapor", Content = BuildAnalysis(), IsEnabled = false });
+        UpdateHeader();
+
+        tabs.Items.Add(new TabItem { Header = L.T("tab.0"), Content = BuildHome() });
+        tabs.Items.Add(new TabItem { Header = L.T("tab.1"), Content = BuildMeasure(), IsEnabled = false });
+        tabs.Items.Add(new TabItem { Header = L.T("tab.2"), Content = BuildAnalysis(), IsEnabled = false });
         tabs.SelectionChanged += (_, e) =>
         {
             if (!ReferenceEquals(e.Source, tabs)) return;
             if (tabs.SelectedIndex != 1) Pause();
-            if (tabs.SelectedIndex == 2 && current != null) RefreshAnalysis();
+            if (tabs.SelectedIndex == 2 && current != null) Guard(RefreshAnalysis);
         };
         clock.Tick += (_, _) => UpdatePosition();
         clock.Start();
         Closed += (_, _) => { clock.Stop(); video.Close(); };
         PreviewKeyDown += OnShortcut;
-        speed.SelectionChanged += (_, _) => { if (playing) video.SpeedRatio = SelectedSpeed; };
         // Liste pencere açıldıktan sonra okunur; hata olursa pencere yine açılır ve kullanıcı uyarılır.
         Loaded += (_, _) => Guard(() =>
         {
             ReloadStudies();
-            if (store.LastSkipped > 0)
-                MessageBox.Show(this, $"{store.LastSkipped} etüt kaydı okunamadığı için listede gösterilmiyor. Diğer kayıtlar kullanılabilir.",
-                    "Video Zaman Etüdü", MessageBoxButton.OK, MessageBoxImage.Warning);
+            if (store.LastSkipped > 0) Warn(L.T("msg.skipped", ("n", store.LastSkipped)));
+            if (reopenId is Guid id && studyList.FirstOrDefault(s => s.Id == id) is Study study)
+            {
+                OpenStudy(study);
+                tabs.SelectedIndex = reopenTab;
+            }
+            reopenId = null;
         });
     }
 
     private void UpdateHeader() => header.Text = current == null
-        ? "VIDEO ZAMAN ETÜDÜ   /   Çalışmalar"
-        : $"VIDEO ZAMAN ETÜDÜ   /   {current.Code} · {current.Name}";
+        ? $"{L.T("header.brand")}   /   {L.T("header.studies")}"
+        : $"{L.T("header.brand")}   /   {current.Code} · {current.Name}";
 
-    private double SelectedSpeed => speed.SelectedIndex >= 0 && speed.SelectedIndex < Speeds.Length ? Speeds[speed.SelectedIndex] : 1;
+    /// <summary>Dil değişince pencere yeni dilde kurulur; açık etüt ve bölüm korunur. Ölçüm kayıtları zaten kaydedilmiştir.</summary>
+    private void SwitchLanguage()
+    {
+        CommitPendingEdits();
+        L.SetLang(L.Other);
+        reopenId = current?.Id;
+        reopenTab = tabs.SelectedIndex;
+        var next = new MainWindow { WindowStartupLocation = WindowStartupLocation.Manual, Left = Left, Top = Top, Width = Width, Height = Height };
+        Application.Current.MainWindow = next;
+        next.Show();
+        if (WindowState == WindowState.Maximized) next.WindowState = WindowState.Maximized;
+        Close();
+    }
+
+    // ------------------------------------------------------------ ileti ve hata
+
+    private void Guard(Action action)
+    {
+        try { action(); }
+        catch (Exception error) { Warn(L.ErrorText(error)); }
+    }
+
+    private void Warn(string text, string? title = null) =>
+        MessageBox.Show(this, text, title ?? L.T("app.title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+
+    private void Inform(string text, string? title = null) =>
+        MessageBox.Show(this, text, title ?? L.T("app.title"), MessageBoxButton.OK, MessageBoxImage.Information);
+
+    private bool Ask(string text, string title, bool warning = false) =>
+        MessageBox.Show(this, text, title, MessageBoxButton.YesNo, warning ? MessageBoxImage.Warning : MessageBoxImage.Question) == MessageBoxResult.Yes;
+
+    private static Exception Error(string key, params (string, object?)[] values)
+    {
+        var error = new InvalidOperationException(L.T(key, values));
+        return error;
+    }
+
+    private Button Btn(string key, Action action, bool primary = false, bool danger = false, string? tipKey = null) =>
+        Ui.Button(L.T(key), Guard, action, primary, danger, tipKey is null ? null : L.T(tipKey));
+
+    private static int PositiveInt(string text, string nameKey) =>
+        int.TryParse(text.Trim(), out int value) && value > 0 ? value : throw Error("int.invalid", ("name", L.T(nameKey)));
+
+    /// <summary>"1,5", "1.5" ve "1e2" kabul edilir; binlik ayırıcı yok (tarayıcıdaki parseNumber ile aynı).</summary>
+    private static double Number(string text, string nameKey)
+    {
+        var t = text.Trim();
+        if (System.Text.RegularExpressions.Regex.IsMatch(t, @"^[+-]?(?:\d+(?:[.,]\d*)?|[.,]\d+)(?:[eE][+-]?\d+)?$") &&
+            double.TryParse(t.Replace(',', '.'), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) && double.IsFinite(v))
+            return v;
+        throw Error("number.invalid", ("name", L.T(nameKey)));
+    }
+
+    // ------------------------------------------------------------ Çalışmalar
 
     private UIElement BuildHome()
     {
-        var code = Input(130);
-        var name = Input(240);
-        var path = Input(400);
-        path.IsReadOnly = true;
-        Columns(studies, ("Kod", "Code"), ("Etüt adı", "Name"), ("Video", "VideoLabel"), ("Son düzenleme", "Updated"));
+        newVideo.IsReadOnly = true;
+        var how = Ui.Stack(Ui.Rich("1. " + L.T("how.1")), Ui.Rich("2. " + L.T("how.2")), Ui.Rich("3. " + L.T("how.3")));
+        var note = Ui.Box(Ui.Rich(L.T("home.note"), 13.5), Ui.NoteBack, Ui.NoteLine);
+        var demo = new Button { Content = L.T("demo.button"), Padding = new Thickness(10, 3, 10, 3), Margin = new Thickness(6, 0, 6, 0) };
+        demo.Click += (_, _) => Guard(OpenDemo);
+        var demoRow = new WrapPanel { Margin = new Thickness(0, 0, 0, 8) };
+        demoRow.Children.Add(Ui.Hint(L.T("demo.before")));
+        demoRow.Children.Add(demo);
+        demoRow.Children.Add(Ui.Hint(L.T("demo.after").TrimStart('—', ' ')));
+
+        var infoRow = new WrapPanel();
+        foreach (var field in StudyRules.InfoFields)
+        {
+            var box = Ui.Input(field == "Note" ? 300 : 150);
+            newInfo[field] = box;
+            infoRow.Children.Add(Ui.Field(L.T("info." + field), box));
+        }
+        var more = new Expander
+        {
+            Header = L.T("new.more"), Margin = new Thickness(0, 2, 0, 6),
+            Content = Ui.Stack(Ui.Field(L.T("field.newSteps"), Ui.WithPlaceholder(newSteps, L.T("placeholder.newSteps"))), infoRow)
+        };
+
+        openButton = Btn("btn.open", OpenSelected);
+        exportButton = Btn("btn.export", ExportStudy);
+        deleteButton = Btn("btn.delete", DeleteStudy, danger: true);
+        compareButton = Btn("btn.compare", ShowCompare);
+        var importButton = Btn("btn.import", ImportStudy);
+        importButton.Margin = new Thickness(14, 0, 6, 4);
+        compareButton.Margin = new Thickness(14, 0, 6, 4);
+        deleteButton.Margin = new Thickness(14, 0, 6, 4);
+
+        Ui.Columns(studies, (L.T("th.code"), "Code", false), (L.T("th.name"), "Name", false), (L.T("th.where"), "Where", false),
+            (L.T("th.count"), "Count", true), (L.T("th.cycles"), "Cycles", true), (L.T("th.state"), "State", false),
+            (L.T("th.video"), "Video", false), (L.T("th.updated"), "Updated", false));
+        studies.MinHeight = 160;
+        studies.SelectionChanged += (_, _) =>
+        {
+            if (studies.SelectedItem is StudyRow row) selectedStudyId = row.Source.Id;
+            UpdateStudyButtons();
+        };
         studies.MouseDoubleClick += (_, _) => Guard(OpenSelected);
-        return Layout(studies,
-            Label("Yeni etüt oluştur veya kayıtlı bir etüdü aç."),
-            Row(Field("Etüt adı", name), Field("Etüt kodu", code)),
-            Row(Field("Video dosyası", path), Action("Dosya seç…", () => { if (PickVideo() is string p) path.Text = p; })),
-            Row(Action("Yeni çalışma başlat", () =>
-            {
-                if (string.IsNullOrWhiteSpace(name.Text) || string.IsNullOrWhiteSpace(code.Text) || !File.Exists(path.Text))
-                    throw new ArgumentException("Etüt adı, kodu ve geçerli video dosyası seçin.");
-                var study = new Study { Name = name.Text.Trim(), Code = code.Text.Trim(), Video = path.Text };
-                store.Save(study);
-                OpenStudy(study);
-            }), Action("Seçili çalışmayı aç", OpenSelected),
-                Action("Etüdü içe al…", ImportStudy), Action("Seçili etüdü dışa aktar…", ExportStudy),
-                Action("Seçili etüdü sil…", DeleteStudy)));
+
+        var form = Ui.Stack(
+            Ui.Text(L.T("home.lead")), how, note, demoRow,
+            Ui.Row(Ui.Field(L.T("field.name"), newName), Ui.Field(L.T("field.code"), newCode)),
+            Ui.Row(Ui.Field(L.T("field.video"), Ui.WithPlaceholder(newVideo, L.T("placeholder.video"))),
+                Btn("btn.pickFile", () => { if (PickVideo() is string p) newVideo.Text = p; })),
+            more,
+            Ui.Row(Btn("btn.create", CreateStudy, primary: true), openButton, importButton, exportButton,
+                Btn("btn.backup", BackupAll), compareButton, deleteButton),
+            studiesStatus,
+            Ui.Hint(L.Strip(L.T("studies.hint"))));
+        studiesStatus.Visibility = Visibility.Collapsed;
+        var root = new DockPanel { Margin = new Thickness(12) };
+        DockPanel.SetDock(form, Dock.Top);
+        root.Children.Add(form);
+        root.Children.Add(studies);
+        return root;
     }
 
-    private UIElement BuildMeasure()
+    private void SetStudiesStatus(string text)
     {
-        Columns(observations, ("Başlangıç (ms)", "StartMs"), ("Bitiş (ms)", "EndMs"), ("Süre (sn)", "Seconds"),
-            ("İş adımı", "Step"), ("Sınıf", "Classification"), ("Kapsam dışı", "Excluded"), ("Çevrim", "Cycle"));
-        observations.SelectionChanged += (_, _) =>
-        {
-            if (suppressSelection || observations.SelectedItem is not Observation row) return;
-            step.Text = row.Step;
-            cycle.Text = row.Cycle.ToString();
-            classification.SelectedItem = row.Classification;
-            excluded.IsChecked = row.Excluded;
-            if (ready) Seek(row.StartMs);
-        };
-        video.MediaOpened += (_, _) =>
-        {
-            ready = video.NaturalDuration.HasTimeSpan;
-            timeline.IsEnabled = ready;
-            if (ready) timeline.Maximum = Math.Max(1, video.NaturalDuration.TimeSpan.TotalMilliseconds);
-            status.Text = ready ? "Video hazır. İstediğiniz konuma gidip Başla’ya basın." : "Video süresi okunamadı.";
-        };
-        video.MediaFailed += (_, _) =>
-        {
-            ready = playing = timeline.IsEnabled = false;
-            StopMeasure();
-            status.Text = "Video açılamadı. Dosyayı veya Windows video codec desteğini kontrol edin.";
-        };
-        video.MediaEnded += (_, _) => { Pause(); UpdatePosition(); };
-        timeline.ValueChanged += (_, _) => { if (!syncingTimeline && ready) Seek((long)timeline.Value); };
-        measure.Click += (_, _) => Guard(Measure);
-        var frame = new Border { Background = Brushes.Black, Child = video, MinHeight = 150 };
-        var player = new DockPanel { Margin = new Thickness(8, 0, 0, 0) };
-        var controls = new StackPanel();
-        controls.Children.Add(timeline);
-        controls.Children.Add(Row(position, Action("Oynat", Play), Action("Duraklat", Pause),
-            Action("◀ 0,1 sn", () => Nudge(-100)), Action("0,1 sn ▶", () => Nudge(100)),
-            Field("Hız", speed), Action("Videoyu yeniden seç", Relink)));
-        controls.Children.Add(Label("Kısayollar: Boşluk oynat/duraklat · Enter Başla/Ölç · Esc Durdur · ←/→ 0,1 sn · Shift+←/→ 1 sn · Ctrl+←/→ 0,04 sn (≈1 kare). " +
-            "Kısayollar metin kutusu veya açılır liste seçiliyken çalışmaz. İnce konumlama (en fazla 1 sn) ölçümü kesmez; zaman çizgisinde atlama keser."));
-        DockPanel.SetDock(controls, Dock.Bottom);
-        player.Children.Add(controls);
-        player.Children.Add(frame);
-        var split = new Grid();
-        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(47, GridUnitType.Star) });
-        split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53, GridUnitType.Star) });
-        split.Children.Add(observations);
-        Grid.SetColumn(player, 1);
-        split.Children.Add(player);
-        return Layout(split, status,
-            Row(Field("İş adımı", step), Field("Çevrim", cycle), Field("Sınıf", classification), excluded,
-                measure, Action("Durdur", StopMeasure), Action("Aralık başlangıcı al", MarkStart), Action("Aralığı ekle", AddMarked)),
-            Row(Action("Seçili satırı güncelle", EditRow), Action("Sınıfı aynı adı taşıyanlara uygula", BulkClassify),
-                Action("Seçili satırı sil", DeleteRow)),
-            Label("Ölç son aralığı kaydeder. Durdur ölçüm modunu kapatır. Çakışan veya bağımsız aralık için başlangıcı alıp bitiş konumunda aralığı ekleyin."));
+        studiesStatus.Text = text;
+        studiesStatus.Visibility = text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private UIElement BuildAnalysis()
+    private Study? SelectedStudy => studyList.FirstOrDefault(s => s.Id == selectedStudyId);
+
+    private void UpdateStudyButtons()
     {
-        Columns(results, ("Adım", "Step"), ("n", "Count"), ("Dışarıda", "Excluded"), ("Ort.", "Mean"),
-            ("Medyan", "Median"), ("Min", "Min"), ("Maks", "Max"), ("Std sapma", "Deviation"), ("t", "CriticalT"),
-            ("Hata %", "ErrorPercent"), ("Yeterlilik", "Sufficiency"), ("Baz", "Base"), ("Normal", "Normal"),
-            ("Standart", "Standard"), ("Her N çevrim", "Every"), ("Katkı", "Contribution"), ("Yöntem", "Method"));
-        Columns(cycles, ("Çevrim", "Cycle"), ("Ölçülen geçen süre (sn)", "Elapsed"), ("İş yükü (sn)", "Workload"));
-        Columns(groups, ("Grup ortalaması (sn)", "Seconds"), ("Tekrar", "Count"));
-        results.SelectionChanged += (_, _) =>
+        bool none = SelectedStudy is null;
+        openButton.IsEnabled = exportButton.IsEnabled = deleteButton.IsEnabled = !none;
+        compareButton.IsEnabled = studyList.Count >= 2;
+    }
+
+    private void ReloadStudies()
+    {
+        studyList = store.ReadAll();
+        var rows = studyList.Select(s => new StudyRow(s, s.Code, s.Name,
+            string.Join(" · ", new[] { s.Info.GetValueOrDefault("Station"), s.Info.GetValueOrDefault("Operator") }.Where(x => !string.IsNullOrEmpty(x))),
+            s.Observations.Count.ToString(), s.Observations.Count > 0 ? s.Observations.Select(o => o.Cycle).Distinct().Count().ToString() : "",
+            StudyState(s), s.VideoLabel, L.Date(s.Updated))).ToList();
+        studies.ItemsSource = rows;
+        studies.SelectedItem = rows.FirstOrDefault(r => r.Source.Id == selectedStudyId);
+        UpdateStudyButtons();
+    }
+
+    /// <summary>Listede kısa durum: ölçüm yok / yeterli / k adım yetersiz.</summary>
+    private static string StudyState(Study study)
+    {
+        if (study.Observations.Count == 0) return L.T("state.empty");
+        try
         {
-            if (current == null || results.SelectedItem is not StepResult row) return;
-            groups.ItemsSource = row.Groups;
-            every.Text = row.Every.ToString();
+            int bad = Analysis.Steps(study).Count(r => r.Sufficiency != "Yeterli" && r.Count > 0);
+            return bad > 0 ? L.T("state.need", ("k", bad)) : L.T("state.ok");
+        }
+        catch (ArgumentException) { return ""; }
+    }
+
+    private void CreateStudy()
+    {
+        if (string.IsNullOrWhiteSpace(newName.Text) || string.IsNullOrWhiteSpace(newCode.Text) || !File.Exists(newVideo.Text))
+            throw Error("msg.createMissing");
+        var study = new Study
+        {
+            Name = newName.Text.Trim(), Code = newCode.Text.Trim(), Video = newVideo.Text,
+            Steps = StudyRules.CleanSteps(newSteps.Text.Split('\n').Select(x => new StepDef { Name = x })),
+            Info = StudyRules.CleanInfo(newInfo.ToDictionary(p => p.Key, p => p.Value.Text))
         };
-        var lower = new TabControl { Height = 155, Margin = new Thickness(0, 8, 0, 0) };
-        lower.Items.Add(new TabItem { Header = "Çevrimler", Content = cycles });
-        lower.Items.Add(new TabItem { Header = "Seçili adımın süre grupları", Content = groups });
-        var body = new DockPanel();
-        DockPanel.SetDock(lower, Dock.Bottom);
-        body.Children.Add(lower);
-        body.Children.Add(results);
-        return Layout(body,
-            Row(Field("Güven %", confidence), Field("Hedef hata %", target), Field("Tempo %", pace),
-                Field("Tolerans %", allowance), Field("Grup (ms)", groupMs), Field("Baz süre yöntemi", method), stable),
-            Row(Action("Ayarları uygula", ApplySettings), Field("Her N çevrimde", every),
-                Action("Seçili adıma sıklık uygula", ApplyFrequency), Action("t tablosu ve formül", ShowStatistics),
-                Action("Excel’e aktar…", Export)),
-            analysisStatus);
+        store.Save(study);
+        newName.Text = newCode.Text = newVideo.Text = newSteps.Text = "";
+        foreach (var box in newInfo.Values) box.Text = "";
+        OpenStudy(study);
     }
 
     private void OpenSelected()
     {
-        if (studies.SelectedItem is Study study) OpenStudy(study);
+        if (SelectedStudy is Study study) OpenStudy(study);
+    }
+
+    private static string DemoDirectory => Path.Combine(AppContext.BaseDirectory, "demo");
+    private static (string Package, string Video, string Code) DemoFiles => L.Lang == "tr"
+        ? ("sentetik-depo-etudu.vzetud", "sentetik-depo-etudu.mp4", "DEMO-01")
+        : ("synthetic-warehouse-study.vzetud", "synthetic-warehouse-study.mp4", "DEMO-01");
+
+    /// <summary>Demo etüdü: zaten varsa onu açar, yoksa uygulama klasöründeki demo paketini içe alır ve videosunu bağlar.</summary>
+    private void OpenDemo()
+    {
+        var demo = DemoFiles;
+        string package = Path.Combine(DemoDirectory, demo.Package);
+        if (!File.Exists(package)) throw Error("msg.demoMissing", ("path", DemoDirectory));
+        var study = studyList.FirstOrDefault(s => s.Code == demo.Code && s.VideoLabel == demo.Video);
+        if (study is null)
+        {
+            study = StudyTransfer.Import(package);
+            AttachDemoVideo(study);
+            store.Save(study);
+        }
+        OpenStudy(study);
+    }
+
+    /// <summary>Videosu bağlı olmayan demo etüdüne uygulama klasöründeki demo videosu bağlanır.</summary>
+    private static bool AttachDemoVideo(Study study)
+    {
+        if (study.Video.Length > 0 && File.Exists(study.Video)) return false;
+        string path = Path.Combine(DemoDirectory, study.ExpectedVideoName.Length > 0 ? study.ExpectedVideoName : Path.GetFileName(study.Video));
+        if (study.VideoLabel is not ("sentetik-depo-etudu.mp4" or "synthetic-warehouse-study.mp4") || !File.Exists(path)) return false;
+        study.Video = path;
+        return true;
     }
 
     private void ImportStudy()
     {
-        var dialog = new OpenFileDialog { Filter = "Video Zaman Etüdü paketi|*.vzetud" };
-        if (dialog.ShowDialog() != true) return;
-
+        var dialog = new OpenFileDialog { Filter = $"{L.T("d.filter.package")}|*.vzetud;*.zip|{L.T("d.filter.all")}|*.*" };
+        if (dialog.ShowDialog(this) != true) return;
+        if (StudyBackup.IsZip(dialog.FileName)) { RestoreBackup(dialog.FileName); return; }
         var study = StudyTransfer.Import(dialog.FileName);
-        if (MessageBox.Show($"“{study.Name}” ({study.Code}) yeni bir etüt olarak eklenecek. Devam edilsin mi?",
-            "Etüdü içe al", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-
+        if (!Ask(L.T("msg.importConfirm", ("name", study.Name), ("code", study.Code)), L.T("title.import"))) return;
         store.Save(study);
         OpenStudy(study);
     }
 
     private void ExportStudy()
     {
-        if (studies.SelectedItem is not Study selected)
-            throw new InvalidOperationException("Dışa aktarmak için listeden bir etüt seçin.");
-
+        if (SelectedStudy is not Study selected) throw Error("msg.selectToExport");
         var dialog = new SaveFileDialog
         {
-            FileName = StudyTransfer.SuggestedFileName(selected, StudyTransfer.Extension), Filter = "Video Zaman Etüdü paketi|*.vzetud",
+            FileName = StudyTransfer.SuggestedFileName(selected, StudyTransfer.Extension), Filter = $"{L.T("d.filter.vzetud")}|*.vzetud",
             DefaultExt = StudyTransfer.Extension, AddExtension = true
         };
-        if (dialog.ShowDialog() == true) StudyTransfer.Export(selected, dialog.FileName);
+        if (dialog.ShowDialog(this) == true) StudyTransfer.Export(selected, dialog.FileName);
+    }
+
+    /// <summary>Bütün etütler tek .zip: içinde her etüt ayrı .vzetud paketi (tarayıcı sürümü de açar).</summary>
+    private void BackupAll()
+    {
+        CommitPendingEdits();
+        if (studyList.Count == 0) throw Error("msg.backupNone");
+        var dialog = new SaveFileDialog
+        {
+            FileName = $"{L.T("backup.file")}-{DateTime.Now:yyyyMMdd}.zip", Filter = $"{L.T("d.filter.zip")}|*.zip",
+            DefaultExt = ".zip", AddExtension = true
+        };
+        if (dialog.ShowDialog(this) != true) return;
+        var result = StudyBackup.Write(studyList, dialog.FileName);
+        SetStudiesStatus(L.T(result.Skipped > 0 ? "msg.backupDoneSkipped" : "msg.backupDone", ("count", result.Count), ("skipped", result.Skipped)));
+    }
+
+    private void RestoreBackup(string path)
+    {
+        var plan = StudyBackup.Read(path, studyList);
+        var text = L.T("msg.restoreFound", ("add", plan.Add.Count), ("same", plan.Same));
+        if (plan.Failed.Count > 0) text += " " + L.T("msg.restoreFailed", ("count", plan.Failed.Count), ("names", string.Join(", ", plan.Failed.Take(5))));
+        if (plan.Add.Count == 0) { Inform(text, L.T("title.restore")); return; }
+        if (!Ask(text + " " + L.T("msg.restoreConfirm", ("add", plan.Add.Count)), L.T("title.restore"))) return;
+        foreach (var study in plan.Add) store.Save(study);
+        ReloadStudies();
+        SetStudiesStatus(L.T("msg.restoreDone", ("add", plan.Add.Count)));
     }
 
     private void DeleteStudy()
     {
-        if (studies.SelectedItem is not Study selected)
-            throw new InvalidOperationException("Silmek için listeden bir etüt seçin.");
-        if (MessageBox.Show(this,
-                $"“{selected.Name}” ({selected.Code}) etüdü ve tüm ölçümleri bu bilgisayardan silinecek. Video dosyası silinmez. " +
-                "Bu işlem geri alınamaz; gerekirse önce dışa aktarın. Silinsin mi?",
-                "Etüdü sil", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (SelectedStudy is not Study selected) throw Error("msg.selectToDelete");
+        if (!Ask(L.T("msg.deleteConfirm", ("name", selected.Name), ("code", selected.Code)), L.T("title.delete"), warning: true)) return;
         store.Delete(selected.Id);
         if (current?.Id == selected.Id) CloseStudy();
+        selectedStudyId = null;
+        ReloadStudies();
+    }
+
+    private void Save()
+    {
+        if (current == null) return;
+        current.Updated = DateTime.Now;
+        store.Save(current);
+        ReloadStudies();
+    }
+
+    private void OpenStudy(Study study)
+    {
+        CommitPendingEdits();
+        current = study;
+        selectedStudyId = study.Id;
+        AttachDemoVideo(study);
+        UpdateHeader();
+        StopMeasure();
+        selectedStart = null;
+        selectedRow = null;
+        selectedResult = null;
+        undo.Clear();
+        // Adım listesi yoksa ölçümlerden çıkarılır; ilk değişiklikte kaydedilir.
+        study.Steps = StudyRules.DeriveSteps(study).Select(x => new StepDef { Name = x.Name, Classification = x.Classification, Note = x.Note }).ToList();
+        // Kaldığı yerden devam: son kaydın ardındaki adım ve çevrim; video son kaydın bitişine gider (video hazır olunca).
+        var point = StudyRules.Resume(study);
+        flow.Index = point.Step;
+        flow.Resume = null;
+        resumeAt = point.At;
+        SetCycle(point.Cycle);
+        excludedNext.IsChecked = false;
+        foreach (TabItem tab in tabs.Items) tab.IsEnabled = true;
+        filterStep.SelectedIndex = -1;
+        filterCycle.SelectedIndex = -1;
+        RenderSteps();
+        RefreshObservations();
+        LoadSettings();
+        LoadInfo();
+        tabs.SelectedIndex = 1;
+        LoadVideo();
         ReloadStudies();
     }
 
@@ -249,396 +413,34 @@ public partial class MainWindow : Window
         selectedStart = null;
         video.Close();
         video.Source = null;
-        ready = timeline.IsEnabled = false;
+        ready = false;
+        timeline.IsEnabled = false;
         current = null;
+        selectedRow = null;
+        selectedResult = null;
+        undo.Clear();
         observations.ItemsSource = null;
         results.ItemsSource = null;
         cycles.ItemsSource = null;
         groups.ItemsSource = null;
+        stepsPanel.Children.Clear();
+        segments.Children.Clear();
         tabs.SelectedIndex = 0;
         for (int i = 1; i < tabs.Items.Count; i++) ((TabItem)tabs.Items[i]).IsEnabled = false;
         UpdateHeader();
     }
 
-    private void OpenStudy(Study study)
+    /// <summary>Odaktaki metin kutusunun değişikliği (adım açıklaması, etüt bilgisi, ayar) kayda geçsin.</summary>
+    private void CommitPendingEdits()
     {
-        current = study;
-        UpdateHeader();
-        StopMeasure();
-        selectedStart = null;
-        foreach (TabItem tab in tabs.Items) tab.IsEnabled = true;
-        tabs.SelectedIndex = 1;
-        RefreshObservations();
-        LoadSettings();
-        LoadVideo();
-        ReloadStudies();
-    }
-
-    private void LoadVideo()
-    {
-        Pause();
-        video.Close();
-        ready = timeline.IsEnabled = false;
-        position.Text = "00:00.000";
-        syncingTimeline = true;
-        timeline.Value = 0;
-        syncingTimeline = false;
-        if (current == null || !File.Exists(current.Video))
-        {
-            string expected = current?.VideoLabel ?? "";
-            status.Text = string.IsNullOrEmpty(expected)
-                ? "Video bağlı değil. Ölçümleri inceleyebilir veya bir video seçebilirsiniz."
-                : $"Video bağlı değil veya bulunamadı. Beklenen dosya: {expected}. Videoyu yeniden seçebilirsiniz.";
-            return;
-        }
-        status.Text = "Video açılıyor…";
-        video.Source = null;
-        video.Source = new Uri(current.Video);
-        video.Pause();
-    }
-
-    private void Relink()
-    {
-        if (current == null || PickVideo() is not string path) return;
-        string expected = current.VideoLabel;
-        string videoNote = string.IsNullOrEmpty(expected) ? "" : $" Beklenen dosya: {expected}.";
-        if (current.Observations.Count > 0 && MessageBox.Show("Mevcut ölçümler seçilen videoya aynı zaman damgalarıyla bağlanacak. Aynı videoyu seçtiğinizden emin olun." + videoNote + " Devam edilsin mi?",
-            "Videoyu yeniden bağla", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-        current.Video = path;
-        Save();
-        StopMeasure();
-        selectedStart = null;
-        LoadVideo();
+        if (Keyboard.FocusedElement is TextBox box) box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        if (current == null) return;
+        try { SaveStepNote(); SaveInfo(); } catch (Exception) { /* geçersiz değer kaydedilmez */ }
     }
 
     private static string? PickVideo()
     {
-        var dialog = new OpenFileDialog { Filter = "Video dosyaları|*.mp4;*.wmv;*.avi;*.mov;*.m4v;*.mpg;*.mpeg|Tüm dosyalar|*.*" };
+        var dialog = new OpenFileDialog { Filter = $"{L.T("picker.videos")}|*.mp4;*.wmv;*.avi;*.mov;*.m4v;*.mpg;*.mpeg|{L.T("d.filter.all")}|*.*" };
         return dialog.ShowDialog() == true ? dialog.FileName : null;
-    }
-
-    private void Play()
-    {
-        if (!ready) return;
-        video.SpeedRatio = SelectedSpeed;
-        video.Play();
-        playing = true;
-    }
-
-    private void Pause()
-    {
-        if (ready && playing) video.Pause();
-        playing = false;
-    }
-
-    /// <summary>
-    /// İnce konumlama: videoyu duraklatır ve en fazla 1 sn ileri/geri alır. Ardışık ölçümü kesmez,
-    /// çünkü kullanıcı adım sınırını bulmak için yalnızca bitiş noktasını düzeltir. Büyük atlamalar
-    /// (zaman çizgisi, satır seçimi) K02 gereği ölçümü keser.
-    /// </summary>
-    private void Nudge(long deltaMs)
-    {
-        RequireVideo();
-        deltaMs = Math.Clamp(deltaMs, -NudgeMaxMs, NudgeMaxMs);
-        Pause();
-        long target = Math.Clamp(PositionMs + deltaMs, 0, (long)timeline.Maximum);
-        video.Position = TimeSpan.FromMilliseconds(target);
-        UpdatePosition();
-        if (anchor is long start && target <= start)
-            status.Text = $"Konum ölçüm başlangıcında veya gerisinde ({start / 1000d:0.000} sn). Ölç için ileri alın.";
-    }
-
-    private void OnShortcut(object sender, KeyEventArgs e)
-    {
-        if (tabs.SelectedIndex != 1 || current == null) return;
-        if (Keyboard.FocusedElement is TextBox or ComboBox or ComboBoxItem) return;
-        var modifiers = Keyboard.Modifiers;
-        long step = modifiers.HasFlag(ModifierKeys.Shift) ? 1000 : modifiers.HasFlag(ModifierKeys.Control) ? 40 : 100;
-        switch (e.Key)
-        {
-            case Key.Space: Guard(() => { if (playing) Pause(); else Play(); }); break;
-            case Key.Enter: Guard(Measure); break;
-            case Key.Escape:
-                if (anchor.HasValue) { StopMeasure(); status.Text = "Ölçüm durduruldu. Yeni kayıt eklenmedi."; }
-                break;
-            case Key.Left: Guard(() => Nudge(-step)); break;
-            case Key.Right: Guard(() => Nudge(step)); break;
-            default: return;
-        }
-        e.Handled = true;
-    }
-
-    private long PositionMs => (long)Math.Round(video.Position.TotalMilliseconds);
-
-    private void UpdatePosition()
-    {
-        if (!ready) return;
-        syncingTimeline = true;
-        timeline.Value = PositionMs;
-        syncingTimeline = false;
-        position.Text = video.Position.ToString(@"hh\:mm\:ss\.fff");
-    }
-
-    private void Seek(long time)
-    {
-        if (anchor.HasValue)
-        {
-            StopMeasure();
-            status.Text = "Konum değişti. Yeni konumda Başla’ya basın.";
-        }
-        video.Position = TimeSpan.FromMilliseconds(time);
-        position.Text = video.Position.ToString(@"hh\:mm\:ss\.fff");
-    }
-
-    private void StopMeasure()
-    {
-        anchor = null;
-        measure.Content = "Başla";
-    }
-
-    private void Measure()
-    {
-        RequireVideo();
-        long now = PositionMs;
-        if (!anchor.HasValue)
-        {
-            anchor = now;
-            measure.Content = "Ölç";
-            status.Text = $"Ölçüm başladı ({now / 1000d:0.000} sn).";
-            return;
-        }
-        AddObservation(anchor.Value, now);
-        anchor = now;
-    }
-
-    private void MarkStart()
-    {
-        RequireVideo();
-        StopMeasure();
-        selectedStart = PositionMs;
-        status.Text = $"Aralık başlangıcı alındı ({selectedStart / 1000d:0.000} sn).";
-    }
-
-    private void AddMarked()
-    {
-        RequireVideo();
-        if (selectedStart is not long start) throw new ArgumentException("Önce aralık başlangıcını alın.");
-        AddObservation(start, PositionMs);
-        selectedStart = null;
-    }
-
-    private void RequireVideo()
-    {
-        if (!ready || current == null) throw new InvalidOperationException("Ölçüm için önce bir video açın.");
-    }
-
-    private void AddObservation(long start, long end)
-    {
-        if (end <= start) throw new ArgumentException("Bitiş, başlangıçtan sonra olmalı.");
-        var row = new Observation { StartMs = start, EndMs = end };
-        FillRow(row);
-        if (current!.Observations.Any(x => x.StartMs == start && x.EndMs == end && x.Cycle == row.Cycle &&
-            x.Step == row.Step && x.Excluded == row.Excluded))
-            throw new ArgumentException("Bu ölçüm aynı adım ve çevrim için zaten kayıtlı.");
-        current.Observations.Add(row);
-        Save();
-        RefreshObservations();
-        status.Text = $"Kaydedildi · {row.Step} · {row.Seconds:0.000} sn";
-    }
-
-    private void FillRow(Observation row)
-    {
-        var name = step.Text.Trim();
-        if (name.Length == 0) throw new ArgumentException("Adım adı boş olamaz.");
-        int cycleNumber = PositiveInt(cycle.Text, "Çevrim");
-        row.Step = name;
-        row.Cycle = cycleNumber;
-        row.Classification = classification.SelectedItem as string ?? "";
-        row.Excluded = excluded.IsChecked == true;
-    }
-
-    private void EditRow()
-    {
-        if (observations.SelectedItem is not Observation row) return;
-        FillRow(row);
-        Save();
-        RefreshObservations(row);
-    }
-
-    private void BulkClassify()
-    {
-        if (observations.SelectedItem is not Observation row || current == null) return;
-        foreach (var item in current.Observations.Where(x => x.Step == row.Step))
-            item.Classification = classification.SelectedItem as string ?? "";
-        Save();
-        RefreshObservations(row);
-    }
-
-    private void DeleteRow()
-    {
-        if (observations.SelectedItem is not Observation row || current == null) return;
-        if (MessageBox.Show("Seçili ölçüm silinsin mi?", "Ölçümü sil", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-        current.Observations.Remove(row);
-        Save();
-        RefreshObservations();
-    }
-
-    private void ReloadStudies() => studies.ItemsSource = store.ReadAll();
-
-    private void Save()
-    {
-        if (current == null) return;
-        current.Updated = DateTime.Now;
-        store.Save(current);
-        ReloadStudies();
-    }
-
-    private void RefreshObservations(Observation? selected = null)
-    {
-        suppressSelection = true;
-        observations.ItemsSource = current?.Observations.OrderBy(x => x.StartMs).ThenBy(x => x.EndMs).ToList();
-        observations.SelectedItem = selected;
-        suppressSelection = false;
-    }
-
-    private void LoadSettings()
-    {
-        if (current == null) return;
-        var s = current.Settings;
-        confidence.Text = s.Confidence.ToString();
-        target.Text = s.TargetError.ToString();
-        pace.Text = s.Pace.ToString();
-        allowance.Text = s.Allowance.ToString();
-        groupMs.Text = s.GroupMs.ToString();
-        method.SelectedIndex = s.RepeatedLow ? 1 : 0;
-        stable.IsChecked = s.Stable;
-    }
-
-    private void ApplySettings()
-    {
-        if (current == null) return;
-        var settings = new Settings
-        {
-            Confidence = Number(confidence.Text, "Güven"), TargetError = Number(target.Text, "Hedef hata"),
-            Pace = Number(pace.Text, "Tempo"), Allowance = Number(allowance.Text, "Tolerans"),
-            GroupMs = PositiveInt(groupMs.Text, "Grup hassasiyeti"), RepeatedLow = method.SelectedIndex == 1,
-            Stable = stable.IsChecked == true
-        };
-        settings.Validate();
-        current.Settings = settings;
-        Save();
-        RefreshAnalysis();
-    }
-
-    private void ApplyFrequency()
-    {
-        if (current == null || results.SelectedItem is not StepResult row) return;
-        current.Frequency[row.Step] = PositiveInt(every.Text, "Sıklık");
-        Save();
-        RefreshAnalysis();
-    }
-
-    private void RefreshAnalysis()
-    {
-        if (current == null) return;
-        var previous = (results.SelectedItem as StepResult)?.Step;
-        var rows = Analysis.Steps(current);
-        results.ItemsSource = rows;
-        results.SelectedItem = rows.FirstOrDefault(x => x.Step == previous) ?? rows.FirstOrDefault();
-        cycles.ItemsSource = Analysis.Cycles(current);
-        groups.ItemsSource = (results.SelectedItem as StepResult)?.Groups;
-        bool stableProcess = current.Settings.Stable;
-        analysisStatus.Text = $"Toyota esinli rehber: {(stableProcess ? "5 gözlem (kararlı süreç). Tekrar eden düşük süreyi inceleyin." : "10 gözlem (genel). Ortalama ile başlayın.")} " +
-            "İstatistiksel yeterlilik ayrı hesaplanır. Westinghouse puan tablosu doğrulanana kadar manuel tempo kullanılır.";
-    }
-
-    private void ShowStatistics()
-    {
-        if (current == null) return;
-        var s = current.Settings;
-        var dfs = Enumerable.Range(1, 30).Concat(new[] { 40, 60, 120 });
-        var values = dfs.Select(df => $"{df,4}    {MathNet.Numerics.Distributions.StudentT.InvCDF(0, 1, df, (1 + s.Confidence / 100) / 2):0.0000}");
-        var window = new Window { Title = $"Student-t tablosu · %{s.Confidence}", Width = 490, Height = 620, Owner = this };
-        window.Content = new TextBox { IsReadOnly = true, Margin = new Thickness(12), VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            FontFamily = new FontFamily("Consolas"), Text = "Bağıl hata = t × s / (√n × ortalama)\n\n  sd    Kritik t\n" + string.Join("\n", values) };
-        window.ShowDialog();
-    }
-
-    private void Export()
-    {
-        if (current == null) return;
-        ApplySettings();
-        var dialog = new SaveFileDialog { FileName = StudyTransfer.SuggestedFileName(current, ".xlsx", "_analiz"), Filter = "Excel çalışma kitabı|*.xlsx" };
-        if (dialog.ShowDialog() == true) StudyExport.Write(current, dialog.FileName);
-    }
-
-    private void Guard(Action action)
-    {
-        try { action(); }
-        catch (Exception error) { MessageBox.Show(error.Message, "Video Zaman Etüdü", MessageBoxButton.OK, MessageBoxImage.Warning); }
-    }
-
-    private Button Action(string title, Action action)
-    {
-        var button = new Button { Content = title };
-        button.Click += (_, _) => Guard(action);
-        return button;
-    }
-
-    private static int PositiveInt(string text, string name) => int.TryParse(text, out int value) && value > 0
-        ? value : throw new ArgumentException($"{name} pozitif bir tam sayı olmalı.");
-
-    private static double Number(string text, string name) =>
-        (double.TryParse(text, NumberStyles.Float, CultureInfo.CurrentCulture, out var value) ||
-         double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) ||
-         double.TryParse(text, NumberStyles.Float, CultureInfo.GetCultureInfo("tr-TR"), out value)) && double.IsFinite(value)
-         ? value : throw new ArgumentException($"{name} geçerli bir sayı olmalı.");
-
-    private static TextBlock Label(string text) => new() { Text = text, Margin = new Thickness(0, 3, 10, 7), TextWrapping = TextWrapping.Wrap };
-    private static TextBox Input(double width, string value = "") => new() { Width = width, Text = value, VerticalContentAlignment = VerticalAlignment.Center };
-    private static DataGrid Table() => new() { AutoGenerateColumns = false, IsReadOnly = true,
-        CanUserAddRows = false, SelectionMode = DataGridSelectionMode.Single, SelectionUnit = DataGridSelectionUnit.FullRow,
-        AlternatingRowBackground = new SolidColorBrush(Color.FromRgb(236, 245, 248)), GridLinesVisibility = DataGridGridLinesVisibility.Horizontal };
-    private static void Columns(DataGrid table, params (string Header, string Path)[] columns)
-    {
-        foreach (var (header, path) in columns)
-            table.Columns.Add(new DataGridTextColumn { Header = header,
-                Binding = new Binding(path) { StringFormat = path switch
-                {
-                    "Updated" => "dd.MM.yyyy HH:mm",
-                    "Seconds" or "Mean" or "Median" or "Min" or "Max" or "Deviation" or "CriticalT" or
-                    "ErrorPercent" or "Base" or "Normal" or "Standard" or "Contribution" or "Elapsed" or "Workload" => "0.000",
-                    _ => null
-                } } });
-    }
-
-    private static UIElement Field(string name, UIElement input)
-    {
-        var panel = new StackPanel { Margin = new Thickness(0, 0, 8, 4) };
-        panel.Children.Add(Label(name));
-        panel.Children.Add(input);
-        return panel;
-    }
-
-    private static WrapPanel Row(params UIElement[] elements)
-    {
-        var panel = new WrapPanel { Margin = new Thickness(0, 0, 0, 5) };
-        foreach (var element in elements)
-        {
-            if (element is FrameworkElement fe) fe.VerticalAlignment = VerticalAlignment.Bottom;
-            panel.Children.Add(element);
-        }
-        return panel;
-    }
-
-    private static DockPanel Layout(UIElement body, params UIElement[] header)
-    {
-        var root = new DockPanel { Margin = new Thickness(12) };
-        var top = new StackPanel();
-        foreach (var element in header) top.Children.Add(element);
-        DockPanel.SetDock(top, Dock.Top);
-        root.Children.Add(top);
-        root.Children.Add(body);
-        return root;
     }
 }

@@ -330,7 +330,7 @@ const DICT = {
     "field.stepPace": "Bu adımın temposu %",
     "placeholder.stepPace": "genel",
     "btn.applyStep": "Seçili adıma uygula",
-    "sel.hint": "Tablodan bir adım seçin. Seyrek adım (ör. 3 siparişte bir kontrol) için N girin. Adım temposu boşsa genel tempo kullanılır; Windows sürümü adım temposunu tanımaz.",
+    "sel.hint": "Tablodan bir adım seçin. Seyrek adım (ör. 3 siparişte bir kontrol) için N girin. Adım temposu boşsa genel tempo kullanılır.",
     "name.stepPace": "Adım temposu",
     "msg.stepPaceInvalid": "Adım temposu 0'dan büyük ve en fazla 300 olmalı (boşsa genel tempo).",
     "th.r.pace": "Tempo %",
@@ -671,7 +671,7 @@ const DICT = {
     "field.stepPace": "Pace for this step %",
     "placeholder.stepPace": "general",
     "btn.applyStep": "Apply to selected step",
-    "sel.hint": "Select a step in the table. For an occasional step (e.g. a check every 3 orders) enter N. If the step pace is empty, the general pace is used; the Windows version ignores step pace.",
+    "sel.hint": "Select a step in the table. For an occasional step (e.g. a check every 3 orders) enter N. If the step pace is empty, the general pace is used.",
     "name.stepPace": "Step pace",
     "msg.stepPaceInvalid": "Step pace must be above 0 and at most 300 (empty means general pace).",
     "th.r.pace": "Pace %",
@@ -697,6 +697,9 @@ const RESULTS = {
   "Tekrarlanan düşük süre": { tr: "Tekrarlanan düşük süre", en: "Repeated low time" },
   "Tekrar yok; ortalamayı seçebilirsiniz": { tr: "Tekrar yok; ortalamayı seçebilirsiniz", en: "No repeats; consider using the mean" },
 };
+
+/** Masaüstü sürümü bu sözlükten metin dosyası üretir (Tools/Metinler/uret.mjs). */
+export { DICT, RESULTS };
 
 export const LANGS = ["tr", "en"];
 const STORAGE_KEY = "vze.lang";
