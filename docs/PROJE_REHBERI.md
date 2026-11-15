@@ -13,7 +13,14 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 | `Core/StudyTransfer.cs` | `.vzetud` paketini yazma/okuma, doğrulama, dosya adı önerisi | Taşıma kuralları (K04) tek yerde |
 | `Desktop/MainWindow.xaml.cs` | Üç sekmeli WPF arayüzü, video oynatma, ölçüm düğmeleri, kısayollar | Arayüz kodu; hesap içermez |
 | `Desktop/StudyStore.cs` | Yerel SQLite kaydı (`%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`) | Her çalışan kendi profilinde |
-| `Desktop/StudyExport.cs` | Excel çıktısı (ClosedXML) | |
+| `Desktop/StudyExport.cs` | Excel çıktısı (ClosedXML); ilk sayfa Özet, başlıklar arayüz dilinde | |
+| `Core/StudyRules.cs` | v2 kuralları: adım listesi, süreç sırası, temizleme, tolerans kalemleri, çevrim değişkenliği, karşılaştırma, gereken n, devam noktası, ölçüm sırası (`MeasureFlow`) | Tarayıcıdaki `core.js` v1.5–v1.7 işlevlerinin C# karşılığı; arayüzsüz test edilir |
+| `Core/StudyBackup.cs` | Toplu yedek (.zip) yazma ve geri yükleme planı | Tarayıcı yedeğiyle aynı biçim |
+| `Desktop/MainWindow*.cs` | Arayüz: `MainWindow.xaml.cs` (genel, dil, Çalışmalar), `.Measure.cs` (ölçüm), `.Analysis.cs` (analiz, grafik, karşılaştırma) | Dosya başına bir bölüm |
+| `Desktop/Metinler.cs`, `Metinler.json` | TR/EN metinler, sayı/yüzde/saat biçimi; JSON tarayıcı sözlüğünden üretilir | İki sürüm aynı ifadeyi kullansın |
+| `Desktop/Charts.cs`, `PrintReport.cs`, `Ui.cs` | WPF grafikleri, yazdırma belgesi, arayüz yapı taşları | |
+| `Desktop/SelfTest.cs` | `--self-test`: CI'da pencereyi iki dilde kurup yolları dener, ekran görüntüsü alır | WPF'i elle açmadan denetlemek için |
+| `Tools/Metinler/uret.mjs`, `Tools/EkAlanlar/uret.mjs` | Metin dosyasını ve v2 ortak eşdeğerlik dosyasını üretir | Tek kaynak: tarayıcı |
 | `Checks/` | Otomatik kontroller (kabul kriterleri + 58 ek kontrol) | GitHub Actions her gönderimde çalıştırır |
 | `.github/workflows/windows.yml` | Windows'ta derle → kontrol et → taşınabilir ZIP üret | Son kullanıcı SDK kurmasın |
 | `demo/` | Sentetik video ve etüt (gerçek şirket verisi yok) | |
@@ -39,7 +46,8 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 - Hesap çekirdeği (`core.js`) Türkçe sonuç metni üretir (“Yeterli”, “Ortalama”…), çünkü masaüstüyle eşdeğerlik testleri bu metinleri karşılaştırır. Ekranda ve Excel'de `result()` ile çevrilir. Çekirdek hataları Türkçe mesajla birlikte bir çeviri anahtarı taşır.
 - Dil sırası: adres parametresi (`?lang=en`) → kaydedilmiş seçim → tarayıcı dili. Sitedeki İngilizce proje sayfası “Try it” bağlantısına `?lang=en` ekler.
 - Yeni metin eklerken iki dile de yaz; `npm test` iki sözlüğün anahtarları eşit değilse kırmızı olur.
-- Sık sorulabilecek: “Neden Windows sürümü İngilizce değil?” → Önce ziyaretçinin denediği tarayıcı sürümü çevrildi; masaüstü şirket içi kullanım için Türkçe kaldı, gerekirse aynı sözlük mantığıyla (WPF kaynak dosyaları) çevrilebilir.
+- Windows sürümü (v2.0) aynı sözlüğü kullanır: `Tools/Metinler/uret.mjs`, `i18n.js`'deki `DICT` ve `RESULTS`'u alır, masaüstüne özgü birkaç metni (`DESKTOP`) üstüne yazar ve `Desktop/Metinler.json`'u üretir. Bu dosya exe'ye gömülür (`L` sınıfı okur). Sözlüğü değiştirip üretmeyi unutursan `npm test` kırmızı olur.
+- Windows'ta dil değişince pencere yeni dilde baştan kurulur (arayüz kodla kurulduğu için en sade yol); açık etüt ve bölüm korunur. Çekirdek hataları `Exception.Data["key"]` ile çeviri anahtarı taşır.
 
 ## 3b. İki sürüm nasıl aynı kalıyor?
 - Hesap kuralları iki yerde yazılı: `Core/Study.cs` (C#) ve `Web/js/core.js` (JavaScript). Tek kaynak yerine iki uygulama seçildi, çünkü tarayıcı sürümü sunucusuz ve hafif olmalı (C#'ı tarayıcıda çalıştırmak 5–10 MB indirme demek).
@@ -54,9 +62,9 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 - **Sıra:** normal kayıttan sonra sıradaki adıma geçilir, son adımdan sonra çevrim artar (`advance`). Elle başka adıma geçince önceki adım `state.resume`'da tutulur; kapsam dışı kayıttan sonra oraya dönülür (`afterRecord`).
 - **Geri al:** bu oturumda eklenen kayıtlar `state.undo` yığınındadır. Geri almak kaydı siler; adım, çevrim ve ölçüm başlangıcını o kaydın öncesine getirir.
 - **Süreç sırası:** `analyzeSteps` Windows ile aynı kalsın diye alfabetik döner. Ekranda ve Özet sayfasında `inProcessOrder` ile adım listesinin sırasına dizilir.
-- **Windows farkı:** Windows sürümünde adım adı serbest metindir ve zaman çizgisinde atlamak ölçümü keser (K02/K10). Tarayıcıda bu kural v1.5'te kaldırıldı. Paketteki `Steps` ve `Info` alanlarını Windows yok sayar; Windows'tan dışa aktarılan pakette bu alanlar olmaz.
+- **Windows:** v2.0'dan beri aynı akış. Sıra mantığı `Core/StudyRules.cs` içindeki `MeasureFlow` sınıfındadır ve `Checks/V2Checks.cs` ile arayüzsüz sınanır. Eski Windows v1.2 bu alanları yok sayar; o sürümde zaman çizgisinde atlamak ölçümü keserdi (K02/K10).
 
-## 3d. Etüt bilgileri ve ekler (v1.6, yalnız tarayıcı)
+## 3d. Etüt bilgileri ve ekler (tarayıcı v1.6, Windows v2.0)
 
 | Alan | Nerede | Ne işe yarar |
 |---|---|---|
@@ -66,12 +74,12 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 | `Takt` (sn) | Analiz ayarları | Özette takt doluluğu ve gereken operatör = standart ÷ takt |
 | `Info` | Etüt bilgileri | Operatör, istasyon, vardiya, tarih, gözlemci, not |
 
-Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanStepPace`, `cleanTakt`, `cleanSteps`, `cleanInfo`). Windows sürümü bu alanları yok sayar. Bu yüzden adım temposu kullanılmış bir etüt Windows'ta açılırsa sonuçlar genel tempoyla hesaplanır.
+Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanStepPace`, `cleanTakt`, `cleanSteps`, `cleanInfo`; C#'ta `StudyRules.Clean*`). Windows v2.0 hepsini okur ve yazar. Yalnız eski Windows v1.2 bu alanları yok sayar; adım temposu kullanılmış bir etüt orada genel tempoyla hesaplanır.
 
-## 3e. Tolerans kalemleri, yedek ve devam (v1.7, yalnız tarayıcı)
+## 3e. Tolerans kalemleri, yedek ve devam (tarayıcı v1.7, Windows v2.0)
 
-- **Tolerans kalemleri** (`AllowanceParts`: `Personal`, `Fatigue`, `Delay`, `Other`): Analiz ayarlarında "Toleransı kalemlere ayır" altında girilir. Kalem varsa `Settings.Allowance` = kalemlerin toplamıdır ve toplam alanı kilitlenir. Hesap yalnız toplamı kullanır. Bu yüzden Windows aynı sonucu bulur. Windows'ta tolerans değiştirilirse toplam tutmaz; tarayıcı paketi açarken kalemleri atar (`matchingParts`).
-- **Toplu yedek:** "Tümünü yedekle (.zip)" her etüdü ayrı `.vzetud` olarak tek zip'e koyar. Geri yükleme için ayrı düğme yok: "Etüdü içe al…" dosyanın zip olduğunu ilk baytlardan anlar (`isZip`). Aynı içerikteki etüt ikinci kez eklenmez: karşılaştırma, iki etüdün paket metninin aynı olmasıdır. Hiçbir mevcut etüt değiştirilmez ya da silinmez. Zip açılıp içindeki paketler Windows'a tek tek de alınabilir.
+- **Tolerans kalemleri** (`AllowanceParts`: `Personal`, `Fatigue`, `Delay`, `Other`): Analiz ayarlarında "Toleransı kalemlere ayır" altında girilir. Kalem varsa `Settings.Allowance` = kalemlerin toplamıdır ve toplam alanı kilitlenir. Hesap yalnız toplamı kullanır. Bu yüzden eski Windows v1.2 de aynı sonucu bulur. Orada tolerans değiştirilirse toplam tutmaz; paket açılırken kalemler atılır (`matchingParts` / `StudyRules.MatchingParts`).
+- **Toplu yedek:** "Tümünü yedekle (.zip)" her etüdü ayrı `.vzetud` olarak tek zip'e koyar. Geri yükleme için ayrı düğme yok: "Etüdü içe al…" dosyanın zip olduğunu ilk baytlardan anlar (`isZip`). Aynı içerikteki etüt ikinci kez eklenmez: karşılaştırma, iki etüdün paket metninin aynı olmasıdır. Hiçbir mevcut etüt değiştirilmez ya da silinmez. Windows v2.0 aynı yedeği yazar ve okur (`Core/StudyBackup.cs`, .NET'in kendi zip desteği); iki sürüm birbirinin yedeğini açar.
 - **Kaldığı yerden devam:** Etüt açılınca video son kaydın bitişine gider. Sıradaki kayıt, son geçerli kaydın ardındaki adım olur; son adımdan sonra çevrim 1 artar (`resumePoint`).
 - **Kayıt süzgeci:** Ölçüm tablosu adıma ve çevrime göre daraltılabilir. Yalnız görünümü etkiler.
 - **Çıktılar:** Excel özeti "yetersiz" ve "hesaplanamayan" adımları ayrı sayar. Yetersiz adıma "Gereken n (yaklaşık)" yazılır; bu, ekrandaki "yaklaşık N gözlem gerekir" ile aynı hesaptır (`requiredObservations`). Yazdırma başlığında etüt bilgileri ve analizin dayandığı ayarlar var. Başlık Ctrl+P ile de dolar (`beforeprint`).
@@ -96,7 +104,8 @@ Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanSte
 - **Demo düğmesi videoyu sunucudan mı alıyor?** Sitenin kendi statik dosyasından (`Web/demo/`); dış bir sunucuya gidilmez, ziyaretçinin hiçbir verisi gönderilmez.
 - **Tarayıcı sürümünde etütler nerede?** O tarayıcının yerel deposunda (IndexedDB). Başka bilgisayara veya tarayıcıya `.vzetud` ile taşınır. Tarayıcı verisi temizlenirse silinir.
 - **Kullanım limiti / hesap neden yok?** Limit ve kullanıcı hesabı sunucu ister; bu V1.2 sunucusuz. Site hesap sistemi VPS'te kurulunca eklenir.
-- **Veriler nerede, nasıl yedeklenir?** Windows: `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`; uygulama kapalıyken kopyala ya da etütleri `.vzetud` olarak dışa aktar. Tarayıcı: "Tümünü yedekle (.zip)" ve geri yüklemek için "Etüdü içe al…".
+- **Veriler nerede, nasıl yedeklenir?** Windows: `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`. İki sürümde de "Tümünü yedekle (.zip)" ve geri yüklemek için "Etüdü içe al…".
+- **WPF arayüzü Linux'ta nasıl denendi?** Denenmedi; Windows'ta GitHub Actions denedi. `Desktop.exe --self-test` pencereyi iki dilde gerçekten kurar, düğmelerin arkasındaki yolları çalıştırır, sonuçları denetler ve ekran görüntüsü alır. Görüntüler iş günlüğüne de base64 olarak yazılır.
 - **Tolerans neden toplanıyor, çarpılmıyor?** Kalemler aynı normal süreye eklenen paylardır; uygulamada yaygın olan toplamdır. Standart = Normal ÷ (1 − toplam tolerans).
 
 ## 6. Değişiklik yaparken
@@ -104,7 +113,7 @@ Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanSte
 - Paket alanı eklemek → `StudyTransfer.Package` + `Validate`; eski dosyalar açılmayacaksa `Version` artır.
 - Yerelde test: `dotnet run --project .\Checks\Checks.csproj -c Release -- .\demo\sentetik-depo-etudu.vzetud`
 - Hesap veya paket kuralı değişikliği → **iki tarafı da** değiştir (`Core/*.cs` ve `Web/js/core.js`), `Tools/EsdegerUretici` ile örnek dosyasını yeniden üret, `Checks` ve `cd Web && npm test` çalıştır.
-- Arayüz değişikliği → iki arayüzde de yap; Windows'ta ve tarayıcıda [kontrol listesi](WINDOWS_KONTROL_LISTESI.md) ile elle doğrula.
+- Arayüz değişikliği → iki arayüzde de yap. Yeni metni `i18n.js`'ye ekle ve `node Tools/Metinler/uret.mjs` çalıştır. Yeni paket alanı ya da kural → `Tools/EkAlanlar/uret.mjs`'ye ekle, `Shared/ek-alanlar.json`'u yeniden üret ve `Checks/V2Checks.cs`'te C# karşılığını denetle. Son olarak Windows'ta ve tarayıcıda [kontrol listesi](WINDOWS_KONTROL_LISTESI.md) ile elle doğrula.
 
 ## 6b. Yayın nasıl işliyor?
 - Kod: github.com/ysfdurak/video-zaman-etudu (herkese açık; demo verisi sentetik).

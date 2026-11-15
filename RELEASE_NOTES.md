@@ -1,3 +1,29 @@
+# v2.0.0 · Video Zaman Etüdü — Windows sürümü tarayıcıyla eşit, Türkçe ve İngilizce
+
+Windows masaüstü sürümü v1.2.0'dan v2.0.0'a geçti. Tarayıcı sürümündeki v1.5–v1.7 kurallarının hepsi artık Windows'ta da var ve arayüz Türkçe ile İngilizce arasında değiştirilebiliyor.
+
+**Dil**
+- Sağ üstteki düğme arayüzü Türkçe ↔ İngilizce değiştirir; seçim hatırlanır. Açık etüt ve bölüm korunur.
+- Metinler tarayıcı sürümünün sözlüğünden üretilir; iki sürüm aynı ifadeleri kullanır. Excel başlıkları ve sonuç metinleri de seçilen dilde.
+
+**Ölçüm**
+- Adım listesi (sınıf ve bitiş anı açıklamasıyla), 1–9 tuşlarıyla adım seçimi, Ölç'ten sonra sıradaki adıma ve çevrime otomatik geçiş.
+- Kapsam dışı ara kayıt sırayı bozmaz; önceki adıma dönülür. Ctrl+Z son kaydı geri alır.
+- Zaman çizgisinde gezinmek ölçümü kesmez; Ölç başlangıcın gerisindeyse kayıt eklenmez ve uyarı çıkar.
+- Zaman çizgisinde ölçülen aralıklar sınıf rengiyle görünür; süren ölçüm canlı gösterilir.
+- Etüt kaldığı yerden açılır. Kayıt notu, kayıt düzenleyici, adım ve çevrim süzgeci.
+
+**Analiz ve çıktılar**
+- Ayarlar yazıldıkça uygulanır; tolerans kalemleri, takt süresi, adıma özel tempo.
+- Özet kartları, adım katkısı ve çevrim süresi grafikleri, çevrim değişkenliği, süreç sırasında adım tablosu.
+- Excel'de ilk sayfa **Özet** (gereken n ve tolerans kalemleri dahil). **Yazdır / PDF**.
+- Etüt bilgileri (operatör, istasyon, vardiya…), önce / sonra karşılaştırması, **Tümünü yedekle (.zip)** ve yedekten geri yükleme. Yedek tarayıcı sürümüyle aynı biçimde.
+- Demo etüdü uygulama içinden açılır.
+
+**Uyumluluk:** Paket sürümü 1 olarak kalır. v1.2 kayıtları ve paketleri v2.0'da açılır. v2.0 paketleri v1.2'de de açılır; v1.2 yeni alanları görmez.
+
+**Testler:** C# kontrolleri v2 için 54 yeni denetim (`Shared/ek-alanlar.json` ile tarayıcıyla bayt düzeyinde eşdeğerlik dahil). Windows'ta arayüz öz-denemesi iki dilde geçti. Node 184/184.
+
 # v1.7.0 · Video Zaman Etüdü — tolerans kalemleri, toplu yedek ve çıktı düzeltmeleri
 
 Yalnız tarayıcı sürümü değişti; v1.5.0 ve v1.6.0 ile aynı PR'da yayınlanır. Bütün yenilikler Türkçe ve İngilizce arayüzde var.
