@@ -1,0 +1,9 @@
+{
+  "name": "video-zaman-etudu-web",
+  "private": true,
+  "type": "module",
+  "description": "Video Zaman Etüdü tarayıcı sürümü (sunucusuz, bağımlılıksız)",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}

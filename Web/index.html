@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="tr" data-desktop-url="">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="description" content="Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonuçları Excel'e aktaran zaman etüdü aracı. Video bilgisayarınızdan çıkmaz.">
+  <title>Video Zaman Etüdü</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2317364A'/%3E%3Ccircle cx='16' cy='17' r='9' fill='none' stroke='white' stroke-width='2.5'/%3E%3Cpath d='M16 11v6l4 3' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="app.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="top">
+    <h1 id="header">VIDEO ZAMAN ETÜDÜ <span class="sep">/</span> Çalışmalar</h1>
+    <p class="edition">Tarayıcı sürümü · Video bilgisayarınızdan çıkmaz<span id="desktop-link-wrap" hidden> · <a id="desktop-link" href="#">Windows sürümünü indir</a></span></p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Bölümler">
+    <button role="tab" id="tab-0" aria-controls="panel-0" aria-selected="true">1 Çalışmalar</button>
+    <button role="tab" id="tab-1" aria-controls="panel-1" aria-selected="false" disabled>2 Video ve ölçüm</button>
+    <button role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" disabled>3 Analiz ve rapor</button>
+  </nav>
+
+  <main>
+    <!-- 1 Çalışmalar -->
+    <section id="panel-0" role="tabpanel" aria-labelledby="tab-0">
+      <p>Yeni etüt oluştur veya kayıtlı bir etüdü aç.</p>
+      <p class="note">Etütler yalnızca bu tarayıcıda saklanır. Tarayıcı verilerini temizlemek etütleri de siler; önemli etütleri <b>dışa aktararak</b> yedekleyin.</p>
+      <div class="row">
+        <label class="field">Etüt adı<input id="new-name" type="text" size="28" autocomplete="off"></label>
+        <label class="field">Etüt kodu<input id="new-code" type="text" size="14" autocomplete="off"></label>
+      </div>
+      <div class="row">
+        <label class="field grow">Video dosyası<input id="new-video" type="text" readonly placeholder="Video seçilmedi"></label>
+        <button id="pick-new-video">Dosya seç…</button>
+      </div>
+      <div class="row">
+        <button id="create" class="primary">Yeni çalışma başlat</button>
+        <button id="open">Seçili çalışmayı aç</button>
+        <button id="import">Etüdü içe al…</button>
+        <button id="export">Seçili etüdü dışa aktar…</button>
+        <button id="delete" class="danger">Seçili etüdü sil…</button>
+      </div>
+      <div class="table-wrap tall">
+        <table id="studies" class="grid" aria-label="Kayıtlı etütler">
+          <thead><tr><th>Kod</th><th>Etüt adı</th><th>Video</th><th>Son düzenleme</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 2 Video ve ölçüm -->
+    <section id="panel-1" role="tabpanel" aria-labelledby="tab-1" hidden>
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+      <div class="row">
+        <label class="field">İş adımı<input id="step" type="text" size="18" value="Adım" autocomplete="off"></label>
+        <label class="field">Çevrim<input id="cycle" type="text" size="4" value="1" inputmode="numeric" autocomplete="off"></label>
+        <label class="field">Sınıf<select id="classification"><option value=""></option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+        <label class="check"><input id="excluded" type="checkbox"> Kapsam dışı</label>
+        <button id="measure" class="primary measure">Başla</button>
+        <button id="stop">Durdur</button>
+        <button id="mark-start">Aralık başlangıcı al</button>
+        <button id="add-marked">Aralığı ekle</button>
+      </div>
+      <div class="row">
+        <button id="edit-row">Seçili satırı güncelle</button>
+        <button id="bulk-class">Sınıfı aynı adı taşıyanlara uygula</button>
+        <button id="delete-row" class="danger">Seçili satırı sil</button>
+      </div>
+      <p class="hint">Ölç son aralığı kaydeder. Durdur ölçüm modunu kapatır. Çakışan veya bağımsız aralık için başlangıcı alıp bitiş konumunda aralığı ekleyin.</p>
+      <div class="split">
+        <div class="table-wrap">
+          <table id="observations" class="grid" aria-label="Ölçümler">
+            <thead><tr><th>Başlangıç (ms)</th><th>Bitiş (ms)</th><th>Süre (sn)</th><th>İş adımı</th><th>Sınıf</th><th>Kapsam dışı</th><th>Çevrim</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="player">
+          <div class="frame"><video id="video" preload="auto" playsinline disablepictureinpicture></video></div>
+          <input id="timeline" type="range" min="0" max="10" step="1" value="0" disabled aria-label="Zaman çizgisi">
+          <div class="row controls">
+            <output id="position" class="position">00:00:00.000</output>
+            <button id="play">Oynat</button>
+            <button id="pause">Duraklat</button>
+            <button id="back" title="0,1 sn geri (←)">◀ 0,1 sn</button>
+            <button id="forward" title="0,1 sn ileri (→)">0,1 sn ▶</button>
+            <label class="field inline">Hız<select id="speed"><option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label>
+            <button id="relink">Videoyu yeniden seç</button>
+          </div>
+          <p class="hint">Kısayollar: Boşluk oynat/duraklat · Enter Başla/Ölç · Esc Durdur · ←/→ 0,1 sn · Shift+←/→ 1 sn · Ctrl+←/→ 0,04 sn (≈1 kare). Kısayollar metin kutusu veya açılır liste seçiliyken çalışmaz. İnce konumlama (en fazla 1 sn) ölçümü kesmez; zaman çizgisinde atlama keser.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 Analiz ve rapor -->
+    <section id="panel-2" role="tabpanel" aria-labelledby="tab-2" hidden>
+      <div class="row">
+        <label class="field">Güven %<input id="confidence" type="text" size="5" inputmode="decimal"></label>
+        <label class="field">Hedef hata %<input id="target" type="text" size="5" inputmode="decimal"></label>
+        <label class="field">Tempo %<input id="pace" type="text" size="5" inputmode="decimal"></label>
+        <label class="field">Tolerans %<input id="allowance" type="text" size="5" inputmode="decimal"></label>
+        <label class="field">Grup (ms)<input id="group-ms" type="text" size="5" inputmode="numeric"></label>
+        <label class="field">Baz süre yöntemi<select id="method"><option value="0">Aritmetik ortalama</option><option value="1">En çok tekrar eden en küçük süre</option></select></label>
+        <label class="check"><input id="stable" type="checkbox"> Süreç kararlı</label>
+      </div>
+      <div class="row">
+        <button id="apply-settings" class="primary">Ayarları uygula</button>
+        <label class="field">Her N çevrimde<input id="every" type="text" size="4" value="1" inputmode="numeric"></label>
+        <button id="apply-frequency">Seçili adıma sıklık uygula</button>
+        <button id="t-table">t tablosu ve formül</button>
+        <button id="excel">Excel’e aktar…</button>
+      </div>
+      <p id="analysis-status" class="hint"></p>
+      <div class="table-wrap">
+        <table id="results" class="grid" aria-label="Adım analizi">
+          <thead><tr><th>Adım</th><th>n</th><th>Dışarıda</th><th>Ort.</th><th>Medyan</th><th>Min</th><th>Maks</th><th>Std sapma</th><th>t</th><th>Hata %</th><th>Yeterlilik</th><th>Baz</th><th>Normal</th><th>Standart</th><th>Her N çevrim</th><th>Katkı</th><th>Yöntem</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="lower">
+        <div>
+          <h2>Çevrimler</h2>
+          <div class="table-wrap short">
+            <table id="cycles" class="grid" aria-label="Çevrimler"><thead><tr><th>Çevrim</th><th>Ölçülen geçen süre (sn)</th><th>İş yükü (sn)</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div>
+          <h2>Seçili adımın süre grupları</h2>
+          <div class="table-wrap short">
+            <table id="groups" class="grid" aria-label="Süre grupları"><thead><tr><th>Grup ortalaması (sn)</th><th>Tekrar</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <input id="video-file" type="file" accept="video/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.wmv,.mpg,.mpeg" hidden>
+  <input id="package-file" type="file" accept=".vzetud,application/json" hidden>
+
+  <dialog id="dialog" aria-labelledby="dialog-title">
+    <form method="dialog">
+      <h2 id="dialog-title">Video Zaman Etüdü</h2>
+      <p id="dialog-text"></p>
+      <pre id="dialog-pre" hidden></pre>
+      <div class="row end">
+        <button id="dialog-no" value="no" hidden>Hayır</button>
+        <button id="dialog-yes" value="yes" class="primary">Tamam</button>
+      </div>
+    </form>
+  </dialog>
+  <noscript><p class="note">Bu uygulama JavaScript gerektirir.</p></noscript>
+</body>
+</html>

@@ -1,0 +1,27 @@
+**/bin/
+**/obj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+Yayin/
+
+# Gerçek şirket videoları ve etüt çıktıları depoya girmesin (yalnız demo klasörü izinli)
+*.mp4
+*.wmv
+*.avi
+*.mov
+*.m4v
+*.mpg
+*.mpeg
+*.xlsx
+*.vzetud
+!demo/sentetik-depo-etudu.mp4
+!demo/sentetik-depo-etudu.vzetud
+
+# Tarayıcı uçtan uca test çıktıları
+Web/tests/e2e-cikti/
+node_modules/

@@ -1,0 +1,76 @@
+name: Derleme ve kontroller (Windows + tarayıcı)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Windows masaüstü
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: WPF uygulamasını derle
+        run: dotnet build Desktop/Desktop.csproj -c Release
+      - name: Hesaplama, etüt aktarımı ve eşdeğerlik kontrollerini çalıştır
+        run: dotnet run --project Checks/Checks.csproj -c Release -- demo/sentetik-depo-etudu.vzetud Shared/esdeger-ornekler.json
+      - name: Windows x64 taşınabilir paketi oluştur
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $publish = Join-Path $env:RUNNER_TEMP 'VideoZamanEtudu'
+          dotnet publish Desktop/Desktop.csproj -c Release -r win-x64 --self-contained true -o $publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (!(Test-Path (Join-Path $publish 'Desktop.exe') -PathType Leaf)) {
+            throw 'Desktop.exe bulunamadı.'
+          }
+          Copy-Item demo (Join-Path $publish 'demo') -Recurse
+          @'
+          Desktop.exe dosyasını çalıştırın.
+          Uygulama ayrı bir .NET kurulumu gerektirmez.
+          Örnek etüt ve video demo klasöründedir.
+          '@ | Set-Content -Encoding utf8 (Join-Path $publish 'BASLAT.txt')
+          $zip = Join-Path $env:RUNNER_TEMP 'VideoZamanEtudu_Windows_x64.zip'
+          Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $zip
+      - name: İndirilebilir Windows ZIP’ini yükle
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoZamanEtudu_Windows_x64
+          path: ${{ runner.temp }}/VideoZamanEtudu_Windows_x64.zip
+          if-no-files-found: error
+
+  web:
+    name: Tarayıcı sürümü
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Çekirdek ve eşdeğerlik testleri (Shared/esdeger-ornekler.json)
+        working-directory: Web
+        run: npm test
+      - name: Yayınlanacak statik dosyaları hazırla
+        if: github.event_name != 'pull_request'
+        run: |
+          set -e
+          out="$RUNNER_TEMP/site"
+          mkdir -p "$out"
+          cp -r Web/index.html Web/app.css Web/js "$out/"
+          test -f "$out/index.html" && test -f "$out/js/app.js"
+      - name: Siteye konulacak web paketini yükle
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoZamanEtudu_Web
+          path: ${{ runner.temp }}/site
+          if-no-files-found: error
