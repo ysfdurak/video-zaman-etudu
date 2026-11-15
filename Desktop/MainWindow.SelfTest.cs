@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 
 namespace VideoZamanEtudu;
 
@@ -19,7 +18,7 @@ public partial class MainWindow
     internal FrameworkElement TestTab(int index) => (FrameworkElement)((TabItem)tabs.Items[index]).Content;
     internal Study? TestCurrent => current;
     internal IReadOnlyList<Study> TestStudies => studyList;
-    internal int TestStepChips => stepsPanel.Children.OfType<ToggleButton>().Count();
+    internal int TestStepChips => stepsPanel.Children.OfType<Button>().Count();
     internal string TestNow => nowStep.Text;
     internal string TestStatus => status.Text;
     internal bool TestReady => ready;

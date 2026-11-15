@@ -1,7 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -30,9 +30,9 @@ public partial class MainWindow
     private readonly WrapPanel stepsPanel = new() { Margin = new Thickness(0, 2, 0, 4) };
     private readonly StackPanel stepTools = new();
     private readonly ComboBox stepClass = Ui.ClassCombo();
-    private readonly TextBox stepNote = Ui.Input(440);
+    private readonly TextBox stepNote = Ui.Input(340);
     private Button stepLeft = null!, stepRight = null!;
-    private readonly TextBox newStep = Ui.Input(250);
+    private readonly TextBox newStep = Ui.Input(220);
     private readonly ComboBox newStepClass = Ui.ClassCombo();
     private readonly CheckBox autoAdvance = new() { IsChecked = true, Margin = new Thickness(0, 4, 0, 2) };
     private readonly TextBox cycleBox = Ui.Input(55, "1");
@@ -70,8 +70,8 @@ public partial class MainWindow
         speed.SelectionChanged += (_, _) => { if (playing) video.SpeedRatio = SelectedSpeed; };
         measureButton.Content = L.T("btn.start");
         measureButton.Click += (_, _) => Guard(Measure);
-        autoAdvance.Content = L.T("check.autoAdvance");
-        excludedNext.Content = L.T("check.excludedNext");
+        autoAdvance.Content = new TextBlock { Text = L.T("check.autoAdvance"), TextWrapping = TextWrapping.Wrap };
+        excludedNext.Content = new TextBlock { Text = L.T("check.excludedNext"), TextWrapping = TextWrapping.Wrap };
         excludedNext.Checked += (_, _) => UpdateNow();
         excludedNext.Unchecked += (_, _) => UpdateNow();
         cycleBox.TextChanged += (_, _) => UpdateNow();
@@ -411,13 +411,15 @@ public partial class MainWindow
                     BorderBrush = Ui.ClassBrush(st.Classification), BorderThickness = new Thickness(3, 0, 0, 0), Margin = new Thickness(6, 0, 0, 0), Padding = new Thickness(4, 0, 0, 0),
                     Child = new TextBlock { Text = st.Classification, FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = on ? Brushes.White : Ui.Ink }
                 });
-            var chip = new ToggleButton
+            // Düz düğme: seçili adım koyu zeminde (ToggleButton'ın sistem vurgusu açık mavide beyaz yazıyı okunmaz yapıyordu).
+            var chip = new Button
             {
-                Content = content, IsChecked = on, Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 6, 6),
+                Content = content, Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 6, 6),
                 Background = on ? Ui.Accent : Ui.Paper, BorderBrush = on ? Ui.Accent : Ui.Line, ToolTip = st.Note
             };
             int index = i;
             chip.Click += (_, _) => Guard(() => SelectStep(index));
+            chip.SetValue(AutomationProperties.NameProperty, st.Name + (on ? " ✓" : ""));
             stepsPanel.Children.Add(chip);
         }
         var current_ = CurrentStep;
