@@ -147,19 +147,28 @@ test("çekirdek hata anahtarları sözlükte var ve İngilizceye çevrilir", asy
   }
 });
 
-test("Excel: Türkçe masaüstüyle aynı başlıklar, İngilizce çevrilmiş", async () => {
+test("Excel: özet sayfası + masaüstüyle aynı sayfalar, İngilizce çevrilmiş", async () => {
   const { reportSheets } = await import("../js/report.js");
   const demo = importPackage(new Uint8Array(readFileSync(new URL("../../demo/sentetik-depo-etudu.vzetud", import.meta.url))));
+  demo.Info = { Operator: "A. Kaya", Station: "Toplama hattı 2" };
   const tr = reportSheets(demo, new Date(2026, 10, 15, 9, 5), "tr");
   const en = reportSheets(demo, new Date(2026, 10, 15, 9, 5), "en");
-  assert.deepEqual(tr.map((x) => x.name), ["Ham ölçümler", "Adım analizi", "Çevrimler", "Süre grupları", "Ayarlar"]);
-  assert.deepEqual(en.map((x) => x.name), ["Raw measurements", "Step analysis", "Cycles", "Duration groups", "Settings"]);
-  assert.equal(tr[0].rows[0].length, 9); assert.equal(en[1].rows[0].length, 17);
-  const enToplama = en[1].rows.find((r) => r[0] === "Toplama");
+  assert.deepEqual(tr.map((x) => x.name), ["Özet", "Ham ölçümler", "Adım analizi", "Çevrimler", "Süre grupları", "Ayarlar"]);
+  assert.deepEqual(en.map((x) => x.name), ["Summary", "Raw measurements", "Step analysis", "Cycles", "Duration groups", "Settings"]);
+  // Masaüstüyle ortak sayfalar değişmedi.
+  assert.equal(tr[1].rows[0].length, 9); assert.equal(en[2].rows[0].length, 17);
+  const enToplama = en[2].rows.find((r) => r[0] === "Toplama");
   assert.equal(enToplama[10], "Insufficient"); assert.equal(enToplama[16], "Mean");
-  assert.equal(tr[1].rows.find((r) => r[0] === "Toplama")[10], "Yetersiz");
-  assert.equal(en[4].rows.find((r) => r[0] === "Exported at")[1], "2026-11-15 09:05");
-  assert.equal(tr[4].rows.find((r) => r[0] === "Dışa aktarım zamanı")[1], "15.11.2026 09:05");
+  assert.equal(tr[2].rows.find((r) => r[0] === "Toplama")[10], "Yetersiz");
+  assert.equal(en[5].rows.find((r) => r[0] === "Exported at")[1], "2026-11-15 09:05");
+  assert.equal(tr[5].rows.find((r) => r[0] === "Dışa aktarım zamanı")[1], "15.11.2026 09:05");
+  // Özet: künye, toplam, kapasite, süreç sırasındaki adım tablosu.
+  const sum = new Map(tr[0].rows.filter((r) => r.length === 2).map((r) => [r[0], r[1]]));
+  assert.equal(sum.get("Operatör"), "A. Kaya");
+  assert.ok(Math.abs(sum.get("Çevrim başına standart süre (sn)") - 16.824) < 0.001);
+  assert.ok(Math.abs(sum.get("Saatlik kapasite (çevrim/saat)") - 3600 / 16.8235) < 0.1);
+  const head = tr[0].rows.findIndex((r) => r[0] === "Adım|Sınıf|Geçerli n|Standart (sn)|Her N çevrimde|Katkı (sn/çevrim)|Pay (%)|Yeterlilik".split("|")[0] && r[1] === "Sınıf");
+  assert.deepEqual(tr[0].rows.slice(head + 1).map((r) => r[0]), ["Hazırlık", "Toplama", "Tarama", "Paketleme", "Bekleme", "Seyrek kontrol"]);
 });
 
 test("İngilizce demo: Türkçe demoyla aynı zamanlar ve aynı sonuçlar, yalnız adım adları farklı", () => {

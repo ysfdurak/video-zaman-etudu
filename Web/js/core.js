@@ -5,7 +5,7 @@ import {
   parseStrict, JsonError, JsonObject, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
 } from "./strict-json.js";
 
-export const VERSION = "1.4.1";
+export const VERSION = "1.5.0";
 export const EXTENSION = ".vzetud";
 export const CLASSES = ["", "VA", "SVA", "NVA"];
 const FORMAT = "video-zaman-etudu";
@@ -35,7 +35,117 @@ export function newObservation(fields = {}) {
 export function newStudy(fields = {}) {
   return {
     Id: crypto.randomUUID(), Name: "", Code: "", Video: "", ExpectedVideoName: "",
-    Updated: new Date().toISOString(), Observations: [], Settings: newSettings(), Frequency: new Map(), ...fields
+    Updated: new Date().toISOString(), Observations: [], Settings: newSettings(), Frequency: new Map(),
+    Steps: [], Info: {}, ...fields
+  };
+}
+
+// ---------------------------------------------------------------- adım listesi ve etüt bilgileri (v1.5, yalnız tarayıcı)
+// Pakette isteğe bağlı "Steps" ve "Info" alanları olarak taşınır. Windows sürümü bu alanları tanımaz,
+// okurken yok sayar (System.Text.Json bilinmeyen alanları atlar); paket sürümü 1 olarak kalır.
+
+/** Etüt bilgileri: künye alanları (hepsi isteğe bağlı, en fazla 200 karakter). */
+export const INFO_FIELDS = ["Operator", "Station", "Shift", "Date", "Observer", "Note"];
+const MAX_INFO = 200;
+const MAX_STEPS = 50;
+
+export function cleanInfo(info) {
+  const out = {};
+  if (!info || typeof info !== "object") return out;
+  for (const k of INFO_FIELDS) {
+    const v = typeof info[k] === "string" ? info[k].trim().slice(0, MAX_INFO) : "";
+    if (v) out[k] = v;
+  }
+  return out;
+}
+
+export function cleanSteps(steps) {
+  const out = [];
+  if (!Array.isArray(steps)) return out;
+  for (const st of steps) {
+    const name = typeof st?.Name === "string" ? st.Name.trim().slice(0, 80) : "";
+    if (!name || out.some((x) => x.Name === name)) continue;
+    out.push({ Name: name, Classification: CLASSES.includes(st.Classification) ? st.Classification : "" });
+    if (out.length >= MAX_STEPS) break;
+  }
+  return out;
+}
+
+/** Adım listesi: tanımlıysa o; değilse ölçümlerden ilk görülme sırasıyla, sınıfı en sık kullanılan sınıf. */
+export function deriveSteps(study) {
+  if (study.Steps?.length) return study.Steps;
+  const order = [], classes = new Map();
+  for (const o of [...study.Observations].sort((a, b) => a.StartMs - b.StartMs || a.EndMs - b.EndMs)) {
+    if (!classes.has(o.Step)) { order.push(o.Step); classes.set(o.Step, new Map()); }
+    const m = classes.get(o.Step);
+    m.set(o.Classification, (m.get(o.Classification) ?? 0) + 1);
+  }
+  return order.map((name) => {
+    const counts = [...classes.get(name).entries()].filter(([c]) => c).sort((a, b) => b[1] - a[1]);
+    return { Name: name, Classification: counts[0]?.[0] ?? "" };
+  });
+}
+
+/** Süreç sırası: adım listesindeki sıra, listede olmayanlar ölçümdeki ilk görülme sırasıyla sonda. */
+export function stepOrder(study) {
+  const names = deriveSteps(study).map((x) => x.Name);
+  for (const o of [...study.Observations].sort((a, b) => a.StartMs - b.StartMs || a.EndMs - b.EndMs))
+    if (!names.includes(o.Step)) names.push(o.Step);
+  return names;
+}
+
+/** Analiz satırlarını süreç sırasına dizer (analyzeSteps alfabetik döner; Windows ile eşdeğerlik bozulmasın diye çekirdeğe dokunulmaz). */
+export function inProcessOrder(study, rows) {
+  const order = stepOrder(study);
+  const rank = (step) => { const i = order.indexOf(step); return i < 0 ? order.length : i; };
+  return [...rows].sort((a, b) => rank(a.Step) - rank(b.Step));
+}
+
+/** Çevrim değişkenliği: ortalama, standart sapma ve ortalamadan %20'den fazla sapan çevrimler. */
+export function cycleSpread(cycles, limitPercent = 20) {
+  const values = cycles.map((c) => c.Elapsed);
+  const n = values.length;
+  const mean = n ? values.reduce((s, v) => s + v, 0) / n : null;
+  const sd = n > 1 ? Math.sqrt(values.reduce((s, v) => s + (v - mean) ** 2, 0) / (n - 1)) : null;
+  return {
+    Mean: mean, Deviation: sd, Variation: sd === null || !mean ? null : (sd / mean) * 100,
+    Rows: cycles.map((c) => {
+      const diff = mean ? ((c.Elapsed - mean) / mean) * 100 : null;
+      return { ...c, DiffPercent: diff, Outlier: diff !== null && n > 2 && Math.abs(diff) > limitPercent };
+    })
+  };
+}
+
+/** Çevrim başına standart süre (katkıların toplamı) ve eksik adım var mı. */
+export function totalStandard(rows) {
+  const withStd = rows.filter((r) => r.Contribution !== null);
+  return { Total: withStd.length ? withStd.reduce((s, r) => s + r.Contribution, 0) : null, Incomplete: rows.some((r) => r.Contribution === null && r.Count > 0) };
+}
+
+/**
+ * Önce / sonra karşılaştırması: adımlar ada göre eşleşir (büyük/küçük harf ve boşluk önemsiz).
+ * Fark = sonra − önce; yüzde önceye göre. Yalnız birinde olan adım da listelenir.
+ */
+export function compareStudies(before, after) {
+  const key = (s) => s.trim().toLocaleLowerCase("tr");
+  const a = analyzeSteps(before), b = analyzeSteps(after);
+  const rows = [];
+  for (const name of [...stepOrder(before), ...stepOrder(after)]) {
+    if (rows.some((r) => key(r.Step) === key(name))) continue;
+    const x = a.find((r) => key(r.Step) === key(name)) ?? null, y = b.find((r) => key(r.Step) === key(name)) ?? null;
+    if (!x && !y) continue;
+    const before_ = x?.Contribution ?? null, after_ = y?.Contribution ?? null;
+    rows.push({
+      Step: name, Before: before_, After: after_,
+      Diff: before_ !== null && after_ !== null ? after_ - before_ : null,
+      DiffPercent: before_ && after_ !== null ? ((after_ - before_) / before_) * 100 : null
+    });
+  }
+  const tb = totalStandard(a).Total, ta = totalStandard(b).Total;
+  return {
+    Rows: rows, Before: tb, After: ta,
+    Diff: tb !== null && ta !== null ? ta - tb : null,
+    DiffPercent: tb && ta !== null ? ((ta - tb) / tb) * 100 : null
   };
 }
 
@@ -243,7 +353,10 @@ export function exportPackage(study) {
     Observations: data.Observations.map((o) => ({
       StartMs: o.StartMs, EndMs: o.EndMs, Seconds: seconds(o), Step: o.Step, Classification: o.Classification, Excluded: o.Excluded, Cycle: o.Cycle
     })),
-    Frequency: Object.fromEntries(data.Frequency)
+    Frequency: Object.fromEntries(data.Frequency),
+    // İsteğe bağlı (v1.5): Windows sürümü okurken yok sayar.
+    ...(study.Steps?.length ? { Steps: cleanSteps(study.Steps) } : {}),
+    ...(Object.keys(cleanInfo(study.Info)).length ? { Info: cleanInfo(study.Info) } : {})
   });
   const bytes = new TextEncoder().encode(json);
   if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.", "pkg.size");
@@ -295,7 +408,8 @@ export function importPackage(bytes) {
       Name: readString(root.get("Name")), Code: readString(root.get("Code")), VideoName: readString(root.get("VideoName")),
       Settings: readSettings(root.get("Settings")),
       Observations: observations === null ? null : observations.map(readObservation),
-      Frequency: readFrequency(root.get("Frequency"))
+      Frequency: readFrequency(root.get("Frequency")),
+      Steps: readOptional(root, "Steps"), Info: readOptional(root, "Info")
     };
   } catch (error) {
     if (error instanceof PackageError) throw error;
@@ -305,8 +419,20 @@ export function importPackage(bytes) {
   validatePackage(data);
   return newStudy({
     Name: data.Name, Code: data.Code, ExpectedVideoName: fileName(data.VideoName),
-    Settings: data.Settings, Observations: data.Observations, Frequency: data.Frequency
+    Settings: data.Settings, Observations: data.Observations, Frequency: data.Frequency,
+    Steps: cleanSteps(data.Steps), Info: cleanInfo(data.Info)
   });
+}
+
+/** İsteğe bağlı alanlar hoşgörüyle okunur: bozuksa yok sayılır (Windows sürümü de yok sayar). */
+function readOptional(root, name) {
+  if (!root.has(name)) return null;
+  try { return plain(root.get(name)); } catch { return null; }
+}
+function plain(node) {
+  if (node instanceof JsonObject) return Object.fromEntries([...node.entries()].map(([k, v]) => [k, plain(v)]));
+  if (Array.isArray(node)) return node.map(plain);
+  return typeof node === "bigint" ? Number(node) : node;
 }
 
 // ---------------------------------------------------------------- arayüz yardımcıları
@@ -343,6 +469,7 @@ export function fromRecord(record) {
     Id: record.Id, Name: record.Name, Code: record.Code, Video: String(record.Video ?? ""),
     ExpectedVideoName: String(record.ExpectedVideoName ?? ""), Updated: String(record.Updated ?? ""),
     Observations: record.Observations.map((o) => newObservation(o)), Settings: { ...newSettings(), ...record.Settings },
-    Frequency: new Map(record.Frequency)
+    Frequency: new Map(record.Frequency),
+    Steps: cleanSteps(record.Steps), Info: cleanInfo(record.Info)
   };
 }

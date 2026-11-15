@@ -8,7 +8,9 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | Kurulum | ZIP'i çıkar, `Desktop.exe` | Adresi aç; sunucu gerekmez |
 | Etütlerin yeri | `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite` | Tarayıcının yerel deposu (IndexedDB) |
 | Video | Bilgisayarda kalır, yolu hatırlanır | Bilgisayarda kalır, tarayıcıya yüklenmez; Chrome/Edge'de izinle hatırlanır, diğerlerinde her oturumda yeniden seçilir |
-| Excel / `.vzetud` | Var | Var (aynı sayfalar ve biçim) |
+| Excel / `.vzetud` | Var | Var (aynı sayfalar ve biçim; tarayıcıda ek **Özet** sayfası) |
+| Ölçüm akışı | Adım adı elle, zaman çizgisinde atlama ölçümü keser | Adım listesi, 1–9 tuşları, otomatik çevrim, geri al; gezinmek ölçümü kesmez (v1.5) |
+| Analiz ekleri | Tablolar | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra karşılaştırması (v1.5) |
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır.
 
@@ -64,6 +66,18 @@ Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workf
 
 ## İlk etüt
 
+### Tarayıcı sürümü (v1.5)
+
+1. **Çalışmalar** ekranında ad ve kod yaz, videoyu seç. İstersen **Adımlar ve etüt bilgileri** bölümüne süreç adımlarını (her satıra bir) ve operatör, istasyon, vardiya gibi bilgileri gir. **Yeni çalışma başlat**.
+2. **Video ve ölçüm** ekranında adım listesi sağdadır. Eksik adımı **Yeni adım** kutusuna yazıp Enter'a bas. Seçili adımın sınıfını (VA/SVA/NVA) listedeki **Sınıf** kutusundan seç; kayıtlar sınıfı adımdan alır.
+3. Videoyu adımın başına getir ve **Başla**'ya bas. Adım bitince **Ölç**: kayıt eklenir, sıradaki adım seçilir. Son adımdan sonra çevrim kendiliğinden 1 artar. Adım sınırını bulmak için zaman çizgisinde gezinebilirsin; ölçüm kesilmez.
+4. Araya giren bir bekleme için o adımı seç (ya da ekle), **Sonraki kayıt kapsam dışı**'yı işaretle ve Ölç'e bas. İşaret kalkar, sıra önceki adıma döner.
+5. Yanlış kaydı **Son kaydı geri al** ya da Ctrl+Z ile geri al. Eski bir kaydı düzeltmek için tabloda satıra tıkla; **Seçili kayıt** kutusunda değiştir.
+6. **Analiz ve rapor** ekranında tempo ve toleransı gir; değerler alan değişince uygulanır. Grafikleri ve yeterliliği incele, **Excel'e aktar** ile özet ve ham sayfaları indir.
+7. İyileştirmeden sonra aynı işi yeniden ölç. **Çalışmalar → Önce / sonra karşılaştır…** iki etüdün adım ve toplam farkını gösterir.
+
+### Windows sürümü (v1.2)
+
 1. Çalışmalar ekranında ad ve kod yaz. MP4 video seç ve yeni çalışmayı başlat. Video oynatma Windows codec desteğine bağlıdır.
 2. Videoda başlangıç konumuna git ve **Başla**’ya bas. Adım adı ve çevrim numarasını seç. Adım sonunda **Ölç**’e bas. Her Ölç işlemi sonraki adımın başlangıcını belirler. **Durdur** yeni kayıt eklemeden ölçüm modunu kapatır. Hızlı adımlarda **Hız** listesinden 0,5× veya 0,25× seçebilirsin; ölçüm video zamanından alındığı için süreler değişmez.
 3. Bir kayda tıklayınca video o adımın başına gider. Sınıfı, çevrim numarasını, adım adını veya kapsam dışı durumunu düzenleyip **Seçili satırı güncelle**’ye bas. Aynı ada sahip satırlara toplu sınıf verebilirsin.
@@ -76,12 +90,15 @@ Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workf
 |---|---|
 | Boşluk | Oynat / duraklat |
 | Enter | Başla, ardından Ölç |
+| 1–9 | Adım seç (tarayıcı) |
+| + / − | Çevrimi artır / azalt (tarayıcı) |
+| Ctrl + Z | Son kaydı geri al (tarayıcı) |
 | Esc | Durdur (kayıt eklemez) |
 | ← / → | 0,1 sn geri / ileri |
 | Shift + ← / → | 1 sn geri / ileri |
 | Ctrl + ← / → | 0,04 sn (25 fps videoda yaklaşık 1 kare) |
 
-Kısayollar imleç bir metin kutusunda veya açılır listedeyken çalışmaz; önce video alanına ya da ölçüm tablosuna tıkla. Ok tuşlarıyla ince konumlama (en fazla 1 sn) videoyu duraklatır ama ardışık ölçümü kesmez; böylece adım sınırını kare kare bulup Ölç'e basabilirsin. Zaman çizgisinde atlamak veya satır seçmek ise ölçümü keser.
+Kısayollar imleç bir metin kutusundayken çalışmaz; önce videoya ya da tabloya tıkla. Tarayıcı sürümünde konum değiştirmek ölçümü kesmez. Windows sürümünde ok tuşlarıyla ince konumlama (en fazla 1 sn) ölçümü kesmez; zaman çizgisinde atlamak ya da satır seçmek keser.
 
 ### Etüt silme
 

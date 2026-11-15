@@ -45,6 +45,15 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 - t değeri: masaüstü MathNet kütüphanesini, tarayıcı kendi yazdığımız ters t fonksiyonunu kullanır; tarayıcının değeri daha doğru (scipy ile fark 10⁻¹² mertebesinde); MathNet uç kuyrukta (ör. %99,9 güven, sd 1) ~10⁻⁹ sapar. Test toleransı t'ye bağlı değerlerde 10⁻⁷, diğerlerinde 10⁻⁹; ekranda t 3 ondalıkla gösterilir.
 - Bilinçli farklar: tarayıcıda video yolu yok (yalnız dosya adı), etütler tarayıcıya özel, sıralama Türkçe alfabe (masaüstünde Windows bölge ayarı).
 
+## 3c. Tarayıcıda ölçüm akışı (v1.5)
+
+- **Adım listesi** (`study.Steps`, `[{Name, Classification}]`): kayıtların adı ve sınıfı buradan gelir. Eski etütlerde liste yoksa `deriveSteps` ölçümlerden çıkarır (ilk görülme sırası, en sık sınıf).
+- **Ölç:** `state.anchor` ölçümün başlangıcıdır. Ölç, başlangıçtan o anki konuma kadar kayıt ekler ve başlangıcı oraya taşır. Konum değiştirmek ölçümü kesmez; konum başlangıcın gerisindeyse kayıt eklenmez (`msg.behindStart`).
+- **Sıra:** normal kayıttan sonra sıradaki adıma geçilir, son adımdan sonra çevrim artar (`advance`). Elle başka adıma geçince önceki adım `state.resume`'da tutulur; kapsam dışı kayıttan sonra oraya dönülür (`afterRecord`).
+- **Geri al:** bu oturumda eklenen kayıtlar `state.undo` yığınındadır. Geri almak kaydı siler; adım, çevrim ve ölçüm başlangıcını o kaydın öncesine getirir.
+- **Süreç sırası:** `analyzeSteps` Windows ile aynı kalsın diye alfabetik döner. Ekranda ve Özet sayfasında `inProcessOrder` ile adım listesinin sırasına dizilir.
+- **Windows farkı:** Windows sürümünde adım adı serbest metindir ve zaman çizgisinde atlamak ölçümü keser (K02/K10). Tarayıcıda bu kural v1.5'te kaldırıldı. Paketteki `Steps` ve `Info` alanlarını Windows yok sayar; Windows'tan dışa aktarılan pakette bu alanlar olmaz.
+
 ## 4. Formüller (sorulursa)
 - Süre (sn) = (bitiş ms − başlangıç ms) / 1000
 - Bağıl hata % = t(güven, n−1, iki taraflı) × s ÷ (√n × ortalama) × 100 → hedefe eşit/küçükse “Yeterli”; n < 2 ise “Hesaplanamıyor”.

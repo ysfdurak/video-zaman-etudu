@@ -1,3 +1,34 @@
+# v1.5.0 · Video Zaman Etüdü — ölçüm akışı, grafikler, özet rapor ve önce/sonra
+
+Yalnız tarayıcı sürümü değişti. Windows sürümü v1.2.0 olarak kalır ve tarayıcıdan dışa aktarılan paketleri açar; yeni adım listesi ve etüt bilgileri Windows'ta görünmez.
+
+**Ölçüm akışı**
+- **Zaman çizgisinde gezinmek ölçümü kesmiyor.** Adımın bittiği kare çizgide aranıp Ölç'e basılabilir. Ölç başlangıcın gerisindeyse kayıt eklenmez ve uyarı çıkar.
+- **Adım listesi:** Etüt başında ya da ölçüm ekranında süreç adımları sırasıyla tanımlanır. Adım tıklanarak ya da 1–9 tuşlarıyla seçilir. Ölç'ten sonra sıradaki adıma geçilir; son adımdan sonra çevrim kendiliğinden 1 artar.
+- **Sınıf adıma bağlı:** VA/SVA/NVA adım tanımında seçilir ve kayıtlara oradan gelir.
+- **Kapsam dışı tek kayıtlık:** İşaret kayıttan sonra kalkar. Araya giren kapsam dışı kayıt (ör. bekleme) sırayı ilerletmez; önceki adıma dönülür.
+- **Son kaydı geri al** (düğme ve Ctrl+Z): adım, çevrim ve ölçüm başlangıcı o kaydın öncesine döner.
+
+**Ölçüm ekranı**
+- Süreler okunur biçimde (0:14,000). Zaman çizgisinin üstünde ölçülen aralıklar sınıf rengiyle görünür; süren ölçüm de işaretlidir.
+- Video solda, adımlar ve ölçüm düğmeleri sağda. Seçili kaydın düzenlenmesi ayrı bir kutuda. Bağımsız aralık katlanır bölümde.
+- Telefonda Başla/Ölç düğmeleri ekranın altına sabitlenir.
+
+**Analiz**
+- Adımlar süreç sırasında. Ayarlar alan değişince uygulanır (Ayarları uygula düğmesi kalktı); geçersiz değer satır içinde gösterilir. Tolerans %0 ise uyarı çıkar.
+- Grafikler: adımların çevrim başına standart katkısı (sınıf rengiyle) ve çevrim süreleri (ortalama çizgisi; ortalamadan %20'den fazla sapan çevrim işaretli).
+- Çevrimler tablosunda ortalamadan fark; özette çevrim değişkenliği.
+
+**Rapor ve etüt bilgileri**
+- Excel'in ilk sayfası **Özet**: etüt bilgileri, çevrim başına standart süre, saatlik kapasite, çevrim değişkenliği, VA/SVA/NVA payı ve süreç sırasında adım tablosu. Diğer sayfalar Windows çıktısıyla aynı.
+- **Etüt bilgileri:** operatör, istasyon/hat, vardiya, çekim tarihi, gözlemci, not. Yeni etütte ya da Analiz ekranında girilir.
+- Etüt listesinde istasyon · operatör, ölçüm ve çevrim sayısı, yeterlilik durumu.
+- **Önce / sonra karşılaştırması:** iki etüdün adım katkıları, toplam standart süre ve saatlik kapasite farkı.
+
+**Paket:** `.vzetud` sürümü 1 olarak kaldı. Adım listesi ve etüt bilgileri isteğe bağlı `Steps` ve `Info` alanlarında taşınır; Windows bunları okurken yok sayar.
+
+**Testler:** Node 170/170 (yeni: adım listesi, paket alanları, değişkenlik, karşılaştırma, özet sayfası). Chrome uçtan uca testi yeni akışa göre yeniden yazıldı: 27/27.
+
 # v1.4.1 · Video Zaman Etüdü — İngilizce demo
 
 Yalnız tarayıcı sürümü ve demo dosyaları değişti; Windows sürümü v1.2.0 olarak kalır (İngilizce demo paketini de açar).

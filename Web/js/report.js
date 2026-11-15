@@ -1,6 +1,6 @@
 // Desktop/StudyExport.cs karşılığı: aynı sayfalar, sütunlar ve ayar satırları.
 // Türkçe (varsayılan) çıktı masaüstüyle birebir aynıdır; İngilizce seçildiğinde başlıklar ve metin değerleri çevrilir.
-import { analyzeSteps, analyzeCycles, seconds, videoLabel, VERSION } from "./core.js";
+import { analyzeSteps, analyzeCycles, seconds, videoLabel, VERSION, INFO_FIELDS, inProcessOrder, totalStandard, cycleSpread, deriveSteps } from "./core.js";
 import { workbook } from "./xlsx.js";
 import { t, result } from "./i18n.js";
 
@@ -40,7 +40,33 @@ export function reportSheets(study, now = new Date(), lang = "tr") {
     [tx("x.s.stable"), yesNo(s.Stable)], [tx("x.s.guide"), int(s.Stable ? 5 : 10)],
     [tx("x.s.exported"), formatDate(now, lang)], [tx("x.s.version"), `${VERSION} (${tx("x.s.edition")})`]];
 
+  // v1.5: ilk sayfa özet (yalnız tarayıcı sürümü). Diğer sayfalar masaüstüyle aynı kalır.
+  const rows = inProcessOrder(study, analyzeSteps(study));
+  const { Total: total } = totalStandard(rows);
+  const spread = cycleSpread(analyzeCycles(study));
+  const cls = new Map(deriveSteps(study).map((x) => [x.Name, x.Classification]));
+  const byClass = new Map(); let all = 0;
+  for (const o of study.Observations) {
+    if (o.Excluded || o.EndMs <= o.StartMs) continue;
+    const k = o.Classification || tx("x.o.noClass");
+    byClass.set(k, (byClass.get(k) ?? 0) + (o.EndMs - o.StartMs)); all += o.EndMs - o.StartMs;
+  }
+  const summary = [head("x.summary"),
+    [tx("x.s.name"), study.Name], [tx("x.s.code"), study.Code],
+    ...INFO_FIELDS.filter((k) => study.Info?.[k]).map((k) => [tx("info." + k), study.Info[k]]),
+    [tx("x.o.total"), total], [tx("x.o.rate"), total ? 3600 / total : null],
+    [tx("x.o.cycles"), int(spread.Rows.length)], [tx("x.o.cv"), spread.Variation],
+    [tx("x.o.insufficient"), int(rows.filter((r) => r.Sufficiency !== "Yeterli" && r.Count > 0).length)],
+    ...[...byClass.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => [tx("x.o.share") + " " + k, (v / all) * 100]),
+    [tx("x.s.pace"), s.Pace], [tx("x.s.allowance"), s.Allowance],
+    [],
+    head("x.o.steps")];
+  for (const r of rows)
+    summary.push([r.Step, cls.get(r.Step) ?? "", int(r.Count), r.Standard, int(r.Every), r.Contribution,
+      total && r.Contribution !== null ? (r.Contribution / total) * 100 : null, result(r.Sufficiency, lang)]);
+
   return [
+    { name: tx("x.sheet.summary"), rows: summary },
     { name: tx("x.sheet.raw"), rows: raw }, { name: tx("x.sheet.steps"), rows: steps }, { name: tx("x.sheet.cycles"), rows: cycles },
     { name: tx("x.sheet.groups"), rows: groups }, { name: tx("x.sheet.settings"), rows: config }
   ];

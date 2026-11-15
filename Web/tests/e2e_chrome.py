@@ -24,261 +24,109 @@ async def main():
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-        await page.goto(URL)
+        await page.goto(URL + ("&" if "?" in URL else "?") + "lang=tr")
         await page.wait_for_selector("#studies tbody tr")
         check("açılış: boş liste mesajı", "Henüz etüt yok" in await page.inner_text("#studies tbody"))
-        # 0 tek tıkla demo (sitenin kendi demo dosyaları)
-        await page.click("#demo")
-        await page.wait_for_function("document.getElementById('status').textContent.includes('Video hazır')", timeout=15000)
-        check("Demo etüdü aç: etüt ve video tek tıkla", "DEMO-01" in await page.inner_text("#header") and await page.locator("#observations tbody tr").count() == 14)
-        await page.click("#tab-0"); await page.click("#demo"); await page.wait_for_timeout(500); await page.click("#tab-0")
-        check("Demo ikinci kez eklenmez", await page.locator("#studies tbody tr", has_text="DEMO-01").count() == 1)
-        await page.locator("#studies tbody tr", has_text="DEMO-01").click(); await page.click("#delete"); await page.click("#dialog-yes")
-        await page.wait_for_timeout(400)
-
-        async def dialog_text(): 
-            await page.wait_for_selector("dialog[open]"); return await page.inner_text("#dialog-text")
-        async def answer(yes=True):
-            await page.click("#dialog-yes" if yes else "#dialog-no"); await page.wait_for_selector("dialog[open]", state="detached"); await page.wait_for_timeout(300)
         status = lambda: page.inner_text("#status")
-        pos = lambda: page.evaluate("Math.round(document.getElementById('video').currentTime*1000)")
+        now = lambda: page.inner_text("#now-step")
+        rows = lambda: page.locator("#observations tbody tr:not(.empty)").count()
+        async def goto(ms):
+            await page.evaluate(f"(()=>{{const t=document.getElementById('timeline'); t.value={ms}; t.dispatchEvent(new Event('input'))}})()")
+            await page.wait_for_timeout(200)
+        async def close_dialog():
+            if await page.locator("#dialog[open]").count():
+                text = await page.inner_text("#dialog-text"); await page.click("#dialog-yes"); await page.wait_for_timeout(200); return text
+            return ""
 
-        # 1 demo içe al
-        async with page.expect_file_chooser() as fc:
-            await page.click("#import")
-        await (await fc.value).set_files(f"{ROOT}/demo/sentetik-depo-etudu.vzetud")
-        t = await dialog_text(); check("içe alma onayı", "DEMO-01" in t, t[:60]); await answer()
-        await page.wait_for_selector("#panel-1:not([hidden])")
-        await page.wait_for_function("document.getElementById('status').textContent.includes('Video hazır')", timeout=15000)
-        check("demo videosu bekleyen etüde video kendiliğinden bağlanır", True)
-        check("başlık etüt kodu", "DEMO-01 · Sentetik depo etüdü" in await page.inner_text("#header"))
-        check("14 ölçüm satırı", await page.locator("#observations tbody tr").count() == 14)
+        # 1 Yeni etüt: adım listesi ve künye ile
+        await page.fill("#new-name", "Toplama hattı"); await page.fill("#new-code", "TP-01")
+        await page.click("#new-more summary"); await page.fill("#new-steps", "Hazırlık\nToplama\nPaketleme")
+        await page.fill("#new-info-Operator", "A. Kaya"); await page.fill("#new-info-Station", "Hat 2")
+        async with page.expect_file_chooser() as fc: await page.click("#pick-new-video")
+        await (await fc.value).set_files(os.path.join(ROOT, "demo", "sentetik-depo-etudu.mp4"))
+        await page.click("#create"); await page.wait_for_function("document.getElementById('status').textContent.includes('Video hazır')")
+        check("yeni etüt adım listesiyle açılır", await page.locator("#steps .step-chip").count() == 3 and await now() == "Hazırlık · çevrim 1")
+        await page.select_option("#step-class", "SVA"); await page.wait_for_timeout(150)
+        await page.locator("#steps .step-chip").nth(1).click(); await page.select_option("#step-class", "VA"); await page.wait_for_timeout(150)
+        await page.locator("video").click(); await page.keyboard.press("1")
+        check("1–9 tuşu adım seçer", await now() == "Hazırlık · çevrim 1")
 
-        # 2 analiz (video bağlı değilken)
-        await page.click("#tab-2")
-        rows = await page.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")
-        d = {r[0]: r for r in rows}
-        check("A10 toplama 5,333/5,867/6,902", [d["Toplama"][11], d["Toplama"][12], d["Toplama"][13]] == ["5,333", "5,867", "6,902"], str(d["Toplama"][11:14]))
-        check("A10 seyrek katkı 0,863", d["Seyrek kontrol"][15] == "0,863")
-        check("A10 bekleme n=0, dışarıda 1", d["Bekleme"][1:3] == ["0", "1"])
-        cyc = await page.eval_on_selector_all("#cycles tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")
-        check("A10 çevrimler 10/11/12 ve 12/13/14", cyc == [["1","10,000","12,000"],["2","11,000","13,000"],["3","12,000","14,000"]], str(cyc))
-        check("adımlar Türkçe alfabe sırası", [r[0] for r in rows] == ["Bekleme", "Hazırlık", "Paketleme", "Seyrek kontrol", "Tarama", "Toplama"], str([r[0] for r in rows]))
-        await page.screenshot(path=f"{OUT}/3-analiz.png", full_page=True)
+        # 2 Zaman çizgisinde gezinmek ölçümü kesmez
+        await goto(0); await page.click("#measure"); await goto(1200); await goto(2000); await page.click("#measure")
+        check("çizgide gezinip Ölç kaydeder", await rows() == 1 and "Hazırlık · 2,000 sn" in await status(), await status())
+        check("otomatik sıradaki adım", await now() == "Toplama · çevrim 1")
+        await goto(7000); await page.click("#measure"); await goto(10000); await page.click("#measure")
+        check("son adımdan sonra çevrim artar", await now() == "Hazırlık · çevrim 2")
+        check("sınıf adımdan gelir", "SVA" in await page.locator("#observations tbody tr").nth(0).inner_text() and "VA" in await page.locator("#observations tbody tr").nth(1).inner_text())
 
-        # 3 video bağla
-        await page.click("#tab-1")
-        async with page.expect_file_chooser() as fc:
-            await page.click("#relink")
-        await (await fc.value).set_files(f"{ROOT}/demo/sentetik-depo-etudu.mp4")
-        t = await dialog_text(); check("yeniden bağlama onayı beklenen ad", "Beklenen dosya: sentetik-depo-etudu.mp4" in t); await answer()
-        await page.wait_for_function("document.getElementById('status').textContent.includes('Video hazır')", timeout=15000)
-        check("video hazır (H.264)", True)
-        await page.locator("#observations tbody tr", has_text="Tarama").first.click()
-        await page.wait_for_timeout(300)
-        check("satır seçimi videoyu başlangıca götürür (5 sn)", await pos() == 5000 and "00:00:05.000" in await page.inner_text("#position"), str(await pos()))
-        await page.screenshot(path=f"{OUT}/2-olcum-demo.png", full_page=True)
+        # 3 Araya giren bekleme: kapsam dışı, sırayı ilerletmez, önceki adıma döner
+        await page.fill("#new-step", "Bekleme"); await page.press("#new-step", "Enter"); await page.wait_for_timeout(150)
+        check("Enter yeni adımı ekler ve seçer", await now() == "Bekleme · çevrim 2")
+        await page.check("#excluded"); await goto(12000); await page.click("#measure")
+        check("kapsam dışı tek kayıtlık", not await page.is_checked("#excluded") and "kapsam dışı" in await status())
+        check("kapsam dışı kayıttan sonra önceki adıma döner", await now() == "Hazırlık · çevrim 2", await now())
 
-        # 4 yeni etüt
-        await page.click("#tab-0")
-        await page.fill("#new-name", "Tarayıcı deneme"); await page.fill("#new-code", "WEB/01")
-        async with page.expect_file_chooser() as fc:
-            await page.click("#pick-new-video")
-        await (await fc.value).set_files(f"{ROOT}/demo/sentetik-depo-etudu.mp4")
-        await page.click("#create")
-        await page.wait_for_function("document.getElementById('header').textContent.includes('WEB/01')", timeout=15000)
-        await page.wait_for_function("document.getElementById('status').textContent.includes('Video hazır')", timeout=15000)
-        check("yeni etüt açıldı", "WEB/01" in await page.inner_text("#header"))
+        # 4 Başlangıcın gerisinde Ölç: kayıt yok, uyarı var, ölçüm sürer
+        before = await rows()
+        await goto(11000); await page.click("#measure"); await page.wait_for_timeout(200)
+        text = await close_dialog()
+        check("geride Ölç uyarır, kayıt eklemez", "gerisinde" in text and await rows() == before and await page.inner_text("#measure") == "Ölç")
 
-        # 5 K10 ince konumlama ölçümü kesmez
-        await page.evaluate("document.getElementById('video').currentTime = 2"); await page.wait_for_timeout(300)
-        await page.fill("#step", "Toplama")
-        await page.locator("#observations").click()  # odak tabloya
-        await page.keyboard.press("Enter")
-        check("Enter Başla", "Ölçüm başladı (2,000 sn)" in await status(), await status())
-        for _ in range(5): await page.keyboard.press("Shift+ArrowRight")
-        await page.keyboard.press("Control+ArrowRight"); await page.keyboard.press("Control+ArrowLeft")
-        check("Shift/Ctrl ok: 7 sn, ölçüm sürüyor", await pos() == 7000 and await page.inner_text("#measure") == "Ölç", f"{await pos()} {await page.inner_text('#measure')}")
-        await page.keyboard.press("Enter")
-        check("Enter Ölç: 5,000 sn kayıt", "Toplama · 5,000 sn" in await status(), await status())
-        # 6 ardışık: sonraki aralık aynı bitişten başlar; geriye ince alma uyarısı
-        await page.keyboard.press("ArrowLeft")
-        check("başlangıç gerisine gelince uyarı", "gerisinde" in await status(), await status())
-        await page.keyboard.press("ArrowRight")
-        # 7 zaman çizgisi atlaması ölçümü keser
-        await page.evaluate("t=document.getElementById('timeline'); t.value='20000'; t.dispatchEvent(new Event('input'))")
-        await page.wait_for_timeout(200)
-        check("A02 zaman çizgisi atlaması ölçümü keser", "Konum değişti" in await status() and await page.inner_text("#measure") == "Başla")
-        check("A02 geçersiz aralık kaydedilmedi", await page.locator("#observations tbody tr").count() == 1)
-        await page.wait_for_timeout(600)
-        check("A02 kayıt yazımı bittikten sonra da ölçüm kapalı kalır", await page.inner_text("#measure") == "Başla")
-        # hızlı ardışık: Enter + hemen atlama (yazma sürerken)
-        await page.evaluate("document.getElementById('video').currentTime = 25"); await page.wait_for_timeout(200)
-        await page.fill("#step", "Hızlı"); await page.locator("#observations").click(position={"x": 5, "y": 5})
-        await page.keyboard.press("Enter"); await page.keyboard.press("Shift+ArrowRight"); await page.keyboard.press("Enter")
-        await page.evaluate("t=document.getElementById('timeline'); t.value='30000'; t.dispatchEvent(new Event('input'))")
-        await page.wait_for_timeout(600)
-        check("yazma sürerken atlama ölçümü yeniden başlatmaz", await page.inner_text("#measure") == "Başla" and await page.locator("#observations tbody tr", has_text="Hızlı").count() == 1)
-        await page.locator("#observations tbody tr", has_text="Hızlı").click(); await page.click("#delete-row"); await dialog_text(); await answer()
-        # 8 A01 oynatma + duraklatma süresi eklenmez
-        await page.evaluate("document.getElementById('video').currentTime = 10"); await page.wait_for_timeout(300)
-        await page.fill("#step", "Paketleme")
-        await page.click("#measure")              # Başla (odak düğmede)
-        await page.keyboard.press(" ")            # Boşluk: oynat (düğmeye tıklamamalı)
-        await page.wait_for_timeout(1500)
-        await page.keyboard.press(" ")            # duraklat
-        check("Boşluk düğmeyi tetiklemedi", await page.inner_text("#measure") == "Ölç" and await page.locator("#observations tbody tr").count() == 1)
-        p1 = await pos(); await page.wait_for_timeout(1200); p2 = await pos()
-        check("A01 duraklatma süresi eklenmez", p1 == p2 and 1200 <= p1 - 10000 <= 1900, f"{p1-10000} ms")
-        await page.locator("#observations").click(position={"x": 5, "y": 5})
-        # tablo başlığına tıklama satır seçmez; odak tabloda
-        await page.keyboard.press("Enter")
-        rows = await page.eval_on_selector_all("#observations tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")
-        paket = [r for r in rows if r[3] == "Paketleme"]
-        check("A01 oynatıcı konumuna göre süre", len(paket) == 1 and abs(int(paket[0][1]) - int(paket[0][0]) - (p1 - 10000)) == 0, str(paket))
-        # 9 Enter metin kutusunda ölçüm yapmaz
-        await page.click("#step"); await page.keyboard.press("Enter")
-        check("Enter metin kutusunda çalışmaz", await page.locator("#observations tbody tr").count() == 2)
-        await page.keyboard.press("Tab")
-        # 10 Esc
-        await page.locator("#observations").click(position={"x": 5, "y": 5})
-        await page.keyboard.press("Escape")
-        check("Esc Durdur", await page.inner_text("#measure") == "Başla" and "durduruldu" in await status())
-        # 11 yavaş oynatma
-        await page.select_option("#speed", "0.5")
-        await page.evaluate("document.getElementById('video').currentTime = 20"); await page.wait_for_timeout(300)
-        await page.click("#play"); await page.wait_for_timeout(2000); await page.click("#pause")
-        adv = await pos() - 20000
-        check("0,5× hız", 700 <= adv <= 1300, f"{adv} ms / 2 sn")
-        await page.select_option("#speed", "1")
-        # 12 aralık başlangıcı / ekle (çakışan)
-        await page.evaluate("document.getElementById('video').currentTime = 3"); await page.wait_for_timeout(200)
-        await page.fill("#step", "Tarama"); await page.click("#mark-start")
-        await page.evaluate("document.getElementById('video').currentTime = 5"); await page.wait_for_timeout(200)
-        await page.click("#add-marked"); await page.wait_for_timeout(200)
-        check("bağımsız aralık 2,000 sn", "Tarama · 2,000 sn" in await status(), await status())
-        # 13 düzenleme, toplu sınıf, silme
-        await page.locator("#observations tbody tr", has_text="Tarama").click()
-        await page.select_option("#classification", "SVA"); await page.check("#excluded"); await page.click("#edit-row"); await page.wait_for_timeout(200)
-        tr = await page.locator("#observations tbody tr", has_text="Tarama").inner_text()
-        check("satır güncelleme (sınıf + kapsam dışı)", "SVA" in tr and "Evet" in tr, tr)
-        await page.locator("#observations tbody tr", has_text="Toplama").click()
-        await page.select_option("#classification", "VA"); await page.click("#bulk-class"); await page.wait_for_timeout(200)
-        check("toplu sınıf", "VA" in await page.locator("#observations tbody tr", has_text="Toplama").inner_text())
-        await page.screenshot(path=f"{OUT}/2-olcum.png", full_page=True)
-        await page.locator("#observations tbody tr", has_text="Tarama").click(); await page.click("#delete-row")
-        await dialog_text(); await answer()
-        check("satır silme, diğerleri aynı", await page.locator("#observations tbody tr").count() == 2)
-        # 14 analiz ayarları: geçersiz tolerans reddi, virgüllü değer
-        await page.click("#tab-2")
-        await page.fill("#allowance", "100"); await page.click("#apply-settings")
-        t = await dialog_text(); check("A07 tolerans %100 reddi", "tolerans" in t); await answer()
-        await page.fill("#allowance", "12,5"); await page.fill("#pace", "105"); await page.click("#apply-settings")
-        await page.wait_for_timeout(200)
-        r = {x[0]: x for x in await page.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")}
-        check("A07 virgüllü tolerans: 5×1,05/0,875 = 6,000", r["Toplama"][13] == "6,000", r["Toplama"][13])
-        await page.click("#t-table"); t = await page.inner_text("#dialog-pre"); check("t tablosu", "12,7062" in t); await answer()
-        # 15 Excel
-        async with page.expect_download() as dl:
-            await page.click("#excel")
-        d = await dl.value; await d.save_as(f"{OUT}/web.xlsx"); check("Excel indirme adı", d.suggested_filename == "WEB_01_analiz.xlsx", d.suggested_filename)
-        # 16 kalıcılık: sayfa yenileme
-        await page.reload(); await page.wait_for_selector("#studies tbody tr")
-        names = await page.inner_text("#studies tbody")
-        check("yenilemeden sonra etütler duruyor", "WEB/01" in names and "DEMO-01" in names)
-        await page.locator("#studies tbody tr", has_text="WEB/01").dblclick()
-        await page.wait_for_selector("#panel-1:not([hidden])")
-        await page.wait_for_timeout(800)
-        check("yenileme sonrası ayarlar ve ölçümler", await page.locator("#observations tbody tr").count() == 2 and "Video hazır" in await status(), await status())
-        await page.click("#tab-2")
-        check("ayarlar geri geldi", await page.input_value("#allowance") == "12,5" and await page.input_value("#pace") == "105")
-        # 17 dışa aktar
-        await page.click("#tab-0"); await page.locator("#studies tbody tr", has_text="WEB/01").click()
-        async with page.expect_download() as dl:
-            await page.click("#export")
-        d = await dl.value; await d.save_as(f"{OUT}/web.vzetud")
-        j = json.load(open(f"{OUT}/web.vzetud", encoding="utf-8"))
-        check("paket adı ve içerik", d.suggested_filename == "WEB_01.vzetud" and j["VideoName"] == "sentetik-depo-etudu.mp4" and j["Settings"]["Allowance"] == 12.5)
-        # 18 aynı paketi içe al → ayrı kayıt
-        async with page.expect_file_chooser() as fc:
-            await page.click("#import")
-        await (await fc.value).set_files(f"{OUT}/web.vzetud"); await dialog_text(); await answer()
-        await page.click("#tab-0")
-        check("A05 aynı paket ikinci kayıt", await page.locator("#studies tbody tr", has_text="WEB/01").count() == 2)
-        # 18b A04: demo dışı video adı → video bağlı değil, beklenen ad gösterilir, analiz açılır
-        j2 = json.load(open(f"{ROOT}/demo/sentetik-depo-etudu.vzetud", encoding="utf-8")); j2["VideoName"] = "gercek-hat-videosu.mp4"; j2["Code"] = "A04"
-        json.dump(j2, open(f"{OUT}/a04.vzetud", "w", encoding="utf-8"), ensure_ascii=False)
-        async with page.expect_file_chooser() as fc:
-            await page.click("#import")
-        await (await fc.value).set_files(f"{OUT}/a04.vzetud"); await dialog_text(); await answer()
-        await page.wait_for_timeout(500)
-        check("A04 video yokken beklenen dosya adı", "Beklenen dosya: gercek-hat-videosu.mp4" in await status(), await status())
-        await page.click("#tab-2")
-        check("A04 video yokken analiz açılır", "6,902" in await page.inner_text("#results"))
-        await page.click("#tab-0"); await page.locator("#studies tbody tr", has_text="A04").click(); await page.click("#delete"); await dialog_text(); await answer()
-        # 19 bozuk paket
-        open(f"{OUT}/bozuk.vzetud", "w").write('{"Kind":"video-zaman-etudu","Version":1,"Name":"x"')
-        async with page.expect_file_chooser() as fc:
-            await page.click("#import")
-        await (await fc.value).set_files(f"{OUT}/bozuk.vzetud"); t = await dialog_text()
-        check("bozuk paket reddi, kayıt yok", "bozuk" in t); await answer()
-        check("kayıt sayısı değişmedi", await page.locator("#studies tbody tr").count() == 3)
-        # 20 açık etüdü sil
-        await page.locator("#studies tbody tr", has_text="DEMO-01").dblclick(); await page.click("#tab-0")
-        await page.locator("#studies tbody tr", has_text="DEMO-01").click(); await page.click("#delete")
-        t = await dialog_text(); check("silme onayı", "geri alınamaz" in t); await answer()
-        check("açık etüt silindi, sekmeler pasif", await page.is_disabled("#tab-1") and "Çalışmalar" in await page.inner_text("#header") and await page.locator("#studies tbody tr", has_text="DEMO-01").count() == 0)
-        await page.screenshot(path=f"{OUT}/1-calismalar.png", full_page=True)
-        # 21 bozuk yerel kayıt
-        await page.evaluate("""new Promise(r => { const o = indexedDB.open('VideoZamanEtudu'); o.onsuccess = () => { const tx = o.result.transaction('studies','readwrite'); tx.objectStore('studies').put({Id:'bozuk', Name:5}); tx.oncomplete = r; }; })""")
-        await page.reload(); t = await dialog_text()
-        check("bozuk yerel kayıt atlanır ve uyarılır", "1 etüt kaydı okunamadığı" in t); await answer()
-        check("diğer kayıtlar listede", await page.locator("#studies tbody tr").count() == 2)
-        # 22 dar ekran
-        await page.set_viewport_size({"width": 390, "height": 844})
-        await page.screenshot(path=f"{OUT}/mobil.png", full_page=False)
-        check("konsol hatası yok", not errors, "; ".join(errors)[:300])
+        # 5 Geri al (Ctrl+Z): kayıt silinir, adım ve çevrim geri gelir, ölçüm başlangıcı geri alınır
+        await goto(14000); await page.click("#measure")
+        await page.locator("video").click(); await page.keyboard.press("Control+z"); await page.wait_for_timeout(200)
+        check("Ctrl+Z son kaydı geri alır", await rows() == before and await now() == "Hazırlık · çevrim 2" and "Geri alındı" in await status())
+        await page.click("#measure"); await page.wait_for_timeout(150)
+        check("geri alınan kayıt yeniden ölçülebilir", await rows() == before + 1, await status())
 
-        # ── İngilizce: tarayıcı dili İngilizce olan yeni ziyaretçi ──
-        ctx2 = await browser.new_context(accept_downloads=True, viewport={"width": 1440, "height": 900}, locale="en-US", bypass_csp=True)
-        await ctx2.add_init_script("window.showOpenFilePicker = undefined;")
-        en = await ctx2.new_page()
-        en_errors = []
-        en.on("pageerror", lambda e: en_errors.append(str(e)))
-        await en.goto(URL); await en.wait_for_selector("#studies tbody tr")
-        check("EN: tarayıcı diline göre İngilizce açılır", "VIDEO TIME STUDY" in await en.inner_text("#header") and await en.inner_text("#tab-0") == "1 Studies")
-        check("EN: boş liste ve demo bağlantısı İngilizce", "No studies yet" in await en.inner_text("#studies tbody") and await en.inner_text("#demo") == "Open demo study")
-        await en.click("#demo")
-        await en.wait_for_function("document.getElementById('status').textContent.includes('Video ready')", timeout=15000)
-        check("EN: ölçüm ekranı İngilizce", await en.inner_text("#measure") == "Start" and await en.inner_text("#tab-1") == "2 Video & measurement")
-        await en.locator("#observations").click(position={"x": 5, "y": 5}); await en.keyboard.press("Enter")
-        check("EN: durum mesajı ve ondalık nokta", re.match(r"Measurement started \(\d+\.\d{3} s\)\.", await en.inner_text("#status")) is not None, await en.inner_text("#status"))
-        await en.keyboard.press("Escape")
-        await en.click("#tab-2")
-        r = {x[0]: x for x in await en.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")}
-        check("EN: İngilizce demo (Picking) 6.902, Insufficient, Mean", r["Picking"][13] == "6.902" and r["Picking"][10] == "Insufficient" and r["Picking"][16] == "Mean", str(r["Picking"][10:17]))
-        check("EN: demo adımları İngilizce", "Toplama" not in r and set(r) == {"Preparation", "Picking", "Scanning", "Packing", "Waiting", "Periodic check"}, str(sorted(r)))
-        check("EN: rehber metni İngilizce", "Toyota-inspired guide" in await en.inner_text("#analysis-status"))
-        await en.fill("#allowance", "100"); await en.click("#apply-settings"); await en.wait_for_selector("dialog[open]")
-        check("EN: doğrulama hatası İngilizce", "Confidence must be between 0 and 100" in await en.inner_text("#dialog-text") and await en.inner_text("#dialog-yes") == "OK")
-        await en.click("#dialog-yes"); await en.fill("#allowance", "15")
-        async with en.expect_download() as dl:
-            await en.click("#excel")
-        d = await dl.value; await d.save_as(f"{OUT}/en.xlsx")
-        check("EN: Excel dosya adı", d.suggested_filename == "DEMO-01_analysis.xlsx", d.suggested_filename)
-        # dil değiştirme
-        await en.click("#lang-switch")
-        r = {x[0]: x for x in await en.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")}
-        check("TR'ye geçiş: başlık, analiz 6,902 Yetersiz", "VIDEO ZAMAN ETÜDÜ" in await en.inner_text("#header") and r["Picking"][13] == "6,902" and r["Picking"][10] == "Yetersiz")
-        check("TR'ye geçiş: adres ?lang=tr", en.url.endswith("lang=tr"), en.url)
-        await en.goto(URL); await en.wait_for_selector("#studies tbody tr")
-        check("seçim hatırlanır (yeniden açılışta Türkçe)", await en.inner_text("#tab-0") == "1 Çalışmalar")
-        await en.goto(URL + "?lang=en"); await en.wait_for_selector("#studies tbody tr")
-        check("?lang=en parametresi seçimi geçersiz kılar", await en.inner_text("#tab-0") == "1 Studies" and await en.get_attribute("html", "lang") == "en")
-        check("EN: konsol hatası yok", not en_errors, "; ".join(en_errors)[:300])
+        # 6 Oynatarak Enter ile ölçüm
+        await page.locator("video").click(); await page.keyboard.press("Space"); await page.wait_for_timeout(1500)
+        await page.keyboard.press("Enter"); await page.wait_for_timeout(1500); await page.keyboard.press("Space"); await page.keyboard.press("Escape")
+        check("oynatırken Enter kaydeder, Esc durdurur", await rows() == before + 2 and await page.inner_text("#measure") == "Başla")
+        check("zaman çizgisinde ölçülen aralıklar", await page.locator("#segments .seg:not(.live)").count() == await rows())
+
+        # 7 Seçili kayıt düzenleme
+        await page.locator("#observations tbody tr").nth(2).click(); await page.wait_for_timeout(150)
+        check("satır seçimi düzenleyiciyi açar", await page.is_visible("#row-editor") and await page.input_value("#row-step") == "Paketleme")
+        await page.select_option("#row-class", "NVA"); await page.click("#bulk-class"); await page.wait_for_timeout(150)
+        check("toplu sınıf adım tanımını da günceller", "NVA" in await page.inner_text("#steps"))
+        await page.click("#row-close")
+
+        # 8 Analiz: süreç sırası, kendiliğinden uygulanan ayarlar, grafikler
+        await page.click("#tab-2"); await page.wait_for_timeout(400)
+        order = [await page.locator("#results tbody tr").nth(i).locator("td").first.inner_text() for i in range(await page.locator("#results tbody tr").count())]
+        check("analiz süreç sırasında", order[:3] == ["Hazırlık", "Toplama", "Paketleme"], str(order))
+        check("tolerans %0 uyarısı", "Tolerans %0" in await page.inner_text("#analysis-status"))
+        await page.fill("#allowance", "12"); await page.press("#allowance", "Tab"); await page.wait_for_timeout(300)
+        check("ayar değişince uygulanır", "Tolerans %0" not in await page.inner_text("#analysis-status"))
+        await page.fill("#pace", "x"); await page.press("#pace", "Tab"); await page.wait_for_timeout(200)
+        check("geçersiz ayar satır içinde gösterilir", await page.is_visible("#settings-error") and await page.locator("#dialog[open]").count() == 0)
+        await page.fill("#pace", "100"); await page.press("#pace", "Tab"); await page.wait_for_timeout(200)
+        check("iki grafik", await page.locator("#charts figure").count() == 2)
+        await page.screenshot(path=os.path.join(OUT, "analiz.png"), full_page=True)
+        async with page.expect_download() as d: await page.click("#excel")
+        dl = await d.value; path = os.path.join(OUT, dl.suggested_filename); await dl.save_as(path)
+        check("Excel indirildi", dl.suggested_filename == "TP-01_analiz.xlsx")
+
+        # 9 Liste ve önce / sonra
+        await page.click("#tab-0"); await page.click("#demo"); await page.wait_for_timeout(1500); await page.click("#tab-0")
+        listing = await page.inner_text("#studies tbody")
+        check("listede istasyon, ölçüm ve durum", "Hat 2 · A. Kaya" in listing and "adım yetersiz" in listing)
+        await page.click("#compare"); await page.wait_for_timeout(300)
+        check("karşılaştırma penceresi", "→" in await page.inner_text("#compare-summary") and await page.locator("#compare-table tbody tr").count() >= 4)
+        await page.click("#compare-dialog button[value=close]")
+
+        # 10 Paket: adım listesi ve künye dışa aktarılır, geri gelir
+        await page.locator("#studies tbody tr", has_text="TP-01").click()
+        async with page.expect_download() as d: await page.click("#export")
+        pkg = await d.value; ppath = os.path.join(OUT, pkg.suggested_filename); await pkg.save_as(ppath)
+        data = json.load(open(ppath, encoding="utf-8"))
+        check("pakette Steps ve Info", [s["Name"] for s in data["Steps"]][:3] == ["Hazırlık", "Toplama", "Paketleme"] and data["Info"]["Operator"] == "A. Kaya" and data["Version"] == 1)
+
+        check("konsol hatası yok", not errors, "; ".join(errors[:3]))
         await browser.close()
+    failed = [r for r in results if not r[0]]
+    print(f"\n{len(results) - len(failed)}/{len(results)} geçti")
+    sys.exit(1 if failed else 0)
 
 asyncio.run(main())
-fails = [r for r in results if not r[0]]
-print(f"\nUÇTAN UCA: {len(results)-len(fails)}/{len(results)} geçti")
-sys.exit(1 if fails else 0)

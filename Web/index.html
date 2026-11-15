@@ -42,16 +42,24 @@
         <label class="field grow"><span data-i18n="field.video">Video dosyası</span><input id="new-video" type="text" readonly placeholder="Video seçilmedi" data-i18n-attr="placeholder:placeholder.video"></label>
         <button id="pick-new-video" data-i18n="btn.pickFile">Dosya seç…</button>
       </div>
+      <details class="more" id="new-more">
+        <summary data-i18n="new.more">Adımlar ve etüt bilgileri (isteğe bağlı, sonra da girilebilir)</summary>
+        <div class="row">
+          <label class="field grow"><span data-i18n="field.newSteps">İş adımları (her satıra bir adım, süreç sırasıyla)</span><textarea id="new-steps" rows="4" data-i18n-attr="placeholder:placeholder.newSteps"></textarea></label>
+        </div>
+        <div class="row info-row" id="new-info"></div>
+      </details>
       <div class="row">
         <button id="create" class="primary" data-i18n="btn.create">Yeni çalışma başlat</button>
         <button id="open" data-i18n="btn.open">Seçili çalışmayı aç</button>
         <button id="import" data-i18n="btn.import">Etüdü içe al…</button>
         <button id="export" data-i18n="btn.export">Seçili etüdü dışa aktar…</button>
+        <button id="compare" data-i18n="btn.compare">Önce / sonra karşılaştır…</button>
         <button id="delete" class="danger" data-i18n="btn.delete">Seçili etüdü sil…</button>
       </div>
       <div tabindex="0" class="table-wrap tall">
         <table id="studies" class="grid" aria-label="Kayıtlı etütler" data-i18n-attr="aria-label:studies.label">
-          <thead><tr><th data-i18n="th.code">Kod</th><th data-i18n="th.name">Etüt adı</th><th data-i18n="th.video">Video</th><th data-i18n="th.updated">Son düzenleme</th></tr></thead>
+          <thead><tr><th data-i18n="th.code">Kod</th><th data-i18n="th.name">Etüt adı</th><th data-i18n="th.where">İstasyon · operatör</th><th data-i18n="th.count">Ölçüm</th><th data-i18n="th.cycles">Çevrim</th><th data-i18n="th.state">Durum</th><th data-i18n="th.video">Video</th><th data-i18n="th.updated">Son düzenleme</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -60,33 +68,13 @@
     <!-- 2 Video ve ölçüm -->
     <section id="panel-1" role="tabpanel" aria-labelledby="tab-1" hidden>
       <p id="status" class="status" role="status" aria-live="polite"></p>
-      <div class="row">
-        <label class="field"><span data-i18n="field.step">İş adımı</span><input id="step" type="text" size="18" value="Adım" autocomplete="off"></label>
-        <label class="field"><span data-i18n="field.cycle">Çevrim</span><input id="cycle" type="text" size="4" value="1" inputmode="numeric" autocomplete="off"></label>
-        <label class="field"><span data-i18n="field.class">Sınıf</span><select id="classification"><option value=""></option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
-        <label class="check"><input id="excluded" type="checkbox"> <span data-i18n="check.excluded">Kapsam dışı</span></label>
-        <button id="measure" class="primary measure">Başla</button>
-        <button id="stop" data-i18n="btn.stop">Durdur</button>
-        <button id="mark-start" data-i18n="btn.markStart">Aralık başlangıcı al</button>
-        <button id="add-marked" data-i18n="btn.addMarked">Aralığı ekle</button>
-      </div>
-      <div class="row">
-        <button id="edit-row" data-i18n="btn.editRow">Seçili satırı güncelle</button>
-        <button id="bulk-class" data-i18n="btn.bulk">Sınıfı aynı adı taşıyanlara uygula</button>
-        <button id="delete-row" class="danger" data-i18n="btn.deleteRow">Seçili satırı sil</button>
-      </div>
-      <details class="help"><summary data-i18n="help.measure.title">Sınıf, çevrim ve kapsam dışı ne demek?</summary><dl data-i18n-html="help.measure.body"></dl></details>
-      <p class="hint" data-i18n="measure.hint">Ölç son aralığı kaydeder. Durdur ölçüm modunu kapatır. Çakışan veya bağımsız aralık için başlangıcı alıp bitiş konumunda aralığı ekleyin.</p>
       <div class="split">
-        <div tabindex="0" class="table-wrap">
-          <table id="observations" class="grid" aria-label="Ölçümler" data-i18n-attr="aria-label:observations.label">
-            <thead><tr><th data-i18n="th.start">Başlangıç (ms)</th><th data-i18n="th.end">Bitiş (ms)</th><th data-i18n="th.duration">Süre (sn)</th><th data-i18n="th.step">İş adımı</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.excluded">Kapsam dışı</th><th data-i18n="th.cycle">Çevrim</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
         <div class="player">
           <div class="frame"><video id="video" preload="auto" playsinline disablepictureinpicture></video></div>
-          <input id="timeline" type="range" min="0" max="10" step="1" value="0" disabled aria-label="Zaman çizgisi" data-i18n-attr="aria-label:timeline.label">
+          <div class="timeline-wrap">
+            <div id="segments" class="segments" aria-hidden="true"></div>
+            <input id="timeline" type="range" min="0" max="10" step="1" value="0" disabled aria-label="Zaman çizgisi" data-i18n-attr="aria-label:timeline.label">
+          </div>
           <div class="row controls">
             <output id="position" class="position">00:00:00.000</output>
             <button id="play" data-i18n="btn.play">Oynat</button>
@@ -96,13 +84,83 @@
             <label class="field inline"><span data-i18n="field.speed">Hız</span><select id="speed"><option value="0.25" data-i18n="speed.0.25">0,25×</option><option value="0.5" data-i18n="speed.0.5">0,5×</option><option value="1" selected data-i18n="speed.1">1×</option><option value="1.5" data-i18n="speed.1.5">1,5×</option><option value="2" data-i18n="speed.2">2×</option></select></label>
             <button id="relink" data-i18n="btn.relink">Videoyu yeniden seç</button>
           </div>
-          <p class="hint" data-i18n="shortcuts">Kısayollar: Boşluk oynat/duraklat · Enter Başla/Ölç · Esc Durdur · ←/→ 0,1 sn · Shift+←/→ 1 sn · Ctrl+←/→ 0,04 sn (≈1 kare). Kısayollar metin kutusu veya açılır liste seçiliyken çalışmaz. İnce konumlama (en fazla 1 sn) ölçümü kesmez; zaman çizgisinde atlama keser.</p>
+          <div class="legend" id="segment-legend" aria-hidden="true"></div>
+          <p class="hint" data-i18n="shortcuts">Kısayollar</p>
+        </div>
+        <div class="measure-side">
+          <div class="box">
+            <div class="box-head"><h2 data-i18n="h.steps">Adımlar</h2><span class="hint" data-i18n="steps.hint">Tıklayarak ya da 1–9 tuşlarıyla seçin</span></div>
+            <div id="steps" class="steps" role="group" aria-label="Adımlar" data-i18n-attr="aria-label:h.steps"></div>
+            <div id="step-tools" class="row step-tools" hidden>
+              <button id="step-left" data-i18n="btn.stepLeft" data-i18n-attr="title:title.stepLeft">◀ Öne al</button>
+              <button id="step-right" data-i18n="btn.stepRight" data-i18n-attr="title:title.stepRight">Sona al ▶</button>
+              <label class="field inline"><span data-i18n="field.class">Sınıf</span><select id="step-class"><option value="" data-i18n="class.none">—</option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+              <button id="step-rename" data-i18n="btn.stepRename">Yeniden adlandır…</button>
+              <button id="step-remove" class="danger" data-i18n="btn.stepRemove">Listeden çıkar</button>
+            </div>
+            <div class="row add-step">
+              <label class="field grow"><span data-i18n="field.newStep">Yeni adım</span><input id="new-step" type="text" autocomplete="off" data-i18n-attr="placeholder:placeholder.newStep"></label>
+              <label class="field"><span data-i18n="field.class">Sınıf</span><select id="new-step-class"><option value="" data-i18n="class.none">—</option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+              <button id="add-step" data-i18n="btn.addStep">Adım ekle</button>
+            </div>
+            <label class="check"><input id="auto-advance" type="checkbox" checked> <span data-i18n="check.autoAdvance">Ölç’ten sonra sıradaki adıma geç; son adımdan sonra çevrimi 1 artır</span></label>
+          </div>
+          <div class="measure-bar">
+            <div class="cycle-box">
+              <span class="field-label" id="cycle-label" data-i18n="field.cycle">Çevrim</span>
+              <button id="cycle-down" aria-label="Çevrimi azalt" data-i18n-attr="aria-label:title.cycleDown">−</button>
+              <input id="cycle" type="text" size="3" value="1" inputmode="numeric" autocomplete="off" aria-labelledby="cycle-label">
+              <button id="cycle-up" aria-label="Çevrimi artır" data-i18n-attr="aria-label:title.cycleUp">+</button>
+            </div>
+            <div class="now"><span class="field-label" data-i18n="now.label">Sıradaki kayıt</span><strong id="now-step">—</strong></div>
+            <label class="check"><input id="excluded" type="checkbox"> <span data-i18n="check.excludedNext">Sonraki kayıt kapsam dışı</span></label>
+          </div>
+          <div class="row big">
+            <button id="measure" class="primary measure">Başla</button>
+            <button id="stop" data-i18n="btn.stop">Durdur</button>
+            <button id="undo" data-i18n="btn.undo" data-i18n-attr="title:title.undo">Son kaydı geri al</button>
+          </div>
+          <details class="help"><summary data-i18n="help.measure.title">Sınıf, çevrim ve kapsam dışı ne demek?</summary><dl data-i18n-html="help.measure.body"></dl></details>
+          <div tabindex="0" class="table-wrap">
+            <table id="observations" class="grid" aria-label="Ölçümler" data-i18n-attr="aria-label:observations.label">
+              <thead><tr><th data-i18n="th.start">Başlangıç</th><th data-i18n="th.end">Bitiş</th><th data-i18n="th.duration">Süre (sn)</th><th data-i18n="th.step">İş adımı</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.excluded">Kapsam dışı</th><th data-i18n="th.cycle">Çevrim</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="row-editor" class="box row-editor" hidden>
+            <h2 data-i18n="h.rowEditor">Seçili kayıt</h2>
+            <div class="row">
+              <label class="field"><span data-i18n="field.step">İş adımı</span><input id="row-step" type="text" size="16" list="step-names" autocomplete="off"></label>
+              <label class="field"><span data-i18n="field.cycle">Çevrim</span><input id="row-cycle" type="text" size="3" inputmode="numeric" autocomplete="off"></label>
+              <label class="field"><span data-i18n="field.class">Sınıf</span><select id="row-class"><option value="" data-i18n="class.none">—</option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+              <label class="check"><input id="row-excluded" type="checkbox"> <span data-i18n="check.excluded">Kapsam dışı</span></label>
+            </div>
+            <div class="row">
+              <button id="edit-row" class="primary" data-i18n="btn.editRow">Kaydı güncelle</button>
+              <button id="bulk-class" data-i18n="btn.bulk">Sınıfı aynı adı taşıyanlara uygula</button>
+              <button id="delete-row" class="danger" data-i18n="btn.deleteRow">Kaydı sil</button>
+              <button id="row-close" class="link" data-i18n="btn.rowClose">Seçimi kaldır</button>
+            </div>
+          </div>
+          <datalist id="step-names"></datalist>
+          <details class="more">
+            <summary data-i18n="more.interval">Bağımsız veya çakışan aralık ekle</summary>
+            <p class="hint" data-i18n="measure.hint">Paralel bir iş için: başlangıçta “Aralık başlangıcı al”, bitişte “Aralığı ekle”. Kayıt seçili adım ve çevrimle eklenir; ardışık ölçümü etkilemez.</p>
+            <div class="row">
+              <button id="mark-start" data-i18n="btn.markStart">Aralık başlangıcı al</button>
+              <button id="add-marked" data-i18n="btn.addMarked">Aralığı ekle</button>
+            </div>
+          </details>
         </div>
       </div>
     </section>
 
     <!-- 3 Analiz ve rapor -->
     <section id="panel-2" role="tabpanel" aria-labelledby="tab-2" hidden>
+      <details class="more" id="info-box">
+        <summary data-i18n="info.title">Etüt bilgileri</summary>
+        <div class="row info-row" id="info-fields"></div>
+      </details>
       <div class="row">
         <label class="field"><span data-i18n="field.confidence">Güven %</span><input id="confidence" type="text" size="5" inputmode="decimal"></label>
         <label class="field"><span data-i18n="field.target">Hedef hata %</span><input id="target" type="text" size="5" inputmode="decimal"></label>
@@ -112,8 +170,8 @@
         <label class="field"><span data-i18n="field.method">Baz süre yöntemi</span><select id="method"><option value="0" data-i18n="method.mean">Aritmetik ortalama</option><option value="1" data-i18n="method.repeated">En çok tekrar eden en küçük süre</option></select></label>
         <label class="check"><input id="stable" type="checkbox"> <span data-i18n="check.stable">Süreç kararlı</span></label>
       </div>
+      <p id="settings-error" class="error" role="alert" hidden></p>
       <div class="row">
-        <button id="apply-settings" class="primary" data-i18n="btn.applySettings">Ayarları uygula</button>
         <label class="field"><span data-i18n="field.every">Her N çevrimde</span><input id="every" type="text" size="4" value="1" inputmode="numeric"></label>
         <button id="apply-frequency" data-i18n="btn.applyFrequency">Seçili adıma sıklık uygula</button>
         <button id="t-table" data-i18n="btn.tTable">t tablosu ve formül</button>
@@ -121,6 +179,7 @@
       </div>
       <p id="analysis-status" class="hint"></p>
       <div id="summary" class="summary" aria-live="polite"></div>
+      <div id="charts" class="charts"></div>
       <details class="help"><summary data-i18n="help.analysis.title">Ayarlar ve sütunlar ne anlatıyor?</summary><dl data-i18n-html="help.analysis.body"></dl></details>
       <div tabindex="0" class="table-wrap">
         <table id="results" class="grid" aria-label="Adım analizi" data-i18n-attr="aria-label:results.label">
@@ -132,7 +191,7 @@
         <div>
           <h2 data-i18n="h.cycles">Çevrimler</h2>
           <div tabindex="0" class="table-wrap short">
-            <table id="cycles" class="grid" aria-label="Çevrimler" data-i18n-attr="aria-label:h.cycles"><thead><tr><th data-i18n="th.c.cycle">Çevrim</th><th data-i18n="th.c.elapsed">Ölçülen geçen süre (sn)</th><th data-i18n="th.c.workload">İş yükü (sn)</th></tr></thead><tbody></tbody></table>
+            <table id="cycles" class="grid" aria-label="Çevrimler" data-i18n-attr="aria-label:h.cycles"><thead><tr><th data-i18n="th.c.cycle">Çevrim</th><th data-i18n="th.c.elapsed">Ölçülen geçen süre (sn)</th><th data-i18n="th.c.workload">İş yükü (sn)</th><th data-i18n="th.c.diff">Ortalamadan fark</th></tr></thead><tbody></tbody></table>
           </div>
         </div>
         <div>
@@ -157,6 +216,24 @@
         <button id="dialog-no" value="no" hidden data-i18n="dialog.no">Hayır</button>
         <button id="dialog-yes" value="yes" class="primary">Tamam</button>
       </div>
+    </form>
+  </dialog>
+  <dialog id="compare-dialog" class="wide" aria-labelledby="compare-title">
+    <form method="dialog">
+      <h2 id="compare-title" data-i18n="compare.title">Önce / sonra karşılaştırması</h2>
+      <div class="row">
+        <label class="field"><span data-i18n="compare.before">Önce</span><select id="compare-before"></select></label>
+        <label class="field"><span data-i18n="compare.after">Sonra</span><select id="compare-after"></select></label>
+      </div>
+      <p id="compare-summary" class="compare-summary"></p>
+      <div tabindex="0" class="table-wrap">
+        <table id="compare-table" class="grid" aria-label="Karşılaştırma" data-i18n-attr="aria-label:compare.title">
+          <thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="compare.thBefore">Önce (sn/çevrim)</th><th data-i18n="compare.thAfter">Sonra (sn/çevrim)</th><th data-i18n="compare.thDiff">Fark (sn)</th><th data-i18n="compare.thDiffPct">Fark %</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint" data-i18n="compare.hint">Adımlar ada göre eşleşir. Değerler çevrim başına standart katkıdır (sıklık dahil); iki etüdün tempo ve tolerans ayarları farklıysa fark bunu da içerir.</p>
+      <div class="row end"><button value="close" class="primary" data-i18n="dialog.close">Kapat</button></div>
     </form>
   </dialog>
   <noscript><p class="note">Bu uygulama JavaScript gerektirir. · This app requires JavaScript.</p></noscript>
