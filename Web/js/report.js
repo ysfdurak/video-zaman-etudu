@@ -1,6 +1,6 @@
 // Desktop/StudyExport.cs karşılığı: aynı sayfalar, sütunlar ve ayar satırları.
 // Türkçe (varsayılan) çıktı masaüstüyle birebir aynıdır; İngilizce seçildiğinde başlıklar ve metin değerleri çevrilir.
-import { analyzeSteps, analyzeCycles, seconds, videoLabel, VERSION, INFO_FIELDS, inProcessOrder, totalStandard, cycleSpread, deriveSteps } from "./core.js";
+import { analyzeSteps, analyzeCycles, seconds, videoLabel, VERSION, INFO_FIELDS, inProcessOrder, totalStandard, cycleSpread, deriveSteps, ALLOWANCE_PARTS, matchingParts, requiredObservations } from "./core.js";
 import { workbook } from "./xlsx.js";
 import { t, result } from "./i18n.js";
 
@@ -59,14 +59,18 @@ export function reportSheets(study, now = new Date(), lang = "tr") {
     [tx("x.o.total"), total], [tx("x.o.rate"), total ? 3600 / total : null],
     ...(study.Takt ? [[tx("x.o.takt"), study.Takt], [tx("x.o.load"), total ? (total / study.Takt) * 100 : null], [tx("x.o.operators"), total ? total / study.Takt : null]] : []),
     [tx("x.o.cycles"), int(spread.Rows.length)], [tx("x.o.cv"), spread.Variation],
-    [tx("x.o.insufficient"), int(rows.filter((r) => r.Sufficiency !== "Yeterli" && r.Count > 0).length)],
+    [tx("x.o.insufficient"), int(rows.filter((r) => r.Sufficiency === "Yetersiz").length)],
+    [tx("x.o.notComputable"), int(rows.filter((r) => r.Sufficiency === "Hesaplanamıyor" && r.Count > 0).length)],
     ...[...byClass.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => [tx("x.o.share") + " " + k, (v / all) * 100]),
     [tx("x.s.pace"), s.Pace], [tx("x.s.allowance"), s.Allowance],
+    ...ALLOWANCE_PARTS.filter((k) => matchingParts(study.AllowanceParts, s.Allowance)[k] !== undefined)
+      .map((k) => [`${tx("x.o.al")} ${tx("al." + k)}`, matchingParts(study.AllowanceParts, s.Allowance)[k]]),
     [],
     head("x.o.steps")];
   for (const r of rows)
     summary.push([r.Step, defs.get(r.Step)?.Classification ?? "", int(r.Count), r.Pace, r.Standard, int(r.Every), r.Contribution,
-      total && r.Contribution !== null ? (r.Contribution / total) * 100 : null, result(r.Sufficiency, lang), defs.get(r.Step)?.Note ?? ""]);
+      total && r.Contribution !== null ? (r.Contribution / total) * 100 : null, result(r.Sufficiency, lang),
+      r.Sufficiency === "Yetersiz" ? int(requiredObservations(r, s)) : null, defs.get(r.Step)?.Note ?? ""]);
 
   return [
     { name: tx("x.sheet.summary"), rows: summary },

@@ -1,3 +1,23 @@
+# v1.7.0 · Video Zaman Etüdü — tolerans kalemleri, toplu yedek ve çıktı düzeltmeleri
+
+Yalnız tarayıcı sürümü değişti; v1.5.0 ve v1.6.0 ile aynı PR'da yayınlanır. Bütün yenilikler Türkçe ve İngilizce arayüzde var.
+
+**Yeni**
+- **Tolerans kalemleri:** Kişisel ihtiyaç, yorgunluk, kaçınılmaz gecikme ve diğer ayrı girilebilir. Tolerans % bunların toplamı olur. Özet kartında, Excel özetinde ve yazdırmada döküm görünür. Windows yalnız toplamı görür ve aynı sonucu bulur.
+- **Toplu yedek:** "Tümünü yedekle (.zip)" bütün etütleri tek dosyaya alır. "Etüdü içe al…" bu yedeği de açar. Zaten kayıtlı olan etüt ikinci kez eklenmez, mevcut etütler değişmez.
+- **Kaldığı yerden devam:** Etüt açılınca video son kaydın bitişine gider. Sıradaki adım ve çevrim son kayda göre ayarlanır.
+- **Kayıt süzgeci:** Ölçüm tablosu adıma ve çevrime göre daraltılabilir.
+
+**Çıktı düzeltmeleri**
+- Excel özeti "1 yetersiz + 1 hesaplanamayan" adımı "2 yetersiz" diye sayıyordu; şimdi ayrı satırlar. Yetersiz adıma "Gereken n (yaklaşık)" sütunu eklendi.
+- Yazdırma: adım tablosu sayfadan taşıyordu (Yöntem sütunu kesiliyordu); artık sığıyor. Başlıkta etüt bilgileri ve dayanılan ayarlar (güven, hedef hata, tempo, tolerans, baz süre yöntemi, takt) yazıyor. Altta sürüm var. Ctrl+P ile de aynı çıktı alınıyor.
+- Çevrim grafiğinde y ekseni ve çubuk değerleri var; ortalama etiketi artık çubuğun üstüne binmiyor.
+- Çalışmalar ekranındaki düğmeler gruplandı: oluştur/aç · içe al/dışa aktar/yedekle · karşılaştır · sil.
+
+**Paket:** Sürüm 1. Yeni isteğe bağlı alan: `AllowanceParts`. Windows okurken yok sayar.
+
+**Testler:** Node 180/180; Chrome uçtan uca 47/47; axe Türkçe ve İngilizce, masaüstü ve telefonda 0 ihlal; telefonda yatay taşma yok.
+
 # v1.6.0 · Video Zaman Etüdü — etüt için eksik kalan bilgiler ve ekran düzeni
 
 Yalnız tarayıcı sürümü değişti; v1.5.0 ile aynı PR'da yayınlanır. Bütün yenilikler Türkçe ve İngilizce arayüzde var.

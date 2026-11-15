@@ -46,33 +46,50 @@ export function stepChart(data, { classLabel = (c) => c, width = 640 } = {}) {
 }
 
 /** Dikey çubuklar: çevrim başına ölçülen geçen süre; ortalama çizgisi; ortalamadan %20+ sapanlar işaretli. */
-export function cycleChart(data, { mean, meanLabel, axis, width = 640 }) {
-  const height = 220, left = 40, right = 12, top = 18, bottom = 34;
-  const max = Math.max(...data.map((d) => d.value), mean ?? 0, 1e-9) * 1.1;
+export function cycleChart(data, { mean, meanLabel, axis, width = 640, format = (v) => String(v) }) {
+  const height = 240, left = 44, right = 12, top = 30, bottom = 34;
+  const peak = Math.max(...data.map((d) => d.value), mean ?? 0, 1e-9);
+  const step = niceStep(peak / 4);
+  const max = Math.ceil((peak * 1.08) / step) * step;
   const plotW = width - left - right, plotH = height - top - bottom;
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
   const yOf = (v) => top + plotH - (v / max) * plotH;
-  svg.append(el("line", { x1: left, x2: width - right, y1: top + plotH, y2: top + plotH, stroke: GRID }));
+  // Y ekseni: yuvarlak değerlerde ince ızgara ve etiket.
+  for (let v = 0; v <= max + 1e-9; v += step) {
+    svg.append(el("line", { x1: left, x2: width - right, y1: yOf(v), y2: yOf(v), stroke: GRID, "stroke-width": v === 0 ? 1 : 0.6 }));
+    svg.append(el("text", { x: left - 6, y: yOf(v) + 4, "text-anchor": "end", fill: SOFT, "font-size": 10.5 }, format(v)));
+  }
   const slot = plotW / data.length;
   const bw = Math.max(4, Math.min(36, slot - 4));
   const labelEvery = Math.ceil(data.length / 20);
+  const showValues = data.length <= 12 && slot >= 34;
   data.forEach((d, i) => {
     const x = left + i * slot + (slot - bw) / 2;
     const g = el("g", { class: "bar" });
     g.append(el("title", {}, `${axis} ${d.label} · ${d.text}${d.outlier ? " · ⚠" : ""}`));
     g.append(el("rect", { x, y: yOf(d.value), width: bw, height: Math.max(1, top + plotH - yOf(d.value)), rx: 3, fill: d.outlier ? "#eb6834" : "#2a78d6" }));
     if (i % labelEvery === 0) g.append(el("text", { x: x + bw / 2, y: top + plotH + 14, "text-anchor": "middle", fill: SOFT, "font-size": 11 }, d.label));
-    if (d.outlier) g.append(el("text", { x: x + bw / 2, y: yOf(d.value) - 4, "text-anchor": "middle", fill: INK, "font-size": 11 }, "⚠"));
+    const tag = (d.outlier ? "⚠ " : "") + (showValues ? format(d.value) : "");
+    if (tag) g.append(el("text", { x: x + bw / 2, y: yOf(d.value) - 4, "text-anchor": "middle", fill: INK, "font-size": 10.5, stroke: "#fff", "stroke-width": 3, "paint-order": "stroke" }, tag));
     svg.append(g);
   });
   if (mean) {
     svg.append(el("line", { x1: left, x2: width - right, y1: yOf(mean), y2: yOf(mean), stroke: INK, "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
-    // Etiket çubukların üstünde okunabilsin diye beyaz kenarlı yazılır.
-    svg.append(el("text", { x: width - right, y: yOf(mean) - 5, "text-anchor": "end", fill: INK, "font-size": 11.5, stroke: "#fff", "stroke-width": 3, "paint-order": "stroke" }, meanLabel));
+    // Ortalama etiketi çizimin üstünde açıklama olarak durur; çubuklarla çakışmaz.
+    svg.append(el("line", { x1: width - right - 24, x2: width - right, y1: 12, y2: 12, stroke: INK, "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
+    svg.append(el("text", { x: width - right - 30, y: 16, "text-anchor": "end", fill: INK, "font-size": 11.5 }, meanLabel));
   }
   svg.append(el("text", { x: left + plotW / 2, y: height - 4, "text-anchor": "middle", fill: SOFT, "font-size": 11 }, axis));
   svg.setAttribute("aria-label", data.map((d) => `${axis} ${d.label}: ${d.text}`).join(", "));
   return svg;
+}
+
+/** 1, 2, 2.5, 5 × 10^k basamaklarından en yakın yuvarlak adım. */
+function niceStep(raw) {
+  if (!(raw > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  for (const m of [1, 2, 2.5, 5, 10]) if (raw <= m * p) return m * p;
+  return 10 * p;
 }
 
 const truncate = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);

@@ -22,6 +22,8 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 | `Web/js/app.js`, `index.html`, `app.css` | Tarayıcı arayüzü (`MainWindow` karşılığı) | |
 | `Web/js/store.js` | IndexedDB kaydı (`StudyStore` karşılığı) | |
 | `Web/js/report.js`, `xlsx.js` | Excel çıktısı (`StudyExport` karşılığı), kütüphanesiz | Siteye dış bağımlılık girmesin |
+| `Web/js/backup.js` | Toplu yedek: bütün etütleri tek .zip'e yazar, .zip'ten geri yükler (v1.7) | Paket kuralları core.js'te kalsın; burası yalnız zip ve karşılaştırma |
+| `Web/js/charts.js` | SVG grafikler (adım katkısı, çevrim süresi) | |
 | `Shared/esdeger-ornekler.json` | İki sürümün aynı sonucu verdiğini sınayan ortak örnekler | C# üretir, iki taraf da test eder |
 | `Tools/EsdegerUretici` | Ortak örnek dosyasını C# çekirdeğinden yeniden üretir | |
 
@@ -66,6 +68,14 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 
 Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanStepPace`, `cleanTakt`, `cleanSteps`, `cleanInfo`). Windows sürümü bu alanları yok sayar. Bu yüzden adım temposu kullanılmış bir etüt Windows'ta açılırsa sonuçlar genel tempoyla hesaplanır.
 
+## 3e. Tolerans kalemleri, yedek ve devam (v1.7, yalnız tarayıcı)
+
+- **Tolerans kalemleri** (`AllowanceParts`: `Personal`, `Fatigue`, `Delay`, `Other`): Analiz ayarlarında "Toleransı kalemlere ayır" altında girilir. Kalem varsa `Settings.Allowance` = kalemlerin toplamıdır ve toplam alanı kilitlenir. Hesap yalnız toplamı kullanır. Bu yüzden Windows aynı sonucu bulur. Windows'ta tolerans değiştirilirse toplam tutmaz; tarayıcı paketi açarken kalemleri atar (`matchingParts`).
+- **Toplu yedek:** "Tümünü yedekle (.zip)" her etüdü ayrı `.vzetud` olarak tek zip'e koyar. Geri yükleme için ayrı düğme yok: "Etüdü içe al…" dosyanın zip olduğunu ilk baytlardan anlar (`isZip`). Aynı içerikteki etüt ikinci kez eklenmez: karşılaştırma, iki etüdün paket metninin aynı olmasıdır. Hiçbir mevcut etüt değiştirilmez ya da silinmez. Zip açılıp içindeki paketler Windows'a tek tek de alınabilir.
+- **Kaldığı yerden devam:** Etüt açılınca video son kaydın bitişine gider. Sıradaki kayıt, son geçerli kaydın ardındaki adım olur; son adımdan sonra çevrim 1 artar (`resumePoint`).
+- **Kayıt süzgeci:** Ölçüm tablosu adıma ve çevrime göre daraltılabilir. Yalnız görünümü etkiler.
+- **Çıktılar:** Excel özeti "yetersiz" ve "hesaplanamayan" adımları ayrı sayar. Yetersiz adıma "Gereken n (yaklaşık)" yazılır; bu, ekrandaki "yaklaşık N gözlem gerekir" ile aynı hesaptır (`requiredObservations`). Yazdırma başlığında etüt bilgileri ve analizin dayandığı ayarlar var. Başlık Ctrl+P ile de dolar (`beforeprint`).
+
 ## 4. Formüller (sorulursa)
 - Süre (sn) = (bitiş ms − başlangıç ms) / 1000
 - Bağıl hata % = t(güven, n−1, iki taraflı) × s ÷ (√n × ortalama) × 100 → hedefe eşit/küçükse “Yeterli”; n < 2 ise “Hesaplanamıyor”.
@@ -86,7 +96,8 @@ Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanSte
 - **Demo düğmesi videoyu sunucudan mı alıyor?** Sitenin kendi statik dosyasından (`Web/demo/`); dış bir sunucuya gidilmez, ziyaretçinin hiçbir verisi gönderilmez.
 - **Tarayıcı sürümünde etütler nerede?** O tarayıcının yerel deposunda (IndexedDB). Başka bilgisayara veya tarayıcıya `.vzetud` ile taşınır. Tarayıcı verisi temizlenirse silinir.
 - **Kullanım limiti / hesap neden yok?** Limit ve kullanıcı hesabı sunucu ister; bu V1.2 sunucusuz. Site hesap sistemi VPS'te kurulunca eklenir.
-- **Veriler nerede, nasıl yedeklenir?** `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`; uygulama kapalıyken kopyala ya da etütleri `.vzetud` olarak dışa aktar.
+- **Veriler nerede, nasıl yedeklenir?** Windows: `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`; uygulama kapalıyken kopyala ya da etütleri `.vzetud` olarak dışa aktar. Tarayıcı: "Tümünü yedekle (.zip)" ve geri yüklemek için "Etüdü içe al…".
+- **Tolerans neden toplanıyor, çarpılmıyor?** Kalemler aynı normal süreye eklenen paylardır; uygulamada yaygın olan toplamdır. Standart = Normal ÷ (1 − toplam tolerans).
 
 ## 6. Değişiklik yaparken
 - Hesap değişikliği → `Core/Study.cs` + `Checks/` içine kontrol ekle. Ekranda ve Excel'de otomatik yansır.

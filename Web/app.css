@@ -236,3 +236,19 @@ button:disabled.primary { opacity: .45; }
 .split > *, .lower > *, .charts > *, .summary > * { min-width: 0; }
 .step-tools .field.grow { flex: 1 1 100%; }
 @media print { #info-box { display: none !important; } }
+/* v1.7 */
+.obs-filter { align-items: flex-end; gap: 8px; }
+.obs-filter select { min-width: 7em; }
+.obs-filter .hint { margin: 0 0 6px auto; }
+#allowance[readonly] { background: var(--soft-bg, #f1f4f6); color: inherit; }
+@media print {
+  .no-print, #analysis-empty { display: none !important; }
+  .print-head { margin-bottom: 8px; }
+  .print-head h2 { font-size: 15px; margin: 0 0 4px; }
+  .print-head p { margin: 0 0 2px; color: #333; }
+  .top { display: none !important; }
+  .grid { width: 100%; font-size: 8.5px; }
+  .grid th, .grid td { padding: 2px 4px; white-space: normal; }
+  .lower { display: block; }
+}
+.gap-left { margin-left: 14px; } @media (max-width: 700px) { .gap-left { margin-left: 0; } }

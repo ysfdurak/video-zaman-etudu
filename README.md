@@ -10,7 +10,7 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | Video | Bilgisayarda kalır, yolu hatırlanır | Bilgisayarda kalır, tarayıcıya yüklenmez; Chrome/Edge'de izinle hatırlanır, diğerlerinde her oturumda yeniden seçilir |
 | Excel / `.vzetud` | Var | Var (aynı sayfalar ve biçim; tarayıcıda ek **Özet** sayfası) |
 | Ölçüm akışı | Adım adı elle, zaman çizgisinde atlama ölçümü keser | Adım listesi, 1–9 tuşları, otomatik çevrim, geri al; gezinmek ölçümü kesmez (v1.5) |
-| Analiz ekleri | Tablolar | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra karşılaştırması (v1.5); adım açıklaması, kayıt notu, adım temposu, takt süresi, yazdır/PDF (v1.6) |
+| Analiz ekleri | Tablolar | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra karşılaştırması (v1.5); adım açıklaması, kayıt notu, adım temposu, takt süresi, yazdır/PDF (v1.6); tolerans kalemleri, toplu yedek, kaldığı yerden devam, kayıt süzgeci (v1.7) |
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır.
 
@@ -46,7 +46,7 @@ python -m http.server 8080   # sonra http://localhost:8080
 - Videolar ve ölçümler hiçbir sunucuya gönderilmez; sayfa yalnızca kendi dosyalarını yükler (içerik güvenliği politikası dış bağlantıyı engeller).
 - **Dil:** Arayüz Türkçe ve İngilizce. Adresteki `?lang=tr` / `?lang=en` önceliklidir; yoksa son seçim, o da yoksa tarayıcı dili kullanılır. Metinler `Web/js/i18n.js` sözlüğündedir; yeni metin eklerken iki dile de ekle (test anahtarların eşit olduğunu denetler). Windows sürümü şimdilik yalnız Türkçedir.
 - **Demo etüdü aç** bağlantısı örnek etüdü ve videoyu sitenin kendi `Web/demo/` kopyasından tek tıkla açar; İngilizce arayüzde İngilizce demo (`synthetic-warehouse-study`) açılır. Demo videoları `Tools/DemoVideo/demo_video.py` ile üretilir. Kökteki `demo/` değişirse bu kopyayı da güncelle; test ikisinin aynı olduğunu denetler.
-- Etütler o tarayıcıya ve o bilgisayara özeldir. Tarayıcı verilerini temizlemek etütleri siler; **dışa aktararak** yedekle veya başka bilgisayara taşı.
+- Etütler o tarayıcıya ve o bilgisayara özeldir. Tarayıcı verilerini temizlemek etütleri siler; **Tümünü yedekle (.zip)** ile düzenli yedek al, tek etüdü **dışa aktararak** başka bilgisayara taşı. Yedek, **Etüdü içe al…** ile geri yüklenir; aynı etüt ikinci kez eklenmez.
 - Video, açık oturumda bellekte tutulur. Chrome ve Edge dosya iznini hatırlayabilir; diğer tarayıcılarda etüdü yeniden açınca **Videoyu yeniden seç** gerekir.
 - Önerilen video biçimi H.264 MP4. Arayüz, kısayollar, ölçüm ve analiz masaüstüyle aynıdır.
 - Testler: `cd Web` → `npm test` (Node 22). Siteye konacak dosyalar: `index.html`, `app.css`, `js/`. GitHub Actions bunları **VideoZamanEtudu_Web** paketi olarak da üretir.

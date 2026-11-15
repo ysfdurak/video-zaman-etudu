@@ -114,6 +114,10 @@ async def main():
         check("iki grafik", await page.locator("#charts figure").count() == 2)
         await page.fill("#takt", "20"); await page.press("#takt", "Tab"); await page.wait_for_timeout(300)
         check("takt kartı", "Takt" in await page.inner_text("#summary") and "Gereken operatör" in await page.inner_text("#summary"))
+        await page.click("#allowance-parts summary"); await page.fill("#al-Personal", "5"); await page.press("#al-Personal", "Tab")
+        await page.fill("#al-Fatigue", "4"); await page.press("#al-Fatigue", "Tab"); await page.wait_for_timeout(300)
+        check("tolerans kalemleri toplanır, toplam alanı kilitlenir", await page.input_value("#allowance") == "9" and await page.get_attribute("#allowance", "readonly") is not None and "toplam %9" in await page.inner_text("#al-sum"), await page.input_value("#allowance"))
+        check("özette tolerans dökümü", "Kişisel ihtiyaç 5 + Yorgunluk 4" in await page.inner_text("#summary"), await page.inner_text("#summary"))
         await page.locator("#results tbody tr", has_text="Toplama").click(); await page.fill("#step-pace", "90"); await page.click("#apply-step"); await page.wait_for_timeout(200)
         check("adım temposu tabloda işaretli", "90 *" in await page.locator("#results tbody tr", has_text="Toplama").inner_text())
         check("Yazdır düğmesi", await page.is_visible("#print"))
@@ -123,7 +127,11 @@ async def main():
         check("Excel indirildi", dl.suggested_filename == "TP-01_analiz.xlsx")
 
         # 9 Liste ve önce / sonra
-        await page.click("#tab-0"); await page.click("#demo"); await page.wait_for_timeout(1500); await page.click("#tab-0")
+        await page.click("#tab-0"); await page.click("#demo"); await page.wait_for_timeout(2000)
+        check("etüt kaldığı yerden açılır", "Kaldığınız yerdesiniz: 00:00:35.000" in await status() and await now() == "Hazırlık · çevrim 4", await status())
+        await page.select_option("#filter-step", "Toplama"); await page.wait_for_timeout(200)
+        check("kayıt süzgeci", await rows() == 3 and "14 kaydın 3 tanesi" in await page.inner_text("#obs-count"), await page.inner_text("#obs-count"))
+        await page.click("#tab-0")
         listing = await page.inner_text("#studies tbody")
         check("listede istasyon, ölçüm ve durum", "Hat 2 · A. Kaya" in listing and "adım yetersiz" in listing)
         await page.click("#compare"); await page.wait_for_timeout(300)
@@ -136,6 +144,7 @@ async def main():
         pkg = await d.value; ppath = os.path.join(OUT, pkg.suggested_filename); await pkg.save_as(ppath)
         data = json.load(open(ppath, encoding="utf-8"))
         check("pakette takt, adım temposu ve not", data.get("Takt") == 20 and data.get("StepPace") == {"Toplama": 90} and any(o.get("Note") == "raf boştu" for o in data["Observations"]))
+        check("pakette tolerans kalemleri", data.get("AllowanceParts") == {"Personal": 5, "Fatigue": 4} and data["Settings"]["Allowance"] == 9)
         check("pakette Steps ve Info", [s["Name"] for s in data["Steps"]][:3] == ["Hazırlık", "Toplama", "Paketleme"] and data["Info"]["Operator"] == "A. Kaya" and data["Version"] == 1)
 
         # 11 Boş etüt: analizde boş durum
@@ -147,6 +156,21 @@ async def main():
         await page.click("#tab-2"); await page.wait_for_timeout(300)
         check("ölçümsüz analizde boş durum", await page.is_visible("#analysis-empty") and not await page.is_visible("#analysis-body"))
         await page.click("#go-measure"); check("boş durumdan ölçüme geçiş", await page.get_attribute("#tab-1", "aria-selected") == "true")
+        # 12 Toplu yedek ve geri yükleme
+        await page.click("#tab-0"); await page.wait_for_timeout(200)
+        total = await page.locator("#studies tbody tr").count()
+        async with page.expect_download() as d: await page.click("#backup")
+        bk = await d.value; bpath = os.path.join(OUT, bk.suggested_filename); await bk.save_as(bpath)
+        check("yedek .zip indirildi", bk.suggested_filename.startswith("zaman-etudu-yedek-") and bk.suggested_filename.endswith(".zip") and f"{total} etüt yedeklendi" in await page.inner_text("#studies-status"), bk.suggested_filename)
+        async with page.expect_file_chooser() as fc: await page.click("#import")
+        await (await fc.value).set_files(bpath); await page.wait_for_timeout(500)
+        text = await close_dialog()
+        check("aynı yedek ikinci kez eklenmez", f"0 yeni etüt var; {total} etüt zaten kayıtlı" in text and await page.locator("#studies tbody tr").count() == total, text)
+        await page.locator("#studies tbody tr", has_text="TP-01").click(); await page.click("#delete"); await page.wait_for_timeout(200); await close_dialog(); await page.wait_for_timeout(300)
+        async with page.expect_file_chooser() as fc: await page.click("#import")
+        await (await fc.value).set_files(bpath); await page.wait_for_timeout(500)
+        text = await close_dialog(); await page.wait_for_timeout(500)
+        check("silinen etüt yedekten geri gelir", "1 yeni etüt" in text and await page.locator("#studies tbody tr").count() == total and "TP-01" in await page.inner_text("#studies tbody"), text)
         check("konsol hatası yok", not errors, "; ".join(errors[:3]))
         await browser.close()
     failed = [r for r in results if not r[0]]

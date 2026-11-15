@@ -2,10 +2,12 @@
 import {
   newStudy, newObservation, seconds, videoLabel, analyzeSteps, analyzeCycles, studentInv, validateSettings,
   exportPackage, importPackage, suggestedFileName, parseNumber, parsePositiveInt, EXTENSION,
-  INFO_FIELDS, cleanInfo, cleanSteps, deriveSteps, inProcessOrder, cycleSpread, totalStandard, compareStudies, cleanTakt
+  INFO_FIELDS, cleanInfo, cleanSteps, deriveSteps, inProcessOrder, cycleSpread, totalStandard, compareStudies, cleanTakt, stepOrder, VERSION, requiredObservations,
+  ALLOWANCE_PARTS, cleanAllowanceParts, allowanceSum
 } from "./core.js";
 import { stepChart, cycleChart, CLASS_COLORS } from "./charts.js";
 import { reportBytes } from "./report.js";
+import { makeBackup, readBackup, isZip } from "./backup.js";
 import { StudyStore } from "./store.js";
 import { t, result, getLang, setLang, locale, applyStatic } from "./i18n.js";
 
@@ -87,6 +89,7 @@ function showDialog(text, { confirm = false, pre = null, title = t("app.title") 
   });
 }
 const ask = (text, title) => showDialog(text, { confirm: true, title });
+const setStatusText = (id, text) => { $(id).textContent = text; $(id).hidden = !text; };
 
 /** MainWindow.Guard: hatayı kullanıcıya gösterir, uygulamayı durdurmaz. */
 async function guard(action) {
@@ -275,7 +278,9 @@ async function attachDemoVideo(study) {
 on("import", async () => {
   const file = await chooseFile($("package-file"));
   if (!file) return;
-  const study = importPackage(new Uint8Array(await file.arrayBuffer()));
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (isZip(bytes)) return restoreBackup(bytes);
+  const study = importPackage(bytes);
   if (!(await ask(t("msg.importConfirm", { name: study.Name, code: study.Code }), t("title.import")))) return;
   await store.save(study);
   requestPersistence();
@@ -287,6 +292,27 @@ on("export", () => {
   if (!s) throw new Error(t("msg.selectToExport"));
   download(new Blob([exportPackage(s)], { type: "application/octet-stream" }), suggestedFileName(s, EXTENSION));
 });
+
+/** Bütün etütler tek .zip: içinde her etüt ayrı .vzetud paketi. */
+on("backup", () => {
+  if (!state.studies.length) throw new Error(t("msg.backupNone"));
+  const { bytes, count, skipped } = makeBackup(state.studies);
+  const d = new Date(), pad2 = (n) => String(n).padStart(2, "0");
+  download(new Blob([bytes], { type: "application/zip" }), `${t("backup.file")}-${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}.zip`);
+  setStatusText("studies-status", t(skipped ? "msg.backupDoneSkipped" : "msg.backupDone", { count, skipped }));
+});
+
+async function restoreBackup(bytes) {
+  const { add, same, failed } = await readBackup(bytes, state.studies);
+  const parts = [t("msg.restoreFound", { add: add.length, same })];
+  if (failed.length) parts.push(t("msg.restoreFailed", { count: failed.length, names: failed.slice(0, 5).join(", ") }));
+  if (!add.length) { await showDialog(parts.join(" "), { title: t("title.restore") }); return; }
+  if (!(await ask(parts.join(" ") + " " + t("msg.restoreConfirm", { add: add.length }), t("title.restore")))) return;
+  for (const study of add) await store.save(study);
+  requestPersistence();
+  await reloadStudies();
+  setStatusText("studies-status", t("msg.restoreDone", { add: add.length }));
+}
 
 on("delete", async () => {
   const s = selectedStudy();
@@ -329,18 +355,33 @@ async function openStudy(study) {
   state.undo = [];
   // Adım listesi yoksa ölçümlerden çıkarılır; ilk değişiklikte kaydedilir.
   study.Steps = deriveSteps(study).map((x) => ({ ...x }));
-  state.stepIndex = 0;
   state.resume = null;
-  $("cycle").value = String(Math.max(1, ...study.Observations.map((o) => o.Cycle)));
+  // Kaldığı yerden devam: son kaydın ardındaki adım ve çevrim; video son kaydın bitişine gider (video hazır olunca).
+  const point = resumePoint(study);
+  state.stepIndex = point.step;
+  state.resumeAt = point.at;
+  $("cycle").value = String(point.cycle);
   $("excluded").checked = false;
   renderSteps();
   renderInfoFields("info-fields", study.Info);
   setTabsEnabled(true);
   selectTab(1);
+  $("filter-step").value = ""; $("filter-cycle").value = "";
   refreshObservations();
   loadSettings();
   await loadVideo();
   await reloadStudies();
+}
+
+/** Son kayıttan sonraki adım/çevrim ve videoda kaldığı konum. */
+function resumePoint(study) {
+  const list = study.Steps.map((x) => x.Name);
+  const rows = [...study.Observations].sort((a, b) => a.EndMs - b.EndMs || a.StartMs - b.StartMs);
+  const at = rows.length ? rows[rows.length - 1].EndMs : null;
+  const last = [...rows].reverse().find((o) => !o.Excluded && list.includes(o.Step));
+  if (!last) return { step: 0, cycle: Math.max(1, ...study.Observations.map((o) => o.Cycle)), at };
+  const i = list.indexOf(last.Step);
+  return i + 1 < list.length ? { step: i + 1, cycle: last.Cycle, at } : { step: 0, cycle: last.Cycle + 1, at };
 }
 
 function closeStudy() {
@@ -435,6 +476,13 @@ video.addEventListener("loadedmetadata", () => {
   timeline.disabled = !state.ready;
   if (state.ready) timeline.max = String(Math.max(1, Math.round(video.duration * 1000)));
   setStatus(state.ready ? (state.current?.Steps.length ? t("status.ready") : t("status.addSteps")) : t("status.noDuration"));
+  if (state.ready && state.resumeAt !== null && state.resumeAt !== undefined) {
+    const at = Math.min(state.resumeAt, Math.round(video.duration * 1000));
+    state.resumeAt = null;
+    setPosition(at);
+    const step = currentStep();
+    if (step) setStatus(t("status.resume", { at: fmtClock(at), step: step.Name, cycle: cycleValue() }));
+  }
   renderSegments();
 });
 video.addEventListener("error", () => {
@@ -825,8 +873,19 @@ on("delete-row", async () => {
 });
 on("row-close", () => { selectRow(null); refreshObservations(); });
 
+/** Kayıt tablosu süzgeci: adım ve çevrim (yalnız görünümü daraltır, hesaplara etkisi yok). */
+function fillFilter(id, values, label) {
+  const sel = $(id), keep = sel.value;
+  sel.replaceChildren(new Option(t("filter.all"), ""), ...values.map((v) => new Option(label(v), String(v))));
+  sel.value = values.map(String).includes(keep) ? keep : "";
+}
 function refreshObservations() {
-  const rows = state.current ? [...state.current.Observations].sort((a, b) => a.StartMs - b.StartMs || a.EndMs - b.EndMs) : [];
+  const all = state.current ? [...state.current.Observations].sort((a, b) => a.StartMs - b.StartMs || a.EndMs - b.EndMs) : [];
+  fillFilter("filter-step", state.current ? stepOrder(state.current).filter((n) => all.some((o) => o.Step === n)) : [], (v) => v);
+  fillFilter("filter-cycle", [...new Set(all.map((o) => o.Cycle))].sort((a, b) => a - b), (v) => String(v));
+  const fs = $("filter-step").value, fc = $("filter-cycle").value;
+  const rows = all.filter((o) => (!fs || o.Step === fs) && (!fc || String(o.Cycle) === fc));
+  $("obs-count").textContent = all.length ? t(rows.length === all.length ? "filter.countAll" : "filter.count", { n: rows.length, total: all.length }) : "";
   renderTable("observations", rows,
     (r) => [num(fmtTime(r.StartMs)), num(fmtTime(r.EndMs)), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle), txt(r.Note ?? "")],
     {
@@ -941,6 +1000,10 @@ function loadSettings() {
   $("target").value = fmtNum(s.TargetError);
   $("pace").value = fmtNum(s.Pace);
   $("allowance").value = fmtNum(s.Allowance);
+  const parts = state.current.AllowanceParts ?? {};
+  for (const k of ALLOWANCE_PARTS) $("al-" + k).value = parts[k] === undefined ? "" : fmtNum(parts[k]);
+  $("allowance-parts").open = Object.keys(parts).length > 0;
+  syncAllowanceField();
   $("group-ms").value = String(s.GroupMs);
   $("method").value = s.RepeatedLow ? "1" : "0";
   $("stable").checked = s.Stable;
@@ -956,12 +1019,25 @@ async function applySettings() {
     RepeatedLow: $("method").value === "1", GroupMs: parsePositiveInt($("group-ms").value, t("name.group")),
     Stable: $("stable").checked
   };
+  // Kalem girildiyse toplam tolerans kalemlerden gelir.
+  const parts = {};
+  for (const k of ALLOWANCE_PARTS) {
+    const text = $("al-" + k).value.trim();
+    if (text === "") continue;
+    const v = parseNumber(text, t("al." + k));
+    if (v < 0 || v >= 100) throw new Error(t("msg.partInvalid", { name: t("al." + k) }));
+    if (v > 0) parts[k] = v;
+  }
+  if (Object.keys(parts).length) settings.Allowance = allowanceSum(parts);
   validateSettings(settings);
   const taktText = $("takt").value.trim();
   const takt = taktText === "" ? null : cleanTakt(parseNumber(taktText, t("name.takt")));
   if (taktText !== "" && takt === null) throw new Error(t("msg.taktInvalid"));
   state.current.Settings = settings;
   state.current.Takt = takt;
+  state.current.AllowanceParts = cleanAllowanceParts(parts);
+  $("allowance").value = fmtNum(settings.Allowance);
+  syncAllowanceField();
   await save();
   refreshAnalysis();
 }
@@ -969,8 +1045,19 @@ async function applySettingsInline() {
   try { await applySettings(); }
   catch (error) { $("settings-error").textContent = errorText(error); $("settings-error").hidden = false; }
 }
-for (const id of ["confidence", "target", "pace", "allowance", "group-ms", "method", "stable", "takt"])
+for (const id of ["confidence", "target", "pace", "allowance", "group-ms", "method", "stable", "takt", ...ALLOWANCE_PARTS.map((k) => "al-" + k)])
   $(id).addEventListener("change", applySettingsInline);
+
+/** Kalemler doluysa toplam alanı salt okunur olur ve toplamı gösterir. */
+function syncAllowanceField() {
+  const used = ALLOWANCE_PARTS.some((k) => $("al-" + k).value.trim() !== "");
+  $("allowance").readOnly = used;
+  $("allowance").title = used ? t("al.sumHint") : "";
+  const sum = ALLOWANCE_PARTS.reduce((acc, k) => { const v = Number($("al-" + k).value.trim().replace(",", ".")); return acc + (Number.isFinite(v) ? v : 0); }, 0);
+  $("al-sum").textContent = used ? t("al.sum", { sum: fmtNum(Math.round(sum * 1e6) / 1e6) }) : t("al.none");
+}
+for (const k of ALLOWANCE_PARTS) $("al-" + k).addEventListener("input", syncAllowanceField);
+for (const id of ["filter-step", "filter-cycle"]) $(id).addEventListener("change", () => refreshObservations());
 
 function refreshAnalysis() {
   const study = state.current;
@@ -1010,17 +1097,6 @@ function fillStepSettings(r) {
 }
 
 /** Hedef hataya inmek için gereken yaklaşık gözlem sayısı: t değeri serbestlik derecesine göre yinelemeli güncellenir. */
-function requiredObservations(r, settings) {
-  const p = (1 + settings.Confidence / 100) / 2;
-  const k = (r.Deviation * 100) / (settings.TargetError * r.Mean);
-  let n = r.Count;
-  for (let i = 0; i < 50; i++) {
-    const next = Math.max(r.Count + 1, Math.ceil(Math.pow(studentInv(n - 1, p) * k, 2)));
-    if (next === n) break;
-    n = next;
-  }
-  return n;
-}
 
 /** Analizin özeti: çevrim başına standart süre, saatlik kapasite, yeterlilik ve sınıf dağılımı. */
 function renderSummary(study, rows) {
@@ -1037,7 +1113,10 @@ function renderSummary(study, rows) {
     box.append(el);
   };
   const { Total: total, Incomplete: missing } = totalStandard(rows);
-  card(t("summary.total"), total !== null ? `${fmt3(total)} ${getLang() === "tr" ? "sn" : "s"}` : "—", missing ? [t("summary.incomplete")] : []);
+  const parts = study.AllowanceParts ?? {};
+  const basis = t("summary.basis", { pace: pct(study.Settings.Pace).replace(/^[+]/, ""), al: pct(study.Settings.Allowance, 1).replace(/^[+]/, "") }) +
+    (Object.keys(parts).length ? " (" + ALLOWANCE_PARTS.filter((k) => parts[k] !== undefined).map((k) => `${t("al." + k).replace(/ ?%$/, "")} ${fmtNum(parts[k])}`).join(" + ") + ")" : "");
+  card(t("summary.total"), total !== null ? `${fmt3(total)} ${getLang() === "tr" ? "sn" : "s"}` : "—", [...(missing ? [t("summary.incomplete")] : []), basis]);
   card(t("summary.rate"), total > 0 ? t("summary.rateUnit", { n: (3600 / total).toLocaleString(locale(), { maximumFractionDigits: 1 }) }) : "—");
   if (study.Takt && total > 0) {
     const load = (total / study.Takt) * 100;
@@ -1080,7 +1159,8 @@ function renderCharts(study, rows, spread) {
   if (stepData.length) box.append(figure(t("chart.steps"), stepChart(stepData, { width, classLabel: (c) => c || t("summary.noClass") })));
   if (spread.Rows.length > 1)
     box.append(figure(t("chart.cycles"), cycleChart(spread.Rows.map((c) => ({ label: String(c.Cycle), value: c.Elapsed, outlier: c.Outlier, text: fmt3(c.Elapsed) + " " + unit })),
-      { width, mean: spread.Mean, meanLabel: t("chart.mean", { v: fmt3(spread.Mean) + " " + unit }), axis: t("th.c.cycle") })));
+      { width, mean: spread.Mean, meanLabel: t("chart.mean", { v: fmt3(spread.Mean) + " " + unit }), axis: t("th.c.cycle"),
+        format: (v) => v.toLocaleString(locale(), { maximumFractionDigits: v < 10 ? 1 : 0 }) })));
 }
 function classOf(study, step) {
   const counts = new Map();
@@ -1180,12 +1260,28 @@ on("go-measure", () => selectTab(1));
 on("print", async () => {
   if (!state.current) return;
   await applySettings();
-  const s = state.current;
-  $("print-foot").textContent = t("print.foot", { code: s.Code, name: s.Name, date: fmtDate(new Date().toISOString()) }) +
-    INFO_FIELDS.filter((k) => s.Info?.[k]).map((k) => ` · ${t("info." + k)}: ${s.Info[k]}`).join("");
-  $("info-box").open = true;
+  await saveInfo();
   window.print();
 });
+/** Yazdırma başlığı: etüt bilgileri ve analizin dayandığı ayarlar (Ctrl+P ile de dolar). */
+function fillPrintHead() {
+  const s = state.current;
+  if (!s) return;
+  const set = s.Settings, parts = s.AllowanceParts ?? {};
+  const head = $("print-head");
+  head.replaceChildren();
+  const line = (text, strong = false) => { const p = document.createElement(strong ? "h2" : "p"); p.textContent = text; head.append(p); };
+  line(`${s.Code} · ${s.Name}`, true);
+  const info = INFO_FIELDS.filter((k) => s.Info?.[k]).map((k) => `${t("info." + k)}: ${s.Info[k]}`);
+  if (info.length) line(info.join(" · "));
+  line(t("print.settings", {
+    conf: fmtNum(set.Confidence), target: fmtNum(set.TargetError), pace: fmtNum(set.Pace), al: fmtNum(set.Allowance),
+    method: t(set.RepeatedLow ? "method.repeated" : "method.mean")
+  }) + (Object.keys(parts).length ? " (" + ALLOWANCE_PARTS.filter((k) => parts[k] !== undefined).map((k) => `${t("al." + k).replace(/ ?%$/, "")} ${fmtNum(parts[k])}`).join(" + ") + ")" : "") +
+    (s.Takt ? " · " + t("print.takt", { takt: fmtNum(s.Takt) }) : "") + (s.StepPace.size ? " · " + t("print.stepPace") : ""));
+  $("print-foot").textContent = t("print.foot", { code: s.Code, name: s.Name, date: fmtDate(new Date().toISOString()) }) + ` · ${t("app.title")} ${VERSION}`;
+}
+window.addEventListener("beforeprint", fillPrintHead);
 on("excel", async () => {
   if (!state.current) return;
   await applySettings();

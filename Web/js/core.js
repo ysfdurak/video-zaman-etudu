@@ -5,7 +5,7 @@ import {
   parseStrict, JsonError, JsonObject, RawNumber, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
 } from "./strict-json.js";
 
-export const VERSION = "1.6.0";
+export const VERSION = "1.7.0";
 export const EXTENSION = ".vzetud";
 export const CLASSES = ["", "VA", "SVA", "NVA"];
 const FORMAT = "video-zaman-etudu";
@@ -36,7 +36,7 @@ export function newStudy(fields = {}) {
   return {
     Id: crypto.randomUUID(), Name: "", Code: "", Video: "", ExpectedVideoName: "",
     Updated: new Date().toISOString(), Observations: [], Settings: newSettings(), Frequency: new Map(),
-    Steps: [], Info: {}, StepPace: new Map(), Takt: null, ...fields
+    Steps: [], Info: {}, StepPace: new Map(), Takt: null, AllowanceParts: {}, ...fields
   };
 }
 
@@ -85,6 +85,25 @@ export function cleanStepPace(value) {
 }
 /** Takt süresi (sn): pozitif sayı ya da null. */
 export const cleanTakt = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) < 1e7 && v !== null && v !== "" ? Number(v) : null);
+/** Tolerans kalemleri (v1.7, isteğe bağlı): kişisel ihtiyaç, yorgunluk, kaçınılmaz gecikme, diğer.
+ * Toplamları ayarlardaki Allowance'a eşittir; Windows yalnız toplamı görür ve aynı sonucu hesaplar. */
+export const ALLOWANCE_PARTS = ["Personal", "Fatigue", "Delay", "Other"];
+export function cleanAllowanceParts(value) {
+  const out = {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) return out;
+  for (const k of ALLOWANCE_PARTS) {
+    const n = Number(value[k]);
+    if (value[k] !== null && value[k] !== "" && Number.isFinite(n) && n > 0 && n < 100) out[k] = n;
+  }
+  return allowanceSum(out) < 100 ? out : {};
+}
+/** Kalemlerin toplamı; ondalık kaymasını önlemek için 1e-9'a yuvarlanır. */
+export const allowanceSum = (parts) => Math.round(Object.values(parts ?? {}).reduce((s, v) => s + v, 0) * 1e9) / 1e9;
+/** Kalemler ancak toplamları ayardaki toleransa eşitse geçerlidir (Windows'ta tolerans değiştirildiyse kalemler düşer). */
+export const matchingParts = (parts, allowance) => {
+  const clean = cleanAllowanceParts(parts);
+  return Object.keys(clean).length && Math.abs(allowanceSum(clean) - allowance) < 1e-6 ? clean : {};
+};
 const cleanNote = (v) => (typeof v === "string" ? v.trim().slice(0, MAX_INFO) : "");
 
 /** Adım listesi: tanımlıysa o; değilse ölçümlerden ilk görülme sırasıyla, sınıfı en sık kullanılan sınıf. */
@@ -377,7 +396,8 @@ export function exportPackage(study) {
     ...(study.Steps?.length ? { Steps: cleanSteps(study.Steps) } : {}),
     ...(Object.keys(cleanInfo(study.Info)).length ? { Info: cleanInfo(study.Info) } : {}),
     ...(cleanStepPace(study.StepPace).size ? { StepPace: Object.fromEntries(cleanStepPace(study.StepPace)) } : {}),
-    ...(cleanTakt(study.Takt) !== null ? { Takt: cleanTakt(study.Takt) } : {})
+    ...(cleanTakt(study.Takt) !== null ? { Takt: cleanTakt(study.Takt) } : {}),
+    ...(Object.keys(matchingParts(study.AllowanceParts, data.Settings.Allowance)).length ? { AllowanceParts: matchingParts(study.AllowanceParts, data.Settings.Allowance) } : {})
   });
   const bytes = new TextEncoder().encode(json);
   if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.", "pkg.size");
@@ -431,7 +451,7 @@ export function importPackage(bytes) {
       Observations: observations === null ? null : observations.map(readObservation),
       Frequency: readFrequency(root.get("Frequency")),
       Steps: readOptional(root, "Steps"), Info: readOptional(root, "Info"),
-      StepPace: readOptional(root, "StepPace"), Takt: readOptional(root, "Takt"),
+      StepPace: readOptional(root, "StepPace"), Takt: readOptional(root, "Takt"), AllowanceParts: readOptional(root, "AllowanceParts"),
       Notes: observations === null ? null : observations.map((node) => { try { return node instanceof JsonObject && node.has("Note") ? cleanNote(plain(node.get("Note"))) : ""; } catch { return ""; } })
     };
   } catch (error) {
@@ -443,7 +463,8 @@ export function importPackage(bytes) {
   return newStudy({
     Name: data.Name, Code: data.Code, ExpectedVideoName: fileName(data.VideoName),
     Settings: data.Settings, Observations: data.Observations.map((o, i) => (data.Notes?.[i] ? { ...o, Note: data.Notes[i] } : o)), Frequency: data.Frequency,
-    Steps: cleanSteps(data.Steps), Info: cleanInfo(data.Info), StepPace: cleanStepPace(data.StepPace), Takt: cleanTakt(data.Takt)
+    Steps: cleanSteps(data.Steps), Info: cleanInfo(data.Info), StepPace: cleanStepPace(data.StepPace), Takt: cleanTakt(data.Takt),
+    AllowanceParts: matchingParts(data.AllowanceParts, data.Settings.Allowance)
   });
 }
 
@@ -495,6 +516,20 @@ export function fromRecord(record) {
     Observations: record.Observations.map((o) => newObservation(o)), Settings: { ...newSettings(), ...record.Settings },
     Frequency: new Map(record.Frequency),
     Steps: cleanSteps(record.Steps), Info: cleanInfo(record.Info),
-    StepPace: cleanStepPace(new Map(Array.isArray(record.StepPace) ? record.StepPace : [])), Takt: cleanTakt(record.Takt)
+    StepPace: cleanStepPace(new Map(Array.isArray(record.StepPace) ? record.StepPace : [])), Takt: cleanTakt(record.Takt),
+    AllowanceParts: matchingParts(record.AllowanceParts, { ...newSettings(), ...record.Settings }.Allowance)
   };
+}
+
+/** Hedef hataya ulaşmak için gereken yaklaşık gözlem sayısı (t dağılımıyla yinelemeli). Yetersiz satırlar için. */
+export function requiredObservations(r, settings) {
+  const p = (1 + settings.Confidence / 100) / 2;
+  const k = (r.Deviation * 100) / (settings.TargetError * r.Mean);
+  let n = r.Count;
+  for (let i = 0; i < 50; i++) {
+    const next = Math.max(r.Count + 1, Math.ceil(Math.pow(studentInv(n - 1, p) * k, 2)));
+    if (next === n) break;
+    n = next;
+  }
+  return n;
 }

@@ -32,7 +32,7 @@
     <section id="panel-0" role="tabpanel" aria-labelledby="tab-0">
       <p data-i18n="home.lead">Yeni etüt oluştur veya kayıtlı bir etüdü aç.</p>
       <ol class="how" aria-label="Nasıl çalışır" data-i18n-attr="aria-label:how.label"><li data-i18n-html="how.1"></li><li data-i18n-html="how.2"></li><li data-i18n-html="how.3"></li></ol>
-      <p class="note" data-i18n-html="home.note">Etütler yalnızca bu tarayıcıda saklanır. Tarayıcı verilerini temizlemek etütleri de siler; önemli etütleri <b>dışa aktararak</b> yedekleyin.</p>
+      <p class="note" data-i18n-html="home.note">Etütler yalnızca bu tarayıcıda saklanır. Tarayıcı verilerini temizlemek etütleri de siler; düzenli olarak <b>Tümünü yedekle</b> ile .zip yedeği alın.</p>
       <p class="hint"><span data-i18n="demo.before">İlk kez mi deniyorsunuz?</span> <button id="demo" class="link" data-i18n="demo.button">Demo etüdü aç</button> <span data-i18n="demo.after">— sentetik depo videosu ve hazır ölçümlerle analiz ekranını hemen görün.</span></p>
       <div class="row">
         <label class="field"><span data-i18n="field.name">Etüt adı</span><input id="new-name" type="text" size="28" autocomplete="off"></label>
@@ -52,11 +52,13 @@
       <div class="row">
         <button id="create" class="primary" data-i18n="btn.create">Yeni çalışma başlat</button>
         <button id="open" data-i18n="btn.open">Seçili çalışmayı aç</button>
-        <button id="import" data-i18n="btn.import">Etüdü içe al…</button>
+        <button id="import" class="gap-left" data-i18n="btn.import">Etüdü içe al…</button>
         <button id="export" data-i18n="btn.export">Seçili etüdü dışa aktar…</button>
-        <button id="compare" data-i18n="btn.compare">Önce / sonra karşılaştır…</button>
-        <button id="delete" class="danger" data-i18n="btn.delete">Seçili etüdü sil…</button>
+        <button id="backup" data-i18n="btn.backup">Tümünü yedekle (.zip)</button>
+        <button id="compare" class="gap-left" data-i18n="btn.compare">Önce / sonra karşılaştır…</button>
+        <button id="delete" class="danger gap-left" data-i18n="btn.delete">Seçili etüdü sil…</button>
       </div>
+      <p id="studies-status" class="status" role="status" aria-live="polite" hidden></p>
       <p class="hint" data-i18n="studies.hint">Satıra tıklayarak seçin, çift tıklayarak açın. Dışa aktarma, karşılaştırma ve silme seçili etüt üzerinde çalışır.</p>
       <div tabindex="0" class="table-wrap tall">
         <table id="studies" class="grid" aria-label="Kayıtlı etütler" data-i18n-attr="aria-label:studies.label">
@@ -123,6 +125,11 @@
             <button id="undo" data-i18n="btn.undo" data-i18n-attr="title:title.undo">Son kaydı geri al</button>
           </div>
           <details class="help"><summary data-i18n="help.measure.title">Sınıf, çevrim ve kapsam dışı ne demek?</summary><dl data-i18n-html="help.measure.body"></dl></details>
+          <div class="row obs-filter">
+            <label class="field"><span data-i18n="filter.step">Göster: adım</span><select id="filter-step"></select></label>
+            <label class="field"><span data-i18n="filter.cycle">çevrim</span><select id="filter-cycle"></select></label>
+            <span id="obs-count" class="hint"></span>
+          </div>
           <div tabindex="0" class="table-wrap">
             <table id="observations" class="grid" aria-label="Ölçümler" data-i18n-attr="aria-label:observations.label">
               <thead><tr><th data-i18n="th.start">Başlangıç</th><th data-i18n="th.end">Bitiş</th><th data-i18n="th.duration">Süre (sn)</th><th data-i18n="th.step">İş adımı</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.excluded">Kapsam dışı</th><th data-i18n="th.cycle">Çevrim</th><th data-i18n="th.note">Not</th></tr></thead>
@@ -164,7 +171,8 @@
         <summary data-i18n="info.title">Etüt bilgileri</summary>
         <div class="row info-row" id="info-fields"></div>
       </details>
-      <h2 class="section-title" data-i18n="h.settings">Analiz ayarları</h2>
+      <div class="print-only print-head" id="print-head"></div>
+      <h2 class="section-title no-print" data-i18n="h.settings">Analiz ayarları</h2>
       <div class="row">
         <label class="field"><span data-i18n="field.confidence">Güven %</span><input id="confidence" type="text" size="5" inputmode="decimal"></label>
         <label class="field"><span data-i18n="field.target">Hedef hata %</span><input id="target" type="text" size="5" inputmode="decimal"></label>
@@ -175,6 +183,16 @@
         <label class="field"><span data-i18n="field.takt">Takt süresi (sn)</span><input id="takt" type="text" size="6" inputmode="decimal" data-i18n-attr="placeholder:placeholder.takt"></label>
         <label class="check"><input id="stable" type="checkbox"> <span data-i18n="check.stable">Süreç kararlı</span></label>
       </div>
+      <details class="more no-print" id="allowance-parts">
+        <summary><span data-i18n="al.title">Toleransı kalemlere ayır</span> · <span id="al-sum"></span></summary>
+        <p class="hint" data-i18n="al.hint">Kalem girerseniz Tolerans % alanı bunların toplamı olur. Boş bırakılan kalem 0 sayılır.</p>
+        <div class="row">
+          <label class="field"><span data-i18n="al.Personal">Kişisel ihtiyaç %</span><input id="al-Personal" type="text" size="5" inputmode="decimal"></label>
+          <label class="field"><span data-i18n="al.Fatigue">Yorgunluk %</span><input id="al-Fatigue" type="text" size="5" inputmode="decimal"></label>
+          <label class="field"><span data-i18n="al.Delay">Kaçınılmaz gecikme %</span><input id="al-Delay" type="text" size="5" inputmode="decimal"></label>
+          <label class="field"><span data-i18n="al.Other">Diğer %</span><input id="al-Other" type="text" size="5" inputmode="decimal"></label>
+        </div>
+      </details>
       <p id="settings-error" class="error" role="alert" hidden></p>
       <div class="row">
         <button id="excel" class="primary" data-i18n="btn.excel">Excel’e aktar…</button>
@@ -227,7 +245,7 @@
   </main>
 
   <input id="video-file" type="file" accept="video/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.wmv,.mpg,.mpeg" hidden>
-  <input id="package-file" type="file" accept=".vzetud,application/json" hidden>
+  <input id="package-file" type="file" accept=".vzetud,.zip,application/json,application/zip" hidden>
 
   <dialog id="dialog" aria-labelledby="dialog-title">
     <form method="dialog">
