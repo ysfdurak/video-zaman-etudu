@@ -236,8 +236,8 @@ public partial class MainWindow
         if (current == null || PickVideo() is not string path) return;
         string expected = current.VideoLabel;
         string note = string.IsNullOrEmpty(expected) ? "" : L.T("relink.note", ("name", expected));
-        string differs = !string.IsNullOrEmpty(expected) && !string.Equals(Path.GetFileName(path), expected, StringComparison.OrdinalIgnoreCase)
-            ? L.T("relink.differs", ("name", Path.GetFileName(path))) : "";
+        string differs = !string.IsNullOrEmpty(expected) && !string.Equals(System.IO.Path.GetFileName(path), expected, StringComparison.OrdinalIgnoreCase)
+            ? L.T("relink.differs", ("name", System.IO.Path.GetFileName(path))) : "";
         if (current.Observations.Count > 0 && !Ask(L.T("relink.confirm", ("note", note), ("differs", differs)), L.T("title.relink"))) return;
         current.Video = path;
         Save();
