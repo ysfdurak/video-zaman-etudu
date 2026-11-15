@@ -104,3 +104,27 @@ dialog pre { max-height: 55vh; overflow: auto; background: #f6f8f9; padding: 10p
   .player { order: -1; }
   main, .top, .tabs { padding-left: 10px; padding-right: 10px; }
 }
+
+.how { margin: 4px 0 12px; padding-left: 22px; color: var(--ink-soft); }
+.how li { margin: 2px 0; }
+.how b { color: var(--ink); }
+.help { margin: 4px 0 10px; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 10px; background: #f8fafb; }
+.help summary { cursor: pointer; font-weight: 600; color: var(--accent-dark); }
+.help dl { margin: 8px 0 2px; display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; }
+.help dt { font-weight: 600; }
+.help dd { margin: 0; color: var(--ink-soft); }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; margin: 0 0 10px; }
+.summary:empty { display: none; }
+.sum-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; background: #fff; display: flex; flex-direction: column; gap: 2px; }
+.sum-label { font-size: 12.5px; color: var(--ink-soft); }
+.sum-card strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.sum-card small { color: var(--ink-soft); font-size: 12px; }
+.tabs-nav { border-bottom: 1px solid var(--line); }
+.tabs-nav .tabs { border-bottom: none; }
+.tabs button:disabled { color: #8a9aa4; }
+@media (max-width: 900px) {
+  .tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .tabs button { white-space: nowrap; padding: 9px 12px; }
+  .help dl { grid-template-columns: 1fr; }
+  .help dd { margin-bottom: 6px; }
+}
