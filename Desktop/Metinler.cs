@@ -101,7 +101,7 @@ internal static class L
     public static string Clock(long ms)
     {
         var t = TimeSpan.FromMilliseconds(Math.Max(0, ms));
-        return t.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture) + (Lang == "tr" ? "," : ".") + t.Milliseconds.ToString("000");
+        return t.ToString(@"hh\:mm\:ss\.fff", CultureInfo.InvariantCulture);
     }
 
     public static string Date(DateTime value) => Lang == "tr" ? value.ToString("dd.MM.yyyy HH:mm", Culture) : value.ToString("yyyy-MM-dd HH:mm", Culture);

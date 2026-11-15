@@ -35,6 +35,12 @@ jobs:
           $out = Join-Path $env:RUNNER_TEMP 'oz-deneme'
           $p = Start-Process -FilePath $exe.FullName -ArgumentList '--self-test', (Resolve-Path demo), $out -PassThru -Wait -NoNewWindow
           if (Test-Path (Join-Path $out 'oz-deneme.txt')) { Get-Content (Join-Path $out 'oz-deneme.txt') -Encoding utf8 }
+          # Ekran görüntüleri günlüğe de yazılır (yapıt indirilemeyen ortamlarda incelemek için; base64, 76 karakterlik satırlar).
+          Get-ChildItem $out -Filter *.png | ForEach-Object {
+            "=== PNG $($_.Name) ==="
+            [Convert]::ToBase64String([IO.File]::ReadAllBytes($_.FullName), 'InsertLineBreaks')
+            "=== SON ==="
+          }
           if ($p.ExitCode -ne 0) { throw "Öz-deneme başarısız ($($p.ExitCode))." }
       - name: Öz-deneme çıktısını yükle
         if: always()
