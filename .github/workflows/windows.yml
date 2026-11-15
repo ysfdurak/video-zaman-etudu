@@ -12,6 +12,8 @@ jobs:
   build:
     name: Windows masaüstü
     runs-on: windows-latest
+    permissions:
+      contents: write   # yalnız v* etiketinde sürüm (Release) oluşturmak için
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -47,6 +49,23 @@ jobs:
           name: VideoZamanEtudu_Windows_x64
           path: ${{ runner.temp }}/VideoZamanEtudu_Windows_x64.zip
           if-no-files-found: error
+      - name: GitHub sürümünü yayınla (yalnız v* etiketi)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Sürüm notu: RELEASE_NOTES.md'deki ilk "# v" bölümü
+          $lines = Get-Content RELEASE_NOTES.md -Encoding utf8
+          $next = ($lines | Select-String -Pattern '^# v' | Select-Object -Skip 1 -First 1).LineNumber
+          $last = if ($next) { $next - 2 } else { $lines.Count - 1 }
+          $notesFile = Join-Path $env:RUNNER_TEMP 'notes.md'
+          $lines[1..$last] | Set-Content -Encoding utf8 $notesFile
+          $title = $lines[0].TrimStart('#', ' ')
+          $zip = Join-Path $env:RUNNER_TEMP 'VideoZamanEtudu_Windows_x64.zip'
+          gh release create $env:GITHUB_REF_NAME $zip --title $title --notes-file $notesFile --verify-tag
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   web:
     name: Tarayıcı sürümü
@@ -65,7 +84,7 @@ jobs:
           set -e
           out="$RUNNER_TEMP/site"
           mkdir -p "$out"
-          cp -r Web/index.html Web/app.css Web/js "$out/"
+          cp -r Web/index.html Web/app.css Web/_headers Web/js "$out/"
           test -f "$out/index.html" && test -f "$out/js/app.js"
       - name: Siteye konulacak web paketini yükle
         if: github.event_name != 'pull_request'

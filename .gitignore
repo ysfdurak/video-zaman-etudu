@@ -25,3 +25,6 @@ Yayin/
 # Tarayıcı uçtan uca test çıktıları
 Web/tests/e2e-cikti/
 node_modules/
+
+# Cloudflare yerel geliştirme çıktısı
+.wrangler/

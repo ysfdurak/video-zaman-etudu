@@ -1,0 +1,15 @@
+// Cloudflare Workers: tarayıcı sürümünü (Web/) statik site olarak yayınlar.
+// Sunucu kodu yoktur; yalnız statik dosyalar sunulur. Depo Cloudflare'e bağlandığında
+// main dalına her gönderimde otomatik yayın yapılır.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "video-zaman-etudu",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./Web",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "zaman-etudu.ysfdurak.com", "custom_domain": true }
+  ]
+}

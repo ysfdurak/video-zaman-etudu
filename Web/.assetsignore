@@ -1,0 +1,4 @@
+# Cloudflare'e yüklenmeyecek dosyalar (yalnız index.html, app.css, js/ ve _headers yayınlanır)
+.assetsignore
+package.json
+tests

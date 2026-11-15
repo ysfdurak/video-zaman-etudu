@@ -1,5 +1,10 @@
 # v1.2.0 · Video Zaman Etüdü — tarayıcı sürümü
 
+**Kullanım**
+- **Windows:** aşağıdaki `VideoZamanEtudu_Windows_x64.zip` dosyasını indir, bir klasöre çıkar, `Desktop.exe`'yi aç. .NET kurulumu gerekmez; örnek etüt `demo` klasöründe.
+- **Tarayıcı:** https://zaman-etudu.ysfdurak.com — kurulum yok, video bilgisayardan çıkmaz.
+- Paket imzasız olduğu için Windows SmartScreen uyarı verebilir: **Ek bilgi → Yine de çalıştır**.
+
 **Yeni: tarayıcı sürümü (`Web/`)**
 - Masaüstüyle aynı üç ekran, ölçüm akışı, kısayollar, analiz, Excel ve `.vzetud` aktarımı. Sunucu gerektirmez; video ve ölçümler bilgisayardan çıkmaz.
 - Etütler tarayıcının yerel deposunda (IndexedDB) saklanır; okunamayan kayıt atlanır ve uyarılır.

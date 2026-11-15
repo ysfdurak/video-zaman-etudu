@@ -65,6 +65,12 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 - Hesap veya paket kuralı değişikliği → **iki tarafı da** değiştir (`Core/*.cs` ve `Web/js/core.js`), `Tools/EsdegerUretici` ile örnek dosyasını yeniden üret, `Checks` ve `cd Web && npm test` çalıştır.
 - Arayüz değişikliği → iki arayüzde de yap; Windows'ta ve tarayıcıda [kontrol listesi](WINDOWS_KONTROL_LISTESI.md) ile elle doğrula.
 
+## 6b. Yayın nasıl işliyor?
+- Kod: github.com/ysfdurak/video-zaman-etudu (herkese açık; demo verisi sentetik).
+- Tarayıcı sürümü: Cloudflare Workers `video-zaman-etudu` projesi depoya bağlı; `main`'e gönderim → otomatik yayın → zaman-etudu.ysfdurak.com. Sunucu kodu yok, sadece statik dosyalar (`wrangler.jsonc`).
+- Windows sürümü: `vX.Y.Z` etiketi → Actions derler, kontrol eder, ZIP'i üretir ve GitHub Release oluşturur. Sitedeki indirme bağlantısı her zaman son sürüme gider.
+- Yeni sürüm adımları: `RELEASE_NOTES.md` başına yeni bölüm → `Desktop.csproj` ve `Web/js/core.js` sürüm numarası → gönder → Actions yeşil → etiket.
+
 ## 7. Bilinen sınırlar
 - Ölçüm hassasiyeti Windows'un video oynatıcısına (MediaElement) bağlıdır; kare hızını program bilmez, Ctrl+ok 0,04 sn sabit adımdır.
 - Codec: H.264 MP4 önerilir. Windows “N” sürümlerinde Media Feature Pack gerekir.

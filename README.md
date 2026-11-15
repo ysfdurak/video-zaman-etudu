@@ -46,7 +46,17 @@ python -m http.server 8080   # sonra http://localhost:8080
 - Video, açık oturumda bellekte tutulur. Chrome ve Edge dosya iznini hatırlayabilir; diğer tarayıcılarda etüdü yeniden açınca **Videoyu yeniden seç** gerekir.
 - Önerilen video biçimi H.264 MP4. Arayüz, kısayollar, ölçüm ve analiz masaüstüyle aynıdır.
 - Testler: `cd Web` → `npm test` (Node 22). Siteye konacak dosyalar: `index.html`, `app.css`, `js/`. GitHub Actions bunları **VideoZamanEtudu_Web** paketi olarak da üretir.
-- Windows sürümünün indirme bağlantısını göstermek için `index.html` içindeki `data-desktop-url=""` değerine adres yaz.
+- Sayfadaki “Windows sürümünü indir” bağlantısı `index.html` içindeki `data-desktop-url` değerinden gelir (GitHub'daki son sürüm).
+
+## Yayın
+
+- **Tarayıcı:** https://zaman-etudu.ysfdurak.com — Cloudflare Workers, depo köküne bağlı. `wrangler.jsonc` yalnız `Web/` klasörünü statik site olarak yayınlar; `Web/.assetsignore` testleri ve `package.json`'ı dışarıda bırakır, `Web/_headers` güvenlik başlıklarını ekler. `main`'e her gönderim siteyi günceller. Yerelde Cloudflare'in aynısıyla denemek için: `npx wrangler dev`.
+- **Windows:** `v1.2.0` gibi bir etiket gönderildiğinde Actions Windows ZIP'ini üretir ve `RELEASE_NOTES.md`'deki ilk bölümle GitHub sürümünü (Release) oluşturur:
+
+```powershell
+git tag v1.2.0
+git push origin v1.2.0
+```
 
 ## İlk etüt
 
