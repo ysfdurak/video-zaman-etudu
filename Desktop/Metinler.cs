@@ -47,6 +47,9 @@ internal static class L
         return CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "tr" ? "tr" : "en";
     }
 
+    /// <summary>Dili yalnız bu oturum için değiştirir (öz-deneme); tercih dosyasına yazmaz.</summary>
+    internal static void Use(string lang) { if (lang is "tr" or "en") Lang = lang; }
+
     public static void SetLang(string lang)
     {
         if (lang is not ("tr" or "en")) return;

@@ -28,6 +28,21 @@ jobs:
         run: dotnet build Desktop/Desktop.csproj -c Release
       - name: Hesaplama, etüt aktarımı ve eşdeğerlik kontrollerini çalıştır
         run: dotnet run --project Checks/Checks.csproj -c Release -- demo/sentetik-depo-etudu.vzetud Shared/esdeger-ornekler.json
+      - name: Arayüz öz-denemesi (iki dil, demo etüdü, ekran görüntüleri)
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Recurse Desktop/bin/Release -Filter Desktop.exe | Select-Object -First 1
+          $out = Join-Path $env:RUNNER_TEMP 'oz-deneme'
+          $p = Start-Process -FilePath $exe.FullName -ArgumentList '--self-test', (Resolve-Path demo), $out -PassThru -Wait -NoNewWindow
+          if (Test-Path (Join-Path $out 'oz-deneme.txt')) { Get-Content (Join-Path $out 'oz-deneme.txt') -Encoding utf8 }
+          if ($p.ExitCode -ne 0) { throw "Öz-deneme başarısız ($($p.ExitCode))." }
+      - name: Öz-deneme çıktısını yükle
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VideoZamanEtudu_OzDeneme
+          path: ${{ runner.temp }}/oz-deneme
+          if-no-files-found: ignore
       - name: Windows x64 taşınabilir paketi oluştur
         if: github.event_name != 'pull_request'
         shell: pwsh

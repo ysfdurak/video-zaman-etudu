@@ -25,7 +25,7 @@ public sealed record CompareViewRow(string Step, string Before, string After, st
 /// </summary>
 public partial class MainWindow : Window
 {
-    private readonly StudyStore store = new();
+    private readonly StudyStore store = new(TestStoreDirectory);
     private readonly TabControl tabs = new() { Margin = new Thickness(0, 8, 0, 0) };
     private readonly TextBlock header = new() { FontSize = 23, FontWeight = FontWeights.SemiBold, Foreground = Ui.Ink };
     private readonly DispatcherTimer clock = new() { Interval = TimeSpan.FromMilliseconds(80) };
@@ -119,14 +119,23 @@ public partial class MainWindow : Window
         catch (Exception error) { Warn(L.ErrorText(error)); }
     }
 
-    private void Warn(string text, string? title = null) =>
+    private void Warn(string text, string? title = null)
+    {
+        if (TestLog != null) { TestLog("UYARI: " + text); return; }
         MessageBox.Show(this, text, title ?? L.T("app.title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
 
-    private void Inform(string text, string? title = null) =>
+    private void Inform(string text, string? title = null)
+    {
+        if (TestLog != null) { TestLog("BİLGİ: " + text); return; }
         MessageBox.Show(this, text, title ?? L.T("app.title"), MessageBoxButton.OK, MessageBoxImage.Information);
+    }
 
-    private bool Ask(string text, string title, bool warning = false) =>
-        MessageBox.Show(this, text, title, MessageBoxButton.YesNo, warning ? MessageBoxImage.Warning : MessageBoxImage.Question) == MessageBoxResult.Yes;
+    private bool Ask(string text, string title, bool warning = false)
+    {
+        if (TestLog != null) { TestLog("SORU (evet): " + text); return true; }
+        return MessageBox.Show(this, text, title, MessageBoxButton.YesNo, warning ? MessageBoxImage.Warning : MessageBoxImage.Question) == MessageBoxResult.Yes;
+    }
 
     private static Exception Error(string key, params (string, object?)[] values)
     {
@@ -275,7 +284,7 @@ public partial class MainWindow : Window
         if (SelectedStudy is Study study) OpenStudy(study);
     }
 
-    private static string DemoDirectory => Path.Combine(AppContext.BaseDirectory, "demo");
+    private static string DemoDirectory => TestDemoDirectory ?? Path.Combine(AppContext.BaseDirectory, "demo");
     private static (string Package, string Video, string Code) DemoFiles => L.Lang == "tr"
         ? ("sentetik-depo-etudu.vzetud", "sentetik-depo-etudu.mp4", "DEMO-01")
         : ("synthetic-warehouse-study.vzetud", "synthetic-warehouse-study.mp4", "DEMO-01");
