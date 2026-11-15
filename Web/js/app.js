@@ -9,6 +9,8 @@ import { StudyStore } from "./store.js";
 /** Siteye konulduğunda Windows sürümünün indirme adresi (boşsa bağlantı gizlenir). */
 const DESKTOP_URL = document.documentElement.dataset.desktopUrl ?? "";
 const NUDGE_MAX_MS = 1000;
+/** Sitede yayınlanan sentetik demo (Web/demo/, kökteki demo/ klasörünün kopyası). */
+const DEMO = { package: "demo/sentetik-depo-etudu.vzetud", video: "demo/sentetik-depo-etudu.mp4", code: "DEMO-01", videoName: "sentetik-depo-etudu.mp4" };
 
 const $ = (id) => document.getElementById(id);
 const store = new StudyStore();
@@ -199,6 +201,30 @@ on("create", async () => {
 
 on("open", async () => { const s = selectedStudy(); if (s) await openStudy(s); });
 
+/** Demo etüdü: zaten varsa onu açar, yoksa içe alır. Video sunucudan değil sitenin kendi dosyasından gelir. */
+on("demo", async () => {
+  let study = state.studies.find((s) => s.Code === DEMO.code && s.ExpectedVideoName === DEMO.videoName);
+  if (!study) {
+    const response = await fetch(DEMO.package);
+    if (!response.ok) throw new Error("Demo etüdü yüklenemedi. Sayfayı yenileyip tekrar deneyin.");
+    study = importPackage(new Uint8Array(await response.arrayBuffer()));
+    await store.save(study);
+    requestPersistence();
+  }
+  await openStudy(study);
+});
+
+/** Demo videosu bağlı değilse sitenin kendi kopyasından bağlar. */
+async function attachDemoVideo(study) {
+  if (videoLabel(study) !== DEMO.videoName) return false;
+  try {
+    const response = await fetch(DEMO.video);
+    if (!response.ok) return false;
+    attachVideo(study, new File([await response.blob()], DEMO.videoName, { type: "video/mp4" }));
+    return true;
+  } catch { return false; }
+}
+
 on("import", async () => {
   const file = await chooseFile($("package-file"));
   if (!file) return;
@@ -307,6 +333,7 @@ async function loadVideo() {
       try { attachVideo(study, await handle.getFile()); attached = state.videos.get(study.Id); } catch { /* dosya taşınmış olabilir */ }
     }
   }
+  if (!attached && (await attachDemoVideo(study))) attached = state.videos.get(study.Id);
   if (!attached) {
     const expected = videoLabel(study);
     setStatus(expected

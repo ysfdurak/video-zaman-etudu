@@ -27,6 +27,14 @@ async def main():
         await page.goto(URL)
         await page.wait_for_selector("#studies tbody tr")
         check("açılış: boş liste mesajı", "Henüz etüt yok" in await page.inner_text("#studies tbody"))
+        # 0 tek tıkla demo (sitenin kendi demo dosyaları)
+        await page.click("#demo")
+        await page.wait_for_function("document.getElementById('status').textContent.includes('Video hazır')", timeout=15000)
+        check("Demo etüdü aç: etüt ve video tek tıkla", "DEMO-01" in await page.inner_text("#header") and await page.locator("#observations tbody tr").count() == 14)
+        await page.click("#tab-0"); await page.click("#demo"); await page.wait_for_timeout(500); await page.click("#tab-0")
+        check("Demo ikinci kez eklenmez", await page.locator("#studies tbody tr", has_text="DEMO-01").count() == 1)
+        await page.locator("#studies tbody tr", has_text="DEMO-01").click(); await page.click("#delete"); await page.click("#dialog-yes")
+        await page.wait_for_timeout(400)
 
         async def dialog_text(): 
             await page.wait_for_selector("dialog[open]"); return await page.inner_text("#dialog-text")
@@ -41,7 +49,8 @@ async def main():
         await (await fc.value).set_files(f"{ROOT}/demo/sentetik-depo-etudu.vzetud")
         t = await dialog_text(); check("içe alma onayı", "DEMO-01" in t, t[:60]); await answer()
         await page.wait_for_selector("#panel-1:not([hidden])")
-        check("A04 video yokken beklenen dosya adı", "Beklenen dosya: sentetik-depo-etudu.mp4" in await status())
+        await page.wait_for_function("document.getElementById('status').textContent.includes('Video hazır')", timeout=15000)
+        check("demo videosu bekleyen etüde video kendiliğinden bağlanır", True)
         check("başlık etüt kodu", "DEMO-01 · Sentetik depo etüdü" in await page.inner_text("#header"))
         check("14 ölçüm satırı", await page.locator("#observations tbody tr").count() == 14)
 
@@ -179,7 +188,8 @@ async def main():
         check("yenilemeden sonra etütler duruyor", "WEB/01" in names and "DEMO-01" in names)
         await page.locator("#studies tbody tr", has_text="WEB/01").dblclick()
         await page.wait_for_selector("#panel-1:not([hidden])")
-        check("yenileme sonrası ayarlar ve ölçümler", await page.locator("#observations tbody tr").count() == 2 and "Beklenen dosya: sentetik-depo-etudu.mp4" in await status(), await status())
+        await page.wait_for_timeout(800)
+        check("yenileme sonrası ayarlar ve ölçümler", await page.locator("#observations tbody tr").count() == 2 and "Video hazır" in await status(), await status())
         await page.click("#tab-2")
         check("ayarlar geri geldi", await page.input_value("#allowance") == "12,5" and await page.input_value("#pace") == "105")
         # 17 dışa aktar
@@ -195,6 +205,17 @@ async def main():
         await (await fc.value).set_files(f"{OUT}/web.vzetud"); await dialog_text(); await answer()
         await page.click("#tab-0")
         check("A05 aynı paket ikinci kayıt", await page.locator("#studies tbody tr", has_text="WEB/01").count() == 2)
+        # 18b A04: demo dışı video adı → video bağlı değil, beklenen ad gösterilir, analiz açılır
+        j2 = json.load(open(f"{ROOT}/demo/sentetik-depo-etudu.vzetud", encoding="utf-8")); j2["VideoName"] = "gercek-hat-videosu.mp4"; j2["Code"] = "A04"
+        json.dump(j2, open(f"{OUT}/a04.vzetud", "w", encoding="utf-8"), ensure_ascii=False)
+        async with page.expect_file_chooser() as fc:
+            await page.click("#import")
+        await (await fc.value).set_files(f"{OUT}/a04.vzetud"); await dialog_text(); await answer()
+        await page.wait_for_timeout(500)
+        check("A04 video yokken beklenen dosya adı", "Beklenen dosya: gercek-hat-videosu.mp4" in await status(), await status())
+        await page.click("#tab-2")
+        check("A04 video yokken analiz açılır", "6,902" in await page.inner_text("#results"))
+        await page.click("#tab-0"); await page.locator("#studies tbody tr", has_text="A04").click(); await page.click("#delete"); await dialog_text(); await answer()
         # 19 bozuk paket
         open(f"{OUT}/bozuk.vzetud", "w").write('{"Kind":"video-zaman-etudu","Version":1,"Name":"x"')
         async with page.expect_file_chooser() as fc:

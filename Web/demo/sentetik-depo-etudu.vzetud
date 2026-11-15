@@ -1,0 +1,133 @@
+{
+  "Kind": "video-zaman-etudu",
+  "Version": 1,
+  "Name": "Sentetik depo etüdü",
+  "Code": "DEMO-01",
+  "VideoName": "sentetik-depo-etudu.mp4",
+  "Settings": {
+    "Confidence": 95,
+    "TargetError": 5,
+    "Pace": 110,
+    "Allowance": 15,
+    "RepeatedLow": false,
+    "GroupMs": 100,
+    "Stable": false
+  },
+  "Observations": [
+    {
+      "StartMs": 0,
+      "EndMs": 2000,
+      "Step": "Hazırlık",
+      "Classification": "SVA",
+      "Excluded": false,
+      "Cycle": 1
+    },
+    {
+      "StartMs": 2000,
+      "EndMs": 7000,
+      "Step": "Toplama",
+      "Classification": "VA",
+      "Excluded": false,
+      "Cycle": 1
+    },
+    {
+      "StartMs": 5000,
+      "EndMs": 7000,
+      "Step": "Tarama",
+      "Classification": "SVA",
+      "Excluded": false,
+      "Cycle": 1
+    },
+    {
+      "StartMs": 7000,
+      "EndMs": 10000,
+      "Step": "Paketleme",
+      "Classification": "VA",
+      "Excluded": false,
+      "Cycle": 1
+    },
+    {
+      "StartMs": 10000,
+      "EndMs": 12000,
+      "Step": "Bekleme",
+      "Classification": "NVA",
+      "Excluded": true,
+      "Cycle": 1
+    },
+    {
+      "StartMs": 12000,
+      "EndMs": 14000,
+      "Step": "Hazırlık",
+      "Classification": "SVA",
+      "Excluded": false,
+      "Cycle": 2
+    },
+    {
+      "StartMs": 14000,
+      "EndMs": 20000,
+      "Step": "Toplama",
+      "Classification": "VA",
+      "Excluded": false,
+      "Cycle": 2
+    },
+    {
+      "StartMs": 18000,
+      "EndMs": 20000,
+      "Step": "Tarama",
+      "Classification": "SVA",
+      "Excluded": false,
+      "Cycle": 2
+    },
+    {
+      "StartMs": 20000,
+      "EndMs": 23000,
+      "Step": "Paketleme",
+      "Classification": "VA",
+      "Excluded": false,
+      "Cycle": 2
+    },
+    {
+      "StartMs": 23000,
+      "EndMs": 25000,
+      "Step": "Hazırlık",
+      "Classification": "SVA",
+      "Excluded": false,
+      "Cycle": 3
+    },
+    {
+      "StartMs": 25000,
+      "EndMs": 30000,
+      "Step": "Toplama",
+      "Classification": "VA",
+      "Excluded": false,
+      "Cycle": 3
+    },
+    {
+      "StartMs": 28000,
+      "EndMs": 30000,
+      "Step": "Tarama",
+      "Classification": "SVA",
+      "Excluded": false,
+      "Cycle": 3
+    },
+    {
+      "StartMs": 30000,
+      "EndMs": 33000,
+      "Step": "Paketleme",
+      "Classification": "VA",
+      "Excluded": false,
+      "Cycle": 3
+    },
+    {
+      "StartMs": 33000,
+      "EndMs": 35000,
+      "Step": "Seyrek kontrol",
+      "Classification": "SVA",
+      "Excluded": false,
+      "Cycle": 3
+    }
+  ],
+  "Frequency": {
+    "Seyrek kontrol": 3
+  }
+}

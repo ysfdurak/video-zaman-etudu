@@ -91,6 +91,12 @@ test("A10 demo sonuçları", () => {
   assert.deepEqual(analyzeCycles(demo).map((c) => [c.Elapsed, c.Workload]), [[10, 12], [11, 13], [12, 14]]);
 });
 
+test("sitedeki demo dosyaları kökteki demo/ ile aynı", () => {
+  for (const f of ["sentetik-depo-etudu.vzetud", "sentetik-depo-etudu.mp4"])
+    assert.ok(readFileSync(new URL(`../demo/${f}`, import.meta.url)).equals(readFileSync(new URL(`../../demo/${f}`, import.meta.url))),
+      `Web/demo/${f} kökteki demo/ kopyasından farklı; demo değişince ikisini birlikte güncelleyin`);
+});
+
 test("dosya adı önerisi masaüstüyle aynı", () => {
   assert.equal(suggestedFileName(S({}), ".vzetud"), "K-1.vzetud");
   assert.equal(suggestedFileName({ Code: "A/B:C*?" }, ".xlsx", "_analiz"), "A_B_C___analiz.xlsx");

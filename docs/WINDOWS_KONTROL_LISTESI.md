@@ -38,6 +38,7 @@ Otomatik kontroller hesaplama ve paket tarafını doğrular. Aşağıdakiler yal
 ## 6. Tarayıcı sürümü (Chrome veya Edge; isteğe bağlı Firefox/Safari)
 Otomatik uçtan uca test Chrome'da 48 adımı kapsadı. Kendi bilgisayarında şunları doğrula:
 - [ ] Siteden (veya `Web` klasöründe `python -m http.server`) açılıyor; başlıkta “Tarayıcı sürümü”.
+- [ ] **Demo etüdü aç** tek tıkla DEMO-01'i ve videoyu açıyor; ikinci tıklama yeni kayıt oluşturmuyor.
 - [ ] Demo `.vzetud` içe al → video bağlı değil mesajı → **Videoyu yeniden seç** ile mp4 → 5. saniyedeki Tarama satırı videoyu 00:00:05.000'e götürüyor.
 - [ ] Bölüm 2'deki ölçüm adımları (Başla/Ölç, duraklatma, atlama, kısayollar, ince konumlama, 0,5×) aynı sonucu veriyor.
 - [ ] Excel indirildi, Excel'de açıldı; ekranla aynı sayılar. Ayarlar sayfasında “1.2.0 (tarayıcı)”.

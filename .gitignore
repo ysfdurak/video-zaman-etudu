@@ -21,6 +21,8 @@ Yayin/
 *.vzetud
 !demo/sentetik-depo-etudu.mp4
 !demo/sentetik-depo-etudu.vzetud
+!Web/demo/sentetik-depo-etudu.mp4
+!Web/demo/sentetik-depo-etudu.vzetud
 
 # Tarayıcı uçtan uca test çıktıları
 Web/tests/e2e-cikti/

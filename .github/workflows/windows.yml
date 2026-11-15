@@ -95,7 +95,7 @@ jobs:
           set -e
           out="$RUNNER_TEMP/site"
           mkdir -p "$out"
-          cp -r Web/index.html Web/app.css Web/_headers Web/js "$out/"
+          cp -r Web/index.html Web/404.html Web/app.css Web/_headers Web/js Web/demo "$out/"
           test -f "$out/index.html" && test -f "$out/js/app.js"
       - name: Siteye konulacak web paketini yükle
         if: github.event_name != 'pull_request'

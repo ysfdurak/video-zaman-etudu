@@ -54,6 +54,7 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 - **Ok tuşları ölçümü neden kesmiyor?** Adım sınırını bulmak için en fazla 1 sn'lik ince düzeltme amaçlı (K10). Zaman çizgisinde atlama ve satır seçimi kesmeye devam eder (K02).
 - **Bozuk bir kayıt olursa?** Liste o kaydı atlar ve uyarır; diğer etütler açılır.
 - **Tarayıcı sürümü videoyu sunucuya yüklüyor mu?** Hayır. Sayfa yalnızca kendi dosyalarını yükler; güvenlik politikası (CSP) dış bağlantıyı engeller. Video tarayıcı belleğinde açılır.
+- **Demo düğmesi videoyu sunucudan mı alıyor?** Sitenin kendi statik dosyasından (`Web/demo/`); dış bir sunucuya gidilmez, ziyaretçinin hiçbir verisi gönderilmez.
 - **Tarayıcı sürümünde etütler nerede?** O tarayıcının yerel deposunda (IndexedDB). Başka bilgisayara veya tarayıcıya `.vzetud` ile taşınır. Tarayıcı verisi temizlenirse silinir.
 - **Kullanım limiti / hesap neden yok?** Limit ve kullanıcı hesabı sunucu ister; bu V1.2 sunucusuz. Site hesap sistemi VPS'te kurulunca eklenir.
 - **Veriler nerede, nasıl yedeklenir?** `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`; uygulama kapalıyken kopyala ya da etütleri `.vzetud` olarak dışa aktar.

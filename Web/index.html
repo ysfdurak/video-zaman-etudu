@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="description" content="Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonuçları Excel'e aktaran zaman etüdü aracı. Video bilgisayarınızdan çıkmaz.">
   <title>Video Zaman Etüdü</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2317364A'/%3E%3Ccircle cx='16' cy='17' r='9' fill='none' stroke='white' stroke-width='2.5'/%3E%3Cpath d='M16 11v6l4 3' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -42,6 +42,7 @@
         <button id="export">Seçili etüdü dışa aktar…</button>
         <button id="delete" class="danger">Seçili etüdü sil…</button>
       </div>
+      <p class="hint">İlk kez mi deniyorsunuz? <button id="demo" class="link">Demo etüdü aç</button> — sentetik depo videosu ve hazır ölçümlerle analiz ekranını hemen görün.</p>
       <div class="table-wrap tall">
         <table id="studies" class="grid" aria-label="Kayıtlı etütler">
           <thead><tr><th>Kod</th><th>Etüt adı</th><th>Video</th><th>Son düzenleme</th></tr></thead>

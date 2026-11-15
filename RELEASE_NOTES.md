@@ -1,3 +1,11 @@
+# v1.2.1 · Video Zaman Etüdü — tarayıcıda tek tıkla demo
+
+Yalnız tarayıcı sürümü değişti; Windows sürümü v1.2.0 olarak kalır.
+
+- **Demo etüdü aç:** Çalışmalar ekranındaki bağlantı örnek depo etüdünü ve videosunu tek tıkla açar; dosya indirmek gerekmez. Demo zaten ekliyse yenisi oluşturulmaz.
+- Demo videosunu bekleyen etütlere (`sentetik-depo-etudu.mp4`) video kendiliğinden bağlanır.
+- Demo dosyaları sitenin kendisinden gelir (`Web/demo/`, kökteki `demo/` ile aynı olduğu testle denetlenir); içerik güvenliği politikası yalnız aynı siteye istek izni verir.
+
 # v1.2.0 · Video Zaman Etüdü — tarayıcı sürümü
 
 **Kullanım**
