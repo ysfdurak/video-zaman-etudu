@@ -256,7 +256,8 @@ async def main():
         await en.keyboard.press("Escape")
         await en.click("#tab-2")
         r = {x[0]: x for x in await en.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")}
-        check("EN: analiz 6.902, Insufficient, Mean", r["Toplama"][13] == "6.902" and r["Toplama"][10] == "Insufficient" and r["Toplama"][16] == "Mean", str(r["Toplama"][10:17]))
+        check("EN: İngilizce demo (Picking) 6.902, Insufficient, Mean", r["Picking"][13] == "6.902" and r["Picking"][10] == "Insufficient" and r["Picking"][16] == "Mean", str(r["Picking"][10:17]))
+        check("EN: demo adımları İngilizce", "Toplama" not in r and set(r) == {"Preparation", "Picking", "Scanning", "Packing", "Waiting", "Periodic check"}, str(sorted(r)))
         check("EN: rehber metni İngilizce", "Toyota-inspired guide" in await en.inner_text("#analysis-status"))
         await en.fill("#allowance", "100"); await en.click("#apply-settings"); await en.wait_for_selector("dialog[open]")
         check("EN: doğrulama hatası İngilizce", "Confidence must be between 0 and 100" in await en.inner_text("#dialog-text") and await en.inner_text("#dialog-yes") == "OK")
@@ -268,7 +269,7 @@ async def main():
         # dil değiştirme
         await en.click("#lang-switch")
         r = {x[0]: x for x in await en.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")}
-        check("TR'ye geçiş: başlık, analiz 6,902 Yetersiz", "VIDEO ZAMAN ETÜDÜ" in await en.inner_text("#header") and r["Toplama"][13] == "6,902" and r["Toplama"][10] == "Yetersiz")
+        check("TR'ye geçiş: başlık, analiz 6,902 Yetersiz", "VIDEO ZAMAN ETÜDÜ" in await en.inner_text("#header") and r["Picking"][13] == "6,902" and r["Picking"][10] == "Yetersiz")
         check("TR'ye geçiş: adres ?lang=tr", en.url.endswith("lang=tr"), en.url)
         await en.goto(URL); await en.wait_for_selector("#studies tbody tr")
         check("seçim hatırlanır (yeniden açılışta Türkçe)", await en.inner_text("#tab-0") == "1 Çalışmalar")

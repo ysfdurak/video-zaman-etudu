@@ -23,6 +23,10 @@ Yayin/
 !demo/sentetik-depo-etudu.vzetud
 !Web/demo/sentetik-depo-etudu.mp4
 !Web/demo/sentetik-depo-etudu.vzetud
+!demo/synthetic-warehouse-study.mp4
+!demo/synthetic-warehouse-study.vzetud
+!Web/demo/synthetic-warehouse-study.mp4
+!Web/demo/synthetic-warehouse-study.vzetud
 
 # Tarayıcı uçtan uca test çıktıları
 Web/tests/e2e-cikti/

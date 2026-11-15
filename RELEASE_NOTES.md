@@ -1,3 +1,11 @@
+# v1.4.1 · Video Zaman Etüdü — İngilizce demo
+
+Yalnız tarayıcı sürümü ve demo dosyaları değişti; Windows sürümü v1.2.0 olarak kalır (İngilizce demo paketini de açar).
+
+- İngilizce arayüzde **Open demo study** İngilizce adım adlarıyla (Preparation, Picking, Scanning, Packing, Waiting, Periodic check) ve İngilizce yazılı sentetik videoyla açılır. Zamanlar ve sonuçlar Türkçe demoyla birebir aynıdır.
+- `Tools/DemoVideo/demo_video.py`: demo videosunu Türkçe veya İngilizce yeniden üretir.
+- Testler: İngilizce demonun Türkçe demoyla aynı sonuçları verdiği (Node ve C#), demo kopyalarının eşitliği; e2e 66/66.
+
 # v1.4.0 · Video Zaman Etüdü — tarayıcıda öğretici ekranlar ve analiz özeti
 
 Yalnız tarayıcı sürümü değişti; hesap kuralları, `.vzetud` biçimi ve Excel raporu aynı. Windows sürümü v1.2.0 olarak kalır.

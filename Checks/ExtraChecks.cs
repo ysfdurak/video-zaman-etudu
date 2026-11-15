@@ -217,5 +217,17 @@ internal static class ExtraChecks
             steps["Toplama"] is var r && Math.Round(r.Base!.Value, 3) == 5.333 &&
             Math.Round(r.Normal!.Value, 3) == 5.867 && Math.Round(r.Standard!.Value, 3) == 6.902);
         Check("A10 seyrek katkı 0,863 sn/çevrim", () => Math.Round(steps["Seyrek kontrol"].Contribution!.Value, 3) == 0.863);
+
+        // İngilizce demo (tarayıcı sürümünün İngilizce arayüzü için): masaüstü de açar, sonuçlar aynıdır.
+        string english = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path))!, "synthetic-warehouse-study.vzetud");
+        if (!File.Exists(english)) return;
+        var en = StudyTransfer.Import(english);
+        var enSteps = Analysis.Steps(en).ToDictionary(x => x.Step);
+        Check("İngilizce demo: Picking 6,902 sn, Periodic check 0,863 sn/çevrim, video adı", () =>
+            Math.Round(enSteps["Picking"].Standard!.Value, 3) == 6.902 &&
+            Math.Round(enSteps["Periodic check"].Contribution!.Value, 3) == 0.863 &&
+            en.ExpectedVideoName == "synthetic-warehouse-study.mp4" && enSteps.Count == steps.Count);
+        Check("İngilizce demo: çevrimler Türkçe demoyla aynı", () =>
+            Analysis.Cycles(en).SequenceEqual(Analysis.Cycles(StudyTransfer.Import(path))));
     }
 }

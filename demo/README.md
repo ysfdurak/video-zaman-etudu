@@ -18,3 +18,9 @@
 | Çevrimlerin toplam iş yükü | 12 / 13 / 14 sn |
 
 Analiz ayarları %110 tempo ve %15 toleranstır. Tarama her çevrimde toplam iş yüküne iki saniye ekler. Aynı zaman dilimi toplamayla çakıştığı için geçen süreye ikinci kez eklenmez.
+
+## English demo
+
+`synthetic-warehouse-study.vzetud` and `synthetic-warehouse-study.mp4` are the same study with English step names (Preparation, Picking, Scanning, Packing, Waiting, Periodic check) and an English-labelled video. Timestamps, settings and results are identical to the Turkish demo (Picking standard time 6.902 s, periodic check 0.863 s/cycle). The browser version opens it with **Open demo study** when the interface is in English; the Windows version can import it as well.
+
+Videolar `Tools/DemoVideo/demo_video.py` ile üretilir (`tr` veya `en`). Bir demo dosyası değişirse `Web/demo/` kopyasını da güncelle; test ikisinin aynı olduğunu denetler.

@@ -215,7 +215,7 @@ const DICT = {
     "btn.delete": "Delete selected study…",
     "demo.before": "Trying it for the first time?",
     "demo.button": "Open demo study",
-    "demo.after": "— a synthetic warehouse video with ready measurements; see the analysis right away (sample step names and video labels are in Turkish).",
+    "demo.after": "— a synthetic warehouse video with ready measurements; see the analysis right away.",
     "studies.label": "Saved studies",
     "th.code": "Code",
     "th.name": "Study name",

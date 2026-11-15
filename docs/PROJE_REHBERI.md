@@ -14,7 +14,7 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 | `Desktop/MainWindow.xaml.cs` | Üç sekmeli WPF arayüzü, video oynatma, ölçüm düğmeleri, kısayollar | Arayüz kodu; hesap içermez |
 | `Desktop/StudyStore.cs` | Yerel SQLite kaydı (`%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`) | Her çalışan kendi profilinde |
 | `Desktop/StudyExport.cs` | Excel çıktısı (ClosedXML) | |
-| `Checks/` | Otomatik kontroller (kabul kriterleri + 56 ek kontrol) | GitHub Actions her gönderimde çalıştırır |
+| `Checks/` | Otomatik kontroller (kabul kriterleri + 58 ek kontrol) | GitHub Actions her gönderimde çalıştırır |
 | `.github/workflows/windows.yml` | Windows'ta derle → kontrol et → taşınabilir ZIP üret | Son kullanıcı SDK kurmasın |
 | `demo/` | Sentetik video ve etüt (gerçek şirket verisi yok) | |
 | `Web/js/core.js` | Tarayıcı çekirdeği: `Core/Study.cs` + `StudyTransfer.cs` karşılığı (hesaplar, t-dağılımı, paket) | Aynı kuralların JavaScript hâli |
@@ -61,6 +61,7 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 - **Ok tuşları ölçümü neden kesmiyor?** Adım sınırını bulmak için en fazla 1 sn'lik ince düzeltme amaçlı (K10). Zaman çizgisinde atlama ve satır seçimi kesmeye devam eder (K02).
 - **Bozuk bir kayıt olursa?** Liste o kaydı atlar ve uyarır; diğer etütler açılır.
 - **Tarayıcı sürümü videoyu sunucuya yüklüyor mu?** Hayır. Sayfa yalnızca kendi dosyalarını yükler; güvenlik politikası (CSP) dış bağlantıyı engeller. Video tarayıcı belleğinde açılır.
+- **İngilizce demo neden ayrı dosya?** Adım adları veridir, arayüz çevirisiyle değişmez. Bu yüzden aynı zamanlar ve ayarlarla İngilizce adlı ikinci bir paket ve İngilizce yazılı video üretildi (`Tools/DemoVideo`); testler iki demonun aynı sonucu verdiğini denetler.
 - **Demo düğmesi videoyu sunucudan mı alıyor?** Sitenin kendi statik dosyasından (`Web/demo/`); dış bir sunucuya gidilmez, ziyaretçinin hiçbir verisi gönderilmez.
 - **Tarayıcı sürümünde etütler nerede?** O tarayıcının yerel deposunda (IndexedDB). Başka bilgisayara veya tarayıcıya `.vzetud` ile taşınır. Tarayıcı verisi temizlenirse silinir.
 - **Kullanım limiti / hesap neden yok?** Limit ve kullanıcı hesabı sunucu ister; bu V1.2 sunucusuz. Site hesap sistemi VPS'te kurulunca eklenir.

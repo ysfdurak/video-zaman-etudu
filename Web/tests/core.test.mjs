@@ -92,7 +92,7 @@ test("A10 demo sonuçları", () => {
 });
 
 test("sitedeki demo dosyaları kökteki demo/ ile aynı", () => {
-  for (const f of ["sentetik-depo-etudu.vzetud", "sentetik-depo-etudu.mp4"])
+  for (const f of ["sentetik-depo-etudu.vzetud", "sentetik-depo-etudu.mp4", "synthetic-warehouse-study.vzetud", "synthetic-warehouse-study.mp4"])
     assert.ok(readFileSync(new URL(`../demo/${f}`, import.meta.url)).equals(readFileSync(new URL(`../../demo/${f}`, import.meta.url))),
       `Web/demo/${f} kökteki demo/ kopyasından farklı; demo değişince ikisini birlikte güncelleyin`);
 });
@@ -160,4 +160,17 @@ test("Excel: Türkçe masaüstüyle aynı başlıklar, İngilizce çevrilmiş", 
   assert.equal(tr[1].rows.find((r) => r[0] === "Toplama")[10], "Yetersiz");
   assert.equal(en[4].rows.find((r) => r[0] === "Exported at")[1], "2026-11-15 09:05");
   assert.equal(tr[4].rows.find((r) => r[0] === "Dışa aktarım zamanı")[1], "15.11.2026 09:05");
+});
+
+test("İngilizce demo: Türkçe demoyla aynı zamanlar ve aynı sonuçlar, yalnız adım adları farklı", () => {
+  const load = (f) => importPackage(new Uint8Array(readFileSync(new URL(`../../demo/${f}`, import.meta.url))));
+  const tr = load("sentetik-depo-etudu.vzetud"), en = load("synthetic-warehouse-study.vzetud");
+  const names = { "Hazırlık": "Preparation", "Toplama": "Picking", "Tarama": "Scanning", "Paketleme": "Packing", "Bekleme": "Waiting", "Seyrek kontrol": "Periodic check" };
+  assert.equal(en.ExpectedVideoName, "synthetic-warehouse-study.mp4");
+  assert.deepEqual(en.Settings, tr.Settings);
+  assert.deepEqual(en.Observations, tr.Observations.map((o) => ({ ...o, Step: names[o.Step] })));
+  const strip = (r) => { const { Step, ...rest } = r; return rest; };
+  const trSteps = new Map(analyzeSteps(tr).map((r) => [names[r.Step], strip(r)]));
+  for (const r of analyzeSteps(en)) assert.deepEqual(strip(r), trSteps.get(r.Step), r.Step);
+  assert.deepEqual(analyzeCycles(en), analyzeCycles(tr));
 });

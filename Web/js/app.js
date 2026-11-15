@@ -10,8 +10,11 @@ import { t, result, getLang, setLang, locale, applyStatic } from "./i18n.js";
 /** Siteye konulduğunda Windows sürümünün indirme adresi (boşsa bağlantı gizlenir). */
 const DESKTOP_URL = document.documentElement.dataset.desktopUrl ?? "";
 const NUDGE_MAX_MS = 1000;
-/** Sitede yayınlanan sentetik demo (Web/demo/, kökteki demo/ klasörünün kopyası). */
-const DEMO = { package: "demo/sentetik-depo-etudu.vzetud", video: "demo/sentetik-depo-etudu.mp4", code: "DEMO-01", videoName: "sentetik-depo-etudu.mp4" };
+/** Sitede yayınlanan sentetik demolar (Web/demo/, kökteki demo/ klasörünün kopyası); arayüz diline göre seçilir. */
+const DEMOS = {
+  tr: { package: "demo/sentetik-depo-etudu.vzetud", video: "demo/sentetik-depo-etudu.mp4", code: "DEMO-01", videoName: "sentetik-depo-etudu.mp4" },
+  en: { package: "demo/synthetic-warehouse-study.vzetud", video: "demo/synthetic-warehouse-study.mp4", code: "DEMO-01", videoName: "synthetic-warehouse-study.mp4" },
+};
 
 const $ = (id) => document.getElementById(id);
 const store = new StudyStore();
@@ -213,9 +216,10 @@ on("open", async () => { const s = selectedStudy(); if (s) await openStudy(s); }
 
 /** Demo etüdü: zaten varsa onu açar, yoksa içe alır. Video sunucudan değil sitenin kendi dosyasından gelir. */
 on("demo", async () => {
-  let study = state.studies.find((s) => s.Code === DEMO.code && s.ExpectedVideoName === DEMO.videoName);
+  const demo = DEMOS[getLang()];
+  let study = state.studies.find((s) => s.Code === demo.code && s.ExpectedVideoName === demo.videoName);
   if (!study) {
-    const response = await fetch(DEMO.package);
+    const response = await fetch(demo.package);
     if (!response.ok) throw new Error(t("msg.demoFailed"));
     study = importPackage(new Uint8Array(await response.arrayBuffer()));
     await store.save(study);
@@ -226,11 +230,12 @@ on("demo", async () => {
 
 /** Demo videosu bağlı değilse sitenin kendi kopyasından bağlar. */
 async function attachDemoVideo(study) {
-  if (videoLabel(study) !== DEMO.videoName) return false;
+  const demo = Object.values(DEMOS).find((d) => d.videoName === videoLabel(study));
+  if (!demo) return false;
   try {
-    const response = await fetch(DEMO.video);
+    const response = await fetch(demo.video);
     if (!response.ok) return false;
-    attachVideo(study, new File([await response.blob()], DEMO.videoName, { type: "video/mp4" }));
+    attachVideo(study, new File([await response.blob()], demo.videoName, { type: "video/mp4" }));
     return true;
   } catch { return false; }
 }

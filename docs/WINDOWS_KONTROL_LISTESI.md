@@ -3,7 +3,7 @@
 Otomatik kontroller hesaplama ve paket tarafını doğrular. Aşağıdakiler yalnızca Windows'ta, elle doğrulanabilir. Her satırı işaretle; geçmeyen satırı not al.
 
 ## 0. Hazırlık
-- [ ] GitHub Actions çalışması yeşil: “WPF uygulamasını derle”, “Hesaplama, etüt aktarımı ve eşdeğerlik kontrollerini çalıştır” (çıktıda `Ek kontroller: 56 geçti, 0 kaldı.` ve `Eşdeğerlik kontrolleri: 322/322 geçti.`), “Tarayıcı sürümü” işi yeşil, “Windows x64 taşınabilir paketi oluştur”.
+- [ ] GitHub Actions çalışması yeşil: “WPF uygulamasını derle”, “Hesaplama, etüt aktarımı ve eşdeğerlik kontrollerini çalıştır” (çıktıda `Ek kontroller: 58 geçti, 0 kaldı.` ve `Eşdeğerlik kontrolleri: 322/322 geçti.`), “Tarayıcı sürümü” işi yeşil, “Windows x64 taşınabilir paketi oluştur”.
 - [ ] Artifacts'tan `VideoZamanEtudu_Windows_x64` indirildi; içteki ZIP temiz bir klasöre çıkarıldı. Klasörde `Desktop.exe`, `BASLAT.txt` ve `demo/` var.
 - [ ] (A11) .NET SDK kurulu olmayan, standart (yönetici olmayan) bir Windows hesabında `Desktop.exe` açılıyor. SmartScreen uyarısı çıkarsa not al (imzasız paket; şirket BT süreci).
 
