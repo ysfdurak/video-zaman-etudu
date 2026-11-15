@@ -52,6 +52,8 @@ public partial class MainWindow
         Ui.Columns(ideasGrid, (L.T("th.r.step"), "Step", false), (L.T("th.class"), "Class", false), (L.T("field.waste"), "Waste", false),
             (L.T("field.idea"), "Idea", false), (L.T("th.r.contribution"), "Contribution", true), (L.T("th.share"), "Share", true));
         ideasGrid.MaxHeight = 240;
+        ideasGrid.ColumnWidth = new DataGridLength(1, DataGridLengthUnitType.Star);
+        outlierGrid.ColumnWidth = new DataGridLength(1, DataGridLengthUnitType.Star);
         storyPanel.Margin = new Thickness(0, 6, 0, 10);
         return Ui.Stack(
             Ui.Title(L.T("h.dist")), Ui.Hint(L.T("dist.hint")), histBox, outlierGrid, Ui.Row(excludeOutliers),

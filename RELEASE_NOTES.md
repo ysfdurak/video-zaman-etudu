@@ -1,3 +1,29 @@
+# v2.1.0 (Windows) · v1.8.0 (tarayıcı) · Video Zaman Etüdü — muadil yazılımlardaki eksik özellikler
+
+Timer Pro, AVIX, UMT Plus ve Proplanner gibi zaman etüdü yazılımlarında olup bizde olmayan özellikler eklendi. Hepsi tarayıcı ve Windows sürümünde, Türkçe ve İngilizce.
+
+**Analiz**
+- **Kayıt başına tempo puanı:** Klasik etüt formundaki gibi her kayda ayrı tempo verilebilir (ölçerken "Tempo puanı %" alanı ya da kayıt düzenleyici). Adımın temposu kayıtlardan hesaplanır: ortalama yönteminde süreyle ağırlıklı, tekrar yönteminde düz ortalama. Puansız kayıt adım ya da genel tempoyu alır.
+- **Dağılım ve aykırı değerler:** Seçili adımın histogramı. Çeyrekler arası açıklığın 1,5 katı dışındaki kayıtlar (en az 4 kayıtlı adımlarda) listelenir. Tek düğmeyle kapsam dışı bırakılır; silinmez, not alanına "aykırı (IQR)" yazılır.
+- **Hat dengeleme (Yamazumi):** Adımlar istasyonlara ya da operatörlere atanır. Yığılmış çubuk grafikte takt çizgisi görünür. Darboğaz, denge verimi, denge kaybı ve takta göre en az istasyon sayısı hesaplanır. Takta göre otomatik dağıtım süreç sırasını korur.
+- **Standart iş kombinasyon tablosu:** Adım türü seçilir (el işi, makine, yürüme, bekleme). Makine işi paralel ilerler; takt çizgisiyle Gantt görünümü çizilir.
+- **İyileştirme fikirleri:** Adıma 7 israftan biri ve iyileştirme fikri girilir. NVA adımlarla birlikte ayrı bir listede, katkı ve payıyla gösterilir.
+
+**Çalışma ve çıktılar**
+- **İş örneklemesi:** Yeni etüt türü. Videoda rastgele ya da düzenli anlara gidilir ve o anki kategori 1–9 tuşlarıyla kaydedilir. Sonuçta paylar, güven aralığı ve hedef hata için gereken gözlem sayısı (n = z²·p(1−p)/e²) görünür. Excel raporu da bunlarla çıkar.
+- **Adım kartları (storyboard):** Her adımın bir video karesi, sınıfı, türü, bitiş anı, standart süresi, israfı ve fikri. Görsel iş talimatı olarak ayrıca yazdırılabilir. Kare "Bu kareyi adım görseli yap" ile seçilir; seçilmezse adımın ilk kaydının ortası alınır.
+- **Yan yana önce / sonra video:** Karşılaştırma penceresinde iki etüdün videosu yan yana izlenir. Adım seçilince ikisi de o adımın başına gider; oynat ve duraklat ikisine birden uygulanır.
+- **Excel:** Ham sayfada tempo sütunu (veri varsa). Yeni sayfalar: Standart iş, Hat dengeleme, İyileştirme. Özet sayfasında aykırı kayıt sayısı, denge verimi, darboğaz ve en az istasyon.
+
+**Uyumluluk:** Paket sürümü 1 olarak kalır. Yeni alanlar isteğe bağlıdır: kayıtta `Rating`; adımda `Type`, `Station`, `Waste`, `Idea`, `FrameMs`; etütte `StudyType`, `Categories`, `Samples`, `SampleError`. Eski sürümler bu alanları yok sayar.
+
+**Testler**
+- Node 196/196.
+- Chrome uçtan uca 64/64.
+- axe iki dilde, masaüstünde ve telefonda 0 ihlal.
+- C# kontrolleri: v2 için 70 denetim. Yeni hesapların tarayıcıyla eşdeğerliği `Shared/ek-alanlar.json` ile denetlenir.
+- Windows öz-denemesi iki dilde 66 denetim (video kareleri dahil).
+
 # v2.0.0 · Video Zaman Etüdü — Windows sürümü tarayıcıyla eşit, Türkçe ve İngilizce
 
 Windows masaüstü sürümü v1.2.0'dan v2.0.0'a geçti. Tarayıcı sürümündeki v1.5–v1.7 kurallarının hepsi artık Windows'ta da var ve arayüz Türkçe ile İngilizce arasında değiştirilebiliyor.

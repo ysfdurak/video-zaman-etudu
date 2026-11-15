@@ -12,8 +12,9 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | Excel / `.vzetud` | Var (ilk sayfa **Özet**) | Var (aynı sayfalar ve biçim) |
 | Ölçüm akışı | Adım listesi, 1–9 tuşları, otomatik çevrim, geri al; gezinmek ölçümü kesmez (v2.0) | Aynısı (v1.5) |
 | Analiz ekleri | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra, adım açıklaması, kayıt notu, adım temposu, takt, yazdır/PDF, tolerans kalemleri, toplu yedek, kaldığı yerden devam, kayıt süzgeci (v2.0) | Aynısı (v1.5–v1.7) |
+| İleri analiz (v2.1 / v1.8) | Kayıt başına tempo, dağılım ve aykırı değer, hat dengeleme (Yamazumi), standart iş kombinasyon tablosu, iyileştirme fikirleri (7 israf), adım kartları (storyboard), iş örneklemesi, yan yana önce/sonra video | Aynısı |
 
-Windows **v2.0.0** ile tarayıcı **v1.7.0** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
+Windows **v2.1.0** ile tarayıcı **v1.8.0** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır. v2 alanları (adım listesi, notlar, adım temposu, takt, tolerans kalemleri, karşılaştırma) için `Shared/ek-alanlar.json` aynı işi görür: tarayıcı çekirdeği üretir, C# aynı paketi bayt bayt aynı metinle yazmak ve aynı sonuçları bulmak zorundadır.
 
@@ -58,14 +59,14 @@ python -m http.server 8080   # sonra http://localhost:8080
 ## Yayın
 
 - **Tarayıcı:** https://zaman-etudu.ysfdurak.com — Cloudflare Workers, depo köküne bağlı. `wrangler.jsonc` yalnız `Web/` klasörünü statik site olarak yayınlar; `Web/.assetsignore` testleri ve `package.json`'ı dışarıda bırakır, `Web/_headers` güvenlik başlıklarını ekler. `main`'e her gönderim siteyi günceller. Yerelde Cloudflare'in aynısıyla denemek için: `npx wrangler dev`.
-- **Windows:** `v2.0.0` gibi bir etiket gönderildiğinde Actions Windows ZIP'ini üretir ve `RELEASE_NOTES.md`'deki ilk bölümle GitHub sürümünü (Release) oluşturur:
+- **Windows:** `v2.1.0` gibi bir etiket gönderildiğinde Actions Windows ZIP'ini üretir ve `RELEASE_NOTES.md`'deki ilk bölümle GitHub sürümünü (Release) oluşturur:
 
 ```powershell
-git tag v2.0.0
-git push origin v2.0.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
-Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workflow** ile `surum` alanına `v2.0.0` yazarak da aynı sürümü çıkarabilirsin.
+Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workflow** ile `surum` alanına `v2.1.0` yazarak da aynı sürümü çıkarabilirsin.
 
 ## İlk etüt
 

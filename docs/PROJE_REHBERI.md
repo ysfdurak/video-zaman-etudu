@@ -19,6 +19,8 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 | `Desktop/MainWindow*.cs` | Arayüz: `MainWindow.xaml.cs` (genel, dil, Çalışmalar), `.Measure.cs` (ölçüm), `.Analysis.cs` (analiz, grafik, karşılaştırma) | Dosya başına bir bölüm |
 | `Desktop/Metinler.cs`, `Metinler.json` | TR/EN metinler, sayı/yüzde/saat biçimi; JSON tarayıcı sözlüğünden üretilir | İki sürüm aynı ifadeyi kullansın |
 | `Desktop/Charts.cs`, `PrintReport.cs`, `Ui.cs` | WPF grafikleri, yazdırma belgesi, arayüz yapı taşları | |
+| `Web/js/advanced.js`, `Core/Advanced.cs` | v1.8/v2.1 ileri analizler (aykırı değer, histogram, hat dengeleme, standart iş, iyileştirme, iş örneklemesi, adım karesi) | Saf işlevler, iki tarafta aynı |
+| `Desktop/MainWindow.Sampling.cs`, `MainWindow.Advanced.cs` | Örnekleme paneli ve ileri analiz bölümleri (Windows) | |
 | `Desktop/SelfTest.cs` | `--self-test`: CI'da pencereyi iki dilde kurup yolları dener, ekran görüntüsü alır | WPF'i elle açmadan denetlemek için |
 | `Tools/Metinler/uret.mjs`, `Tools/EkAlanlar/uret.mjs` | Metin dosyasını ve v2 ortak eşdeğerlik dosyasını üretir | Tek kaynak: tarayıcı |
 | `Checks/` | Otomatik kontroller (kabul kriterleri + 58 ek kontrol) | GitHub Actions her gönderimde çalıştırır |
@@ -83,6 +85,25 @@ Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanSte
 - **Kaldığı yerden devam:** Etüt açılınca video son kaydın bitişine gider. Sıradaki kayıt, son geçerli kaydın ardındaki adım olur; son adımdan sonra çevrim 1 artar (`resumePoint`).
 - **Kayıt süzgeci:** Ölçüm tablosu adıma ve çevrime göre daraltılabilir. Yalnız görünümü etkiler.
 - **Çıktılar:** Excel özeti "yetersiz" ve "hesaplanamayan" adımları ayrı sayar. Yetersiz adıma "Gereken n (yaklaşık)" yazılır; bu, ekrandaki "yaklaşık N gözlem gerekir" ile aynı hesaptır (`requiredObservations`). Yazdırma başlığında etüt bilgileri ve analizin dayandığı ayarlar var. Başlık Ctrl+P ile de dolar (`beforeprint`).
+
+## 3f. İleri analizler (tarayıcı v1.8, Windows v2.1)
+
+Hesaplar `Web/js/advanced.js` ve `Core/Advanced.cs` içindedir. `Shared/ek-alanlar.json` iki tarafın aynı sonucu verdiğini denetler.
+
+| Özellik | Kural | Nerede girilir |
+|---|---|---|
+| Kayıt temposu (`Observation.Rating`) | Puan varsa adım temposu = Σ(süre × puan) ÷ Σ süre (ortalama yöntemi) ya da puanların ortalaması (tekrar yöntemi). Puansız kayıt adım/genel tempoyu alır. | Ölçüm: "Tempo puanı %" (sonraki kayıtlara); kayıt düzenleyici |
+| Aykırı değer | IQR: Q1 − 1,5·IQR altı ya da Q3 + 1,5·IQR üstü. Yüzdelik doğrusal ara değerli (Excel/R tip 7). En az 4 geçerli kayıt. | Analiz: "Aykırıları kapsam dışı bırak" |
+| Histogram | √n sınıf (3–10), eşit genişlik | Analiz, seçili adım |
+| Hat dengeleme | Yük = katkılar toplamı. Denge verimi = Σ atanmış yük ÷ (istasyon sayısı × en büyük yük). En az istasyon = ⌈toplam ÷ takt⌉. Otomatik dağıtım: sırayla doldur, yük + adım > takt ise yeni istasyon. | Analiz: İstasyon sütunu / otomatik dağıt |
+| Standart iş | El işi, yürüme ve bekleme ardışık; makine işi başladığı andan paralel. Süre = katkı. Tür boşsa el işi. | Ölçüm: adım araçları → Tür |
+| İyileştirme | İsraf türü (7 israf) ya da fikri olan adımlar + NVA adımlar | Ölçüm: adım araçları → İsraf, fikir |
+| Adım kartı | Kare = `StepDef.FrameMs`, yoksa ilk geçerli kaydın ortası. Tarayıcı ayrı bir `<video>`'dan canvas'a, Windows `MediaPlayer` + `DrawingVisual` ile çizer. | Ölçüm: "Bu kareyi adım görseli yap" |
+| İş örneklemesi | p = sayı ÷ n; aralık p ± z·√(p(1−p)/n); gereken n = ⌈z²·p(1−p) ÷ e²⌉, e = hedef mutlak hata (varsayılan 5 puan). z normal dağılımdan (tarayıcı kendi ters normali, Windows MathNet). | Yeni etüt → Etüt türü: İş örneklemesi |
+
+- **Sık sorulabilecek: Neden IQR, ±2σ değil?** IQR, aykırının kendisinden etkilenmez; az kayıtta (4–10) σ'ya dayalı kural aykırıyı gizler.
+- **Yamazumi neden katkı kullanıyor?** Seyrek adımlar (her N çevrimde bir) takta karşı çevrim başına yükleriyle karşılaştırılmalı.
+- **İş örneklemesinde neden rastgele an?** Gözlem anı önceden bilinmezse davranış değişmez ve sonuç yanlı olmaz. Düzenli aralık (Her X sn) yalnız iş döngüsüyle çakışmıyorsa kullanılmalı.
 
 ## 4. Formüller (sorulursa)
 - Süre (sn) = (bitiş ms − başlangıç ms) / 1000
