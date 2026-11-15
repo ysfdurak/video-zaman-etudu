@@ -2,10 +2,10 @@
 // Core/Study.cs ve Core/StudyTransfer.cs ile aynı kurallar. İki sürümün eşdeğerliği
 // Shared/esdeger-ornekler.json ile hem C# (Checks) hem JavaScript (Web/tests) tarafında sınanır.
 import {
-  parseStrict, JsonError, JsonObject, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
+  parseStrict, JsonError, JsonObject, RawNumber, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
 } from "./strict-json.js";
 
-export const VERSION = "1.5.0";
+export const VERSION = "1.6.0";
 export const EXTENSION = ".vzetud";
 export const CLASSES = ["", "VA", "SVA", "NVA"];
 const FORMAT = "video-zaman-etudu";
@@ -36,7 +36,7 @@ export function newStudy(fields = {}) {
   return {
     Id: crypto.randomUUID(), Name: "", Code: "", Video: "", ExpectedVideoName: "",
     Updated: new Date().toISOString(), Observations: [], Settings: newSettings(), Frequency: new Map(),
-    Steps: [], Info: {}, ...fields
+    Steps: [], Info: {}, StepPace: new Map(), Takt: null, ...fields
   };
 }
 
@@ -65,11 +65,27 @@ export function cleanSteps(steps) {
   for (const st of steps) {
     const name = typeof st?.Name === "string" ? st.Name.trim().slice(0, 80) : "";
     if (!name || out.some((x) => x.Name === name)) continue;
-    out.push({ Name: name, Classification: CLASSES.includes(st.Classification) ? st.Classification : "" });
+    const note = typeof st.Note === "string" ? st.Note.trim().slice(0, MAX_INFO) : "";
+    out.push({ Name: name, Classification: CLASSES.includes(st.Classification) ? st.Classification : "", ...(note ? { Note: note } : {}) });
     if (out.length >= MAX_STEPS) break;
   }
   return out;
 }
+
+/** Adıma özel tempo (%): pozitif ve en fazla 300; geçersizler atılır. */
+export function cleanStepPace(value) {
+  const out = new Map();
+  const entries = value instanceof Map ? [...value.entries()] : value && typeof value === "object" && !Array.isArray(value) ? Object.entries(value) : [];
+  for (const [k, v] of entries) {
+    const name = typeof k === "string" ? k.trim() : "";
+    const n = Number(v);
+    if (name && Number.isFinite(n) && n > 0 && n <= 300) out.set(name, n);
+  }
+  return out;
+}
+/** Takt süresi (sn): pozitif sayı ya da null. */
+export const cleanTakt = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) < 1e7 && v !== null && v !== "" ? Number(v) : null);
+const cleanNote = (v) => (typeof v === "string" ? v.trim().slice(0, MAX_INFO) : "");
 
 /** Adım listesi: tanımlıysa o; değilse ölçümlerden ilk görülme sırasıyla, sınıfı en sık kullanılan sınıf. */
 export function deriveSteps(study) {
@@ -258,11 +274,13 @@ export function analyzeSteps(study) {
     const repeated = groups.find((g) => g.Count >= 2) ?? null;
 
     const basis = settings.RepeatedLow ? (repeated ? repeated.Seconds : null) : mean;
-    const normal = basis === null ? null : basis * settings.Pace / 100;
+    // Adıma özel tempo (yalnız tarayıcı, v1.6) yoksa genel tempo. Windows sürümü genel tempoyu kullanır.
+    const pace = study.StepPace instanceof Map && study.StepPace.has(key) ? study.StepPace.get(key) : settings.Pace;
+    const normal = basis === null ? null : basis * pace / 100;
     const standard = normal === null ? null : normal / (1 - settings.Allowance / 100);
     const every = Math.max(1, study.Frequency.has(key) ? study.Frequency.get(key) : 1);
     return {
-      Step: key, Count: n, Excluded: group.length - n, Mean: mean, Median: median,
+      Step: key, Count: n, Excluded: group.length - n, Mean: mean, Median: median, Pace: pace,
       Min: n === 0 ? null : values[0] / 1000, Max: n === 0 ? null : values[n - 1] / 1000,
       Deviation: sd, CriticalT: t, ErrorPercent: error,
       Sufficiency: error === null ? "Hesaplanamıyor" : error <= settings.TargetError ? "Yeterli" : "Yetersiz",
@@ -351,12 +369,15 @@ export function exportPackage(study) {
       Allowance: data.Settings.Allowance, RepeatedLow: data.Settings.RepeatedLow, GroupMs: data.Settings.GroupMs, Stable: data.Settings.Stable
     },
     Observations: data.Observations.map((o) => ({
-      StartMs: o.StartMs, EndMs: o.EndMs, Seconds: seconds(o), Step: o.Step, Classification: o.Classification, Excluded: o.Excluded, Cycle: o.Cycle
+      StartMs: o.StartMs, EndMs: o.EndMs, Seconds: seconds(o), Step: o.Step, Classification: o.Classification, Excluded: o.Excluded, Cycle: o.Cycle,
+      ...(cleanNote(o.Note) ? { Note: cleanNote(o.Note) } : {})
     })),
     Frequency: Object.fromEntries(data.Frequency),
     // İsteğe bağlı (v1.5): Windows sürümü okurken yok sayar.
     ...(study.Steps?.length ? { Steps: cleanSteps(study.Steps) } : {}),
-    ...(Object.keys(cleanInfo(study.Info)).length ? { Info: cleanInfo(study.Info) } : {})
+    ...(Object.keys(cleanInfo(study.Info)).length ? { Info: cleanInfo(study.Info) } : {}),
+    ...(cleanStepPace(study.StepPace).size ? { StepPace: Object.fromEntries(cleanStepPace(study.StepPace)) } : {}),
+    ...(cleanTakt(study.Takt) !== null ? { Takt: cleanTakt(study.Takt) } : {})
   });
   const bytes = new TextEncoder().encode(json);
   if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.", "pkg.size");
@@ -409,7 +430,9 @@ export function importPackage(bytes) {
       Settings: readSettings(root.get("Settings")),
       Observations: observations === null ? null : observations.map(readObservation),
       Frequency: readFrequency(root.get("Frequency")),
-      Steps: readOptional(root, "Steps"), Info: readOptional(root, "Info")
+      Steps: readOptional(root, "Steps"), Info: readOptional(root, "Info"),
+      StepPace: readOptional(root, "StepPace"), Takt: readOptional(root, "Takt"),
+      Notes: observations === null ? null : observations.map((node) => { try { return node instanceof JsonObject && node.has("Note") ? cleanNote(plain(node.get("Note"))) : ""; } catch { return ""; } })
     };
   } catch (error) {
     if (error instanceof PackageError) throw error;
@@ -419,8 +442,8 @@ export function importPackage(bytes) {
   validatePackage(data);
   return newStudy({
     Name: data.Name, Code: data.Code, ExpectedVideoName: fileName(data.VideoName),
-    Settings: data.Settings, Observations: data.Observations, Frequency: data.Frequency,
-    Steps: cleanSteps(data.Steps), Info: cleanInfo(data.Info)
+    Settings: data.Settings, Observations: data.Observations.map((o, i) => (data.Notes?.[i] ? { ...o, Note: data.Notes[i] } : o)), Frequency: data.Frequency,
+    Steps: cleanSteps(data.Steps), Info: cleanInfo(data.Info), StepPace: cleanStepPace(data.StepPace), Takt: cleanTakt(data.Takt)
   });
 }
 
@@ -432,6 +455,7 @@ function readOptional(root, name) {
 function plain(node) {
   if (node instanceof JsonObject) return Object.fromEntries([...node.entries()].map(([k, v]) => [k, plain(v)]));
   if (Array.isArray(node)) return node.map(plain);
+  if (node instanceof RawNumber) return Number(node.raw);
   return typeof node === "bigint" ? Number(node) : node;
 }
 
@@ -458,7 +482,7 @@ export function parsePositiveInt(text, name) {
 
 /** IndexedDB kaydı ↔ çalışma nesnesi (Map yapısal kopyada saklanabilir ama açık tutuyoruz). */
 export function toRecord(study) {
-  return { ...study, Frequency: [...study.Frequency.entries()] };
+  return { ...study, Frequency: [...study.Frequency.entries()], StepPace: [...cleanStepPace(study.StepPace).entries()] };
 }
 
 export function fromRecord(record) {
@@ -470,6 +494,7 @@ export function fromRecord(record) {
     ExpectedVideoName: String(record.ExpectedVideoName ?? ""), Updated: String(record.Updated ?? ""),
     Observations: record.Observations.map((o) => newObservation(o)), Settings: { ...newSettings(), ...record.Settings },
     Frequency: new Map(record.Frequency),
-    Steps: cleanSteps(record.Steps), Info: cleanInfo(record.Info)
+    Steps: cleanSteps(record.Steps), Info: cleanInfo(record.Info),
+    StepPace: cleanStepPace(new Map(Array.isArray(record.StepPace) ? record.StepPace : [])), Takt: cleanTakt(record.Takt)
   };
 }

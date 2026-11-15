@@ -54,6 +54,18 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 - **Süreç sırası:** `analyzeSteps` Windows ile aynı kalsın diye alfabetik döner. Ekranda ve Özet sayfasında `inProcessOrder` ile adım listesinin sırasına dizilir.
 - **Windows farkı:** Windows sürümünde adım adı serbest metindir ve zaman çizgisinde atlamak ölçümü keser (K02/K10). Tarayıcıda bu kural v1.5'te kaldırıldı. Paketteki `Steps` ve `Info` alanlarını Windows yok sayar; Windows'tan dışa aktarılan pakette bu alanlar olmaz.
 
+## 3d. Etüt bilgileri ve ekler (v1.6, yalnız tarayıcı)
+
+| Alan | Nerede | Ne işe yarar |
+|---|---|---|
+| `Steps[].Note` | Adım araçları → Bitiş anı / açıklama | Gözlemcinin Ölç'e ne zaman basacağını tanımlar |
+| `Observations[].Note` | Seçili kayıt → Not | Kapsam dışı ya da olağan dışı kaydın nedeni |
+| `StepPace` (adım → %) | Analiz → Seçili adım | O adımın normal süresi bu tempoyla hesaplanır (`analyzeSteps` içinde) |
+| `Takt` (sn) | Analiz ayarları | Özette takt doluluğu ve gereken operatör = standart ÷ takt |
+| `Info` | Etüt bilgileri | Operatör, istasyon, vardiya, tarih, gözlemci, not |
+
+Hepsi pakette isteğe bağlıdır; bozuk değerler okunurken atılır (`cleanStepPace`, `cleanTakt`, `cleanSteps`, `cleanInfo`). Windows sürümü bu alanları yok sayar. Bu yüzden adım temposu kullanılmış bir etüt Windows'ta açılırsa sonuçlar genel tempoyla hesaplanır.
+
 ## 4. Formüller (sorulursa)
 - Süre (sn) = (bitiş ms − başlangıç ms) / 1000
 - Bağıl hata % = t(güven, n−1, iki taraflı) × s ÷ (√n × ortalama) × 100 → hedefe eşit/küçükse “Yeterli”; n < 2 ise “Hesaplanamıyor”.

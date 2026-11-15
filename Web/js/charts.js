@@ -14,8 +14,8 @@ function el(name, attrs = {}, text = null) {
 }
 
 /** Yatay çubuklar: adım başına standart katkı (sn/çevrim), süreç sırasıyla. data: [{label, value, cls, text}] */
-export function stepChart(data, { classLabel = (c) => c } = {}) {
-  const row = 26, left = 150, right = 90, top = 6, width = 640;
+export function stepChart(data, { classLabel = (c) => c, width = 640 } = {}) {
+  const row = 26, left = width < 420 ? 96 : 150, right = width < 420 ? 64 : 90, top = 6;
   const height = top + data.length * row + 34;
   const max = Math.max(...data.map((d) => d.value), 1e-9);
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
@@ -26,7 +26,7 @@ export function stepChart(data, { classLabel = (c) => c } = {}) {
     const w = Math.max(2, (d.value / max) * plot);
     const g = el("g", { class: "bar" });
     g.append(el("title", {}, `${d.label} · ${d.text}${d.cls ? " · " + classLabel(d.cls) : ""}`));
-    g.append(el("text", { x: left - 8, y: y + row / 2 + 4, "text-anchor": "end", fill: INK, "font-size": 12 }, truncate(d.label, 22)));
+    g.append(el("text", { x: left - 8, y: y + row / 2 + 4, "text-anchor": "end", fill: INK, "font-size": 12 }, truncate(d.label, left < 120 ? 13 : 22)));
     g.append(el("rect", { x: left, y: y + 5, width: w, height: row - 10, rx: 3, fill: CLASS_COLORS[d.cls] ?? CLASS_COLORS[""] }));
     g.append(el("text", { x: left + w + 6, y: y + row / 2 + 4, fill: INK, "font-size": 12 }, d.text));
     svg.append(g);
@@ -46,8 +46,8 @@ export function stepChart(data, { classLabel = (c) => c } = {}) {
 }
 
 /** Dikey çubuklar: çevrim başına ölçülen geçen süre; ortalama çizgisi; ortalamadan %20+ sapanlar işaretli. */
-export function cycleChart(data, { mean, meanLabel, axis }) {
-  const width = 640, height = 220, left = 40, right = 12, top = 18, bottom = 34;
+export function cycleChart(data, { mean, meanLabel, axis, width = 640 }) {
+  const height = 220, left = 40, right = 12, top = 18, bottom = 34;
   const max = Math.max(...data.map((d) => d.value), mean ?? 0, 1e-9) * 1.1;
   const plotW = width - left - right, plotH = height - top - bottom;
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
@@ -67,7 +67,8 @@ export function cycleChart(data, { mean, meanLabel, axis }) {
   });
   if (mean) {
     svg.append(el("line", { x1: left, x2: width - right, y1: yOf(mean), y2: yOf(mean), stroke: INK, "stroke-width": 1.5, "stroke-dasharray": "5 4" }));
-    svg.append(el("text", { x: width - right, y: yOf(mean) - 5, "text-anchor": "end", fill: INK, "font-size": 11.5 }, meanLabel));
+    // Etiket çubukların üstünde okunabilsin diye beyaz kenarlı yazılır.
+    svg.append(el("text", { x: width - right, y: yOf(mean) - 5, "text-anchor": "end", fill: INK, "font-size": 11.5, stroke: "#fff", "stroke-width": 3, "paint-order": "stroke" }, meanLabel));
   }
   svg.append(el("text", { x: left + plotW / 2, y: height - 4, "text-anchor": "middle", fill: SOFT, "font-size": 11 }, axis));
   svg.setAttribute("aria-label", data.map((d) => `${axis} ${d.label}: ${d.text}`).join(", "));

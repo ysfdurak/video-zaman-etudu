@@ -10,7 +10,7 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | Video | Bilgisayarda kalır, yolu hatırlanır | Bilgisayarda kalır, tarayıcıya yüklenmez; Chrome/Edge'de izinle hatırlanır, diğerlerinde her oturumda yeniden seçilir |
 | Excel / `.vzetud` | Var | Var (aynı sayfalar ve biçim; tarayıcıda ek **Özet** sayfası) |
 | Ölçüm akışı | Adım adı elle, zaman çizgisinde atlama ölçümü keser | Adım listesi, 1–9 tuşları, otomatik çevrim, geri al; gezinmek ölçümü kesmez (v1.5) |
-| Analiz ekleri | Tablolar | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra karşılaştırması (v1.5) |
+| Analiz ekleri | Tablolar | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra karşılaştırması (v1.5); adım açıklaması, kayıt notu, adım temposu, takt süresi, yazdır/PDF (v1.6) |
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır.
 
@@ -69,11 +69,11 @@ Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workf
 ### Tarayıcı sürümü (v1.5)
 
 1. **Çalışmalar** ekranında ad ve kod yaz, videoyu seç. İstersen **Adımlar ve etüt bilgileri** bölümüne süreç adımlarını (her satıra bir) ve operatör, istasyon, vardiya gibi bilgileri gir. **Yeni çalışma başlat**.
-2. **Video ve ölçüm** ekranında adım listesi sağdadır. Eksik adımı **Yeni adım** kutusuna yazıp Enter'a bas. Seçili adımın sınıfını (VA/SVA/NVA) listedeki **Sınıf** kutusundan seç; kayıtlar sınıfı adımdan alır.
+2. **Video ve ölçüm** ekranında adım listesi sağdadır. Eksik adımı **Yeni adım** kutusuna yazıp Enter'a bas. Seçili adımın sınıfını (VA/SVA/NVA) ve **bitiş anını** (Ölç'e ne zaman basılacağı) tanımla; kayıtlar sınıfı adımdan alır.
 3. Videoyu adımın başına getir ve **Başla**'ya bas. Adım bitince **Ölç**: kayıt eklenir, sıradaki adım seçilir. Son adımdan sonra çevrim kendiliğinden 1 artar. Adım sınırını bulmak için zaman çizgisinde gezinebilirsin; ölçüm kesilmez.
 4. Araya giren bir bekleme için o adımı seç (ya da ekle), **Sonraki kayıt kapsam dışı**'yı işaretle ve Ölç'e bas. İşaret kalkar, sıra önceki adıma döner.
 5. Yanlış kaydı **Son kaydı geri al** ya da Ctrl+Z ile geri al. Eski bir kaydı düzeltmek için tabloda satıra tıkla; **Seçili kayıt** kutusunda değiştir.
-6. **Analiz ve rapor** ekranında tempo ve toleransı gir; değerler alan değişince uygulanır. Grafikleri ve yeterliliği incele, **Excel'e aktar** ile özet ve ham sayfaları indir.
+6. **Analiz ve rapor** ekranında tempo ve toleransı gir; değerler alan değişince uygulanır. Takt süresi girersen özette takt doluluğu ve gereken operatör sayısı çıkar. Bir adımın temposu farklıysa tabloda adımı seçip **Bu adımın temposu**'nu gir. Grafikleri ve yeterliliği incele; **Excel'e aktar** ya da **Yazdır / PDF** ile paylaş.
 7. İyileştirmeden sonra aynı işi yeniden ölç. **Çalışmalar → Önce / sonra karşılaştır…** iki etüdün adım ve toplam farkını gösterir.
 
 ### Windows sürümü (v1.2)

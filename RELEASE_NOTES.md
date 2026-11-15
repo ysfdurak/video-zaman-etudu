@@ -1,3 +1,27 @@
+# v1.6.0 · Video Zaman Etüdü — etüt için eksik kalan bilgiler ve ekran düzeni
+
+Yalnız tarayıcı sürümü değişti; v1.5.0 ile aynı PR'da yayınlanır. Bütün yenilikler Türkçe ve İngilizce arayüzde var.
+
+**Etüt için gereken bilgiler**
+- **Adımın bitiş anı / açıklaması:** Her adıma bir kırılma noktası yazılır (ör. "ürün kutuya bırakılınca biter"). Ölçüm sırasında Sıradaki kayıt kutusunda görünür, Excel özetine girer.
+- **Kayıt notu:** Seçili kayda not eklenir (ör. "forklift bekledi"). Tabloda ve Excel'in ham sayfasında görünür; not yoksa ham sayfa Windows çıktısıyla aynı kalır.
+- **Adım temposu:** Seçili adıma genel tempodan farklı bir tempo verilebilir. Tabloda `*` ile işaretlenir. Windows sürümü bunu tanımaz, genel tempoyu kullanır.
+- **Takt süresi:** İsteğe bağlı. Özette takt doluluğu ve gereken operatör sayısı (standart ÷ takt) görünür; Excel özetine de girer.
+- **Yazdır / PDF:** Analiz sayfası etüt bilgileriyle birlikte yazdırılır ya da PDF olarak kaydedilir.
+- Ölçüm sürerken geçen süre Sıradaki kayıt kutusunda görünür.
+
+**Ekran ve bulunabilirlik**
+- Analiz sayfası bölümlere ayrıldı: Analiz ayarları, Sonuç, Adım analizi. Sıklık ve adım temposu "Seçili adım" kutusunda; hangi adıma uygulanacağı yazıyor.
+- Ölçüm yokken analizde tek bir boş durum mesajı ve Video ve ölçüme git düğmesi var.
+- Çalışmalar ekranında seçim ipucu var; seçim yokken Aç / Dışa aktar / Sil, iki etütten azken Karşılaştır kapalı.
+- Adım araçları yalnız bir adım seçiliyken görünüyor (önceden boş listede de görünüyordu).
+- Telefonda analiz sayfası yana taşmıyor; grafikler ekran genişliğine göre çiziliyor.
+- "Nasıl çalışır" metni yeni ölçüm akışına göre güncellendi.
+
+**Paket:** Sürüm 1. Yeni isteğe bağlı alanlar: `Takt`, `StepPace`, adım `Note`, kayıt `Note`. Windows sürümü okurken yok sayar.
+
+**Testler:** Node 174/174; Chrome uçtan uca 39/39; axe Türkçe ve İngilizce, masaüstü ve telefonda 0 ihlal.
+
 # v1.5.0 · Video Zaman Etüdü — ölçüm akışı, grafikler, özet rapor ve önce/sonra
 
 Yalnız tarayıcı sürümü değişti. Windows sürümü v1.2.0 olarak kalır ve tarayıcıdan dışa aktarılan paketleri açar; yeni adım listesi ve etüt bilgileri Windows'ta görünmez.

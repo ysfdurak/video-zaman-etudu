@@ -2,7 +2,7 @@
 import {
   newStudy, newObservation, seconds, videoLabel, analyzeSteps, analyzeCycles, studentInv, validateSettings,
   exportPackage, importPackage, suggestedFileName, parseNumber, parsePositiveInt, EXTENSION,
-  INFO_FIELDS, cleanInfo, cleanSteps, deriveSteps, inProcessOrder, cycleSpread, totalStandard, compareStudies
+  INFO_FIELDS, cleanInfo, cleanSteps, deriveSteps, inProcessOrder, cycleSpread, totalStandard, compareStudies, cleanTakt
 } from "./core.js";
 import { stepChart, cycleChart, CLASS_COLORS } from "./charts.js";
 import { reportBytes } from "./report.js";
@@ -174,6 +174,9 @@ async function reloadStudies() {
       onOpen: (s) => openStudy(s),
       empty: t("list.empty")
     });
+  const none = !selectedStudy();
+  for (const id of ["open", "export", "delete"]) $(id).disabled = none;
+  $("compare").disabled = state.studies.length < 2;
 }
 const reloadStudiesView = () => reloadStudies();
 /** Listede kısa durum: ölçüm yok / tüm adımlar yeterli / k adım yetersiz. */
@@ -458,6 +461,7 @@ function updatePosition() {
   timeline.value = String(ms);
   $("position").textContent = fmtClock(ms);
   updateLiveSegment(ms);
+  updateLive(ms);
 }
 
 function play() {
@@ -505,6 +509,7 @@ function setStatus(text) { $("status").textContent = text; }
 
 function stopMeasure() {
   state.anchor = null;
+  if ($("now-live")) $("now-live").hidden = true;
   $("measure").textContent = t("btn.start");
   $("measure").classList.remove("on");
   updateLiveSegment();
@@ -544,12 +549,13 @@ function renderSteps() {
       c.style.setProperty("--cls", CLASS_COLORS[st.Classification]);
       b.append(c);
     }
+    if (st.Note) b.title = st.Note;
     b.addEventListener("click", () => guard(() => selectStep(i)));
     box.append(b);
   });
   const st = currentStep();
   $("step-tools").hidden = !st;
-  if (st) $("step-class").value = st.Classification;
+  if (st) { $("step-class").value = st.Classification; $("step-note").value = st.Note ?? ""; }
   $("step-left").disabled = state.stepIndex <= 0;
   $("step-right").disabled = state.stepIndex >= list.length - 1;
   $("step-names").replaceChildren(...list.map((x) => Object.assign(document.createElement("option"), { value: x.Name })));
@@ -560,6 +566,16 @@ function updateNow() {
   const st = currentStep();
   const cycle = $("cycle").value.trim() || "?";
   $("now-step").textContent = st ? t("now.value", { step: st.Name, cycle }) + ($("excluded").checked ? " · " + t("now.excluded") : "") : t("now.none");
+  $("now-note").hidden = !st?.Note;
+  $("now-note").textContent = st?.Note ? t("now.note", { note: st.Note }) : "";
+}
+
+/** Süren ölçümün geçen süresi (Sıradaki kayıt kutusunda). */
+function updateLive(now) {
+  const el = $("now-live");
+  if (state.anchor === null) { el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = t(now > state.anchor ? "now.live" : "now.liveBehind", { s: fmt3(Math.max(0, now - state.anchor) / 1000) });
 }
 
 /** Elle adım seçimi. Önceki adım hatırlanır: araya giren kapsam dışı kayıttan sonra sıra oraya döner. */
@@ -612,6 +628,13 @@ on("step-class", async () => {
     refreshObservations();
     await save();
   }
+}, "change");
+on("step-note", async () => {
+  const st = currentStep();
+  if (!st) return;
+  const note = $("step-note").value.trim().slice(0, 200);
+  if (note) st.Note = note; else delete st.Note;
+  await saveSteps();
 }, "change");
 on("step-rename", async () => {
   const st = currentStep();
@@ -758,6 +781,7 @@ function selectRow(row) {
     $("row-cycle").value = String(row.Cycle);
     $("row-class").value = row.Classification;
     $("row-excluded").checked = row.Excluded;
+    $("row-note").value = row.Note ?? "";
   }
 }
 
@@ -770,6 +794,8 @@ on("edit-row", async () => {
   row.Step = name;
   row.Classification = $("row-class").value;
   row.Excluded = $("row-excluded").checked;
+  const note = $("row-note").value.trim().slice(0, 200);
+  if (note) row.Note = note; else delete row.Note;
   if (!steps().some((x) => x.Name === name)) { steps().push({ Name: name, Classification: row.Classification }); renderSteps(); }
   refreshObservations();
   setStatus(t("status.rowUpdated", { step: row.Step }));
@@ -802,7 +828,7 @@ on("row-close", () => { selectRow(null); refreshObservations(); });
 function refreshObservations() {
   const rows = state.current ? [...state.current.Observations].sort((a, b) => a.StartMs - b.StartMs || a.EndMs - b.EndMs) : [];
   renderTable("observations", rows,
-    (r) => [num(fmtTime(r.StartMs)), num(fmtTime(r.EndMs)), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle)],
+    (r) => [num(fmtTime(r.StartMs)), num(fmtTime(r.EndMs)), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle), txt(r.Note ?? "")],
     {
       isSelected: (r) => r === state.selectedRow,
       onSelect: (r) => {
@@ -910,6 +936,7 @@ window.addEventListener("keydown", (e) => {
 function loadSettings() {
   const s = state.current?.Settings;
   if (!s) return;
+  $("takt").value = state.current.Takt === null || state.current.Takt === undefined ? "" : fmtNum(state.current.Takt);
   $("confidence").value = fmtNum(s.Confidence);
   $("target").value = fmtNum(s.TargetError);
   $("pace").value = fmtNum(s.Pace);
@@ -930,7 +957,11 @@ async function applySettings() {
     Stable: $("stable").checked
   };
   validateSettings(settings);
+  const taktText = $("takt").value.trim();
+  const takt = taktText === "" ? null : cleanTakt(parseNumber(taktText, t("name.takt")));
+  if (taktText !== "" && takt === null) throw new Error(t("msg.taktInvalid"));
   state.current.Settings = settings;
+  state.current.Takt = takt;
   await save();
   refreshAnalysis();
 }
@@ -938,7 +969,7 @@ async function applySettingsInline() {
   try { await applySettings(); }
   catch (error) { $("settings-error").textContent = errorText(error); $("settings-error").hidden = false; }
 }
-for (const id of ["confidence", "target", "pace", "allowance", "group-ms", "method", "stable"])
+for (const id of ["confidence", "target", "pace", "allowance", "group-ms", "method", "stable", "takt"])
   $(id).addEventListener("change", applySettingsInline);
 
 function refreshAnalysis() {
@@ -948,16 +979,21 @@ function refreshAnalysis() {
   const rows = inProcessOrder(study, analyzeSteps(study));
   const selected = rows.find((r) => r.Step === previous) ?? rows[0] ?? null;
   state.selectedResult = selected?.Step ?? null;
+  const empty = study.Observations.length === 0;
+  $("analysis-empty").hidden = !empty;
+  $("analysis-body").hidden = empty;
+  $("sel-step").textContent = selected?.Step ?? "—";
+  $("apply-step").disabled = !selected;
   renderTable("results", rows,
     (r) => [txt(r.Step), num(r.Count), num(r.Excluded), num(fmt3(r.Mean)), num(fmt3(r.Median)), num(fmt3(r.Min)), num(fmt3(r.Max)),
       num(fmt3(r.Deviation)), num(fmt3(r.CriticalT)), num(fmt3(r.ErrorPercent)), txt(result(r.Sufficiency)), num(fmt3(r.Base)),
-      num(fmt3(r.Normal)), num(fmt3(r.Standard)), num(r.Every), num(fmt3(r.Contribution)), txt(result(r.Method))],
+      num(fmtNum(r.Pace) + (study.StepPace.has(r.Step) ? " *" : "")), num(fmt3(r.Normal)), num(fmt3(r.Standard)), num(r.Every), num(fmt3(r.Contribution)), txt(result(r.Method))],
     {
       isSelected: (r) => r.Step === state.selectedResult,
-      onSelect: (r) => { state.selectedResult = r.Step; $("every").value = String(r.Every); refreshAnalysis(); },
+      onSelect: (r) => { state.selectedResult = r.Step; fillStepSettings(r); refreshAnalysis(); },
       empty: t("analysis.empty")
     });
-  if (selected && previous !== selected.Step) $("every").value = String(selected.Every);
+  if (selected && previous !== selected.Step) fillStepSettings(selected);
   const spread = cycleSpread(analyzeCycles(study));
   renderTable("cycles", spread.Rows, (c) => [num(c.Cycle), num(fmt3(c.Elapsed)), num(fmt3(c.Workload)), num((c.Outlier ? "⚠ " : "") + pct(c.DiffPercent))]);
   renderCharts(study, rows, spread);
@@ -966,6 +1002,11 @@ function refreshAnalysis() {
   const notes = [`${t(study.Settings.Stable ? "guide.stable" : "guide.general")} ${t("guide.tail")}`];
   if (study.Settings.Allowance === 0 && rows.length) notes.push(t("guide.noAllowance"));
   $("analysis-status").textContent = notes.join(" ");
+}
+
+function fillStepSettings(r) {
+  $("every").value = String(r.Every);
+  $("step-pace").value = state.current.StepPace.has(r.Step) ? fmtNum(state.current.StepPace.get(r.Step)) : "";
 }
 
 /** Hedef hataya inmek için gereken yaklaşık gözlem sayısı: t değeri serbestlik derecesine göre yinelemeli güncellenir. */
@@ -998,6 +1039,11 @@ function renderSummary(study, rows) {
   const { Total: total, Incomplete: missing } = totalStandard(rows);
   card(t("summary.total"), total !== null ? `${fmt3(total)} ${getLang() === "tr" ? "sn" : "s"}` : "—", missing ? [t("summary.incomplete")] : []);
   card(t("summary.rate"), total > 0 ? t("summary.rateUnit", { n: (3600 / total).toLocaleString(locale(), { maximumFractionDigits: 1 }) }) : "—");
+  if (study.Takt && total > 0) {
+    const load = (total / study.Takt) * 100;
+    card(t("summary.takt"), t(load <= 100 ? "summary.taktOk" : "summary.taktOver", { p: pct(load, 0).replace(/^[+]/, "") }),
+      [t("summary.taktDetail", { std: fmt3(total), takt: fmt3(study.Takt) }), t("summary.operators", { n: (total / study.Takt).toLocaleString(locale(), { maximumFractionDigits: 2 }) })]);
+  }
   const settings = study.Settings;
   const bad = rows.filter((r) => r.Sufficiency === "Yetersiz");
   const na = rows.filter((r) => r.Sufficiency === "Hesaplanamıyor" && r.Count > 0);
@@ -1026,13 +1072,15 @@ function renderSummary(study, rows) {
 function renderCharts(study, rows, spread) {
   const box = $("charts");
   box.replaceChildren();
+  // Grafik genişliği kutuya göre: telefonda yazılar küçülmesin.
+  const width = Math.max(300, Math.min(640, (box.clientWidth || window.innerWidth) - 30));
   const unit = getLang() === "tr" ? "sn" : "s";
   const cls = new Map(study.Steps.map((x) => [x.Name, x.Classification]));
   const stepData = rows.filter((r) => r.Contribution !== null).map((r) => ({ label: r.Step, value: r.Contribution, cls: cls.get(r.Step) ?? classOf(study, r.Step), text: fmt3(r.Contribution) + " " + unit }));
-  if (stepData.length) box.append(figure(t("chart.steps"), stepChart(stepData, { classLabel: (c) => c || t("summary.noClass") })));
+  if (stepData.length) box.append(figure(t("chart.steps"), stepChart(stepData, { width, classLabel: (c) => c || t("summary.noClass") })));
   if (spread.Rows.length > 1)
     box.append(figure(t("chart.cycles"), cycleChart(spread.Rows.map((c) => ({ label: String(c.Cycle), value: c.Elapsed, outlier: c.Outlier, text: fmt3(c.Elapsed) + " " + unit })),
-      { mean: spread.Mean, meanLabel: t("chart.mean", { v: fmt3(spread.Mean) + " " + unit }), axis: t("th.c.cycle") })));
+      { width, mean: spread.Mean, meanLabel: t("chart.mean", { v: fmt3(spread.Mean) + " " + unit }), axis: t("th.c.cycle") })));
 }
 function classOf(study, step) {
   const counts = new Map();
@@ -1106,9 +1154,16 @@ function renderComparison() {
     : t("compare.incomplete");
 }
 
-on("apply-frequency", async () => {
+on("apply-step", async () => {
   if (!state.current || state.selectedResult === null) return;
   state.current.Frequency.set(state.selectedResult, parsePositiveInt($("every").value, t("name.frequency")));
+  const paceText = $("step-pace").value.trim();
+  if (paceText === "") state.current.StepPace.delete(state.selectedResult);
+  else {
+    const pace = parseNumber(paceText, t("name.stepPace"));
+    if (!(pace > 0 && pace <= 300)) throw new Error(t("msg.stepPaceInvalid"));
+    state.current.StepPace.set(state.selectedResult, pace);
+  }
   await save();
   refreshAnalysis();
 });
@@ -1121,6 +1176,16 @@ on("t-table", async () => {
   await showDialog(t("tTable.formula"), { pre: t("tTable.header") + "\n" + lines.join("\n"), title: t("tTable.title", { c: fmtNum(c) }) });
 });
 
+on("go-measure", () => selectTab(1));
+on("print", async () => {
+  if (!state.current) return;
+  await applySettings();
+  const s = state.current;
+  $("print-foot").textContent = t("print.foot", { code: s.Code, name: s.Name, date: fmtDate(new Date().toISOString()) }) +
+    INFO_FIELDS.filter((k) => s.Info?.[k]).map((k) => ` · ${t("info." + k)}: ${s.Info[k]}`).join("");
+  $("info-box").open = true;
+  window.print();
+});
 on("excel", async () => {
   if (!state.current) return;
   await applySettings();

@@ -16,10 +16,12 @@ export function reportSheets(study, now = new Date(), lang = "tr") {
   const head = (key) => tx(key).split("|");
   const yesNo = (v) => tx(v ? "yes" : "no");
 
-  const raw = [head("x.raw")];
+  // Not sütunu yalnız notlu kayıt varsa eklenir; yoksa sayfa Windows çıktısıyla aynıdır.
+  const notes = study.Observations.some((o) => o.Note);
+  const raw = [notes ? [...head("x.raw"), tx("x.note")] : head("x.raw")];
   for (const row of [...study.Observations].sort((a, b) => a.StartMs - b.StartMs || a.EndMs - b.EndMs))
     raw.push([int(row.Cycle), row.Step, int(row.StartMs), int(row.EndMs), row.StartMs / 1000, row.EndMs / 1000,
-      seconds(row), row.Classification, yesNo(row.Excluded)]);
+      seconds(row), row.Classification, yesNo(row.Excluded), ...(notes ? [row.Note ?? ""] : [])]);
 
   const steps = [head("x.steps")];
   const groups = [head("x.groups")];
@@ -44,7 +46,7 @@ export function reportSheets(study, now = new Date(), lang = "tr") {
   const rows = inProcessOrder(study, analyzeSteps(study));
   const { Total: total } = totalStandard(rows);
   const spread = cycleSpread(analyzeCycles(study));
-  const cls = new Map(deriveSteps(study).map((x) => [x.Name, x.Classification]));
+  const defs = new Map(deriveSteps(study).map((x) => [x.Name, x]));
   const byClass = new Map(); let all = 0;
   for (const o of study.Observations) {
     if (o.Excluded || o.EndMs <= o.StartMs) continue;
@@ -55,6 +57,7 @@ export function reportSheets(study, now = new Date(), lang = "tr") {
     [tx("x.s.name"), study.Name], [tx("x.s.code"), study.Code],
     ...INFO_FIELDS.filter((k) => study.Info?.[k]).map((k) => [tx("info." + k), study.Info[k]]),
     [tx("x.o.total"), total], [tx("x.o.rate"), total ? 3600 / total : null],
+    ...(study.Takt ? [[tx("x.o.takt"), study.Takt], [tx("x.o.load"), total ? (total / study.Takt) * 100 : null], [tx("x.o.operators"), total ? total / study.Takt : null]] : []),
     [tx("x.o.cycles"), int(spread.Rows.length)], [tx("x.o.cv"), spread.Variation],
     [tx("x.o.insufficient"), int(rows.filter((r) => r.Sufficiency !== "Yeterli" && r.Count > 0).length)],
     ...[...byClass.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => [tx("x.o.share") + " " + k, (v / all) * 100]),
@@ -62,8 +65,8 @@ export function reportSheets(study, now = new Date(), lang = "tr") {
     [],
     head("x.o.steps")];
   for (const r of rows)
-    summary.push([r.Step, cls.get(r.Step) ?? "", int(r.Count), r.Standard, int(r.Every), r.Contribution,
-      total && r.Contribution !== null ? (r.Contribution / total) * 100 : null, result(r.Sufficiency, lang)]);
+    summary.push([r.Step, defs.get(r.Step)?.Classification ?? "", int(r.Count), r.Pace, r.Standard, int(r.Every), r.Contribution,
+      total && r.Contribution !== null ? (r.Contribution / total) * 100 : null, result(r.Sufficiency, lang), defs.get(r.Step)?.Note ?? ""]);
 
   return [
     { name: tx("x.sheet.summary"), rows: summary },
