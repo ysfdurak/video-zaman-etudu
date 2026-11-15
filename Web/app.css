@@ -252,3 +252,30 @@ button:disabled.primary { opacity: .45; }
   .lower { display: block; }
 }
 .gap-left { margin-left: 14px; } @media (max-width: 700px) { .gap-left { margin-left: 0; } }
+/* v1.8 */
+body:not(.sampling-study) .sampling-only, body.sampling-study .time-only { display: none !important; }
+.seg.tick { width: 2px !important; margin-left: -1px; background: var(--cls); opacity: .9; }
+.wide-chart { grid-column: 1 / -1; }
+.story { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin: 8px 0 16px; }
+.story-card { background: #fff; border: 1px solid #d3dde5; border-radius: 8px; padding: 10px; break-inside: avoid; }
+.story-card canvas { width: 100%; height: auto; background: #e3eaee; border-radius: 4px; display: block; }
+.story-card h3 { font-size: 15px; margin: 8px 0 2px; }
+.story-card p { margin: 2px 0; font-size: 13px; }
+.story-meta { color: #5b6b78; }
+.story-waste { color: #9a3412; }
+.story-title { grid-column: 1 / -1; }
+.side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.side-by-side figure { margin: 0; }
+.side-by-side video { width: 100%; background: #000; border-radius: 4px; }
+.side-by-side figcaption { font-size: 13px; color: #5b6b78; margin-bottom: 4px; }
+#balance input { min-height: 0; padding: 2px 6px; }
+@media (max-width: 700px) { .side-by-side { grid-template-columns: 1fr; } }
+@media print {
+  body.print-story #panel-2 > *:not(#analysis-body), body.print-story #analysis-body > *:not(#story) { display: none !important; }
+  body.print-story .story { grid-template-columns: repeat(2, 1fr); }
+  #hist-box, #yamazumi-box, #work-box, .story-card { break-inside: avoid; }
+  #balance input { border: none; padding: 0; }
+  #exclude-outliers, #auto-balance, #clear-balance, #load-story { display: none !important; }
+}
+/* v1.8 grafikleri çizildikleri genişlikten büyütülmez (geniş ekranda yazılar şişmesin). */
+#hist-box .chart-svg, #yamazumi-box .chart-svg, #work-box .chart-svg, #s-chart .chart-svg { max-width: 780px; }

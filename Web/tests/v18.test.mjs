@@ -144,3 +144,26 @@ test("adım karesi: tanımlıysa o, yoksa ilk kaydın ortası", () => {
   assert.equal(stepFrame(st, "Hazırlık"), 1000);
   assert.equal(stepFrame(st, "Yok"), null);
 });
+
+import { reportSheets } from "../js/report.js";
+
+test("Excel v1.8: tempo sütunu, yeni sayfalar ve örnekleme raporu", () => {
+  const st = demo();
+  st.Observations[1] = { ...st.Observations[1], Rating: 95 };
+  st.Steps = [{ Name: "Toplama", Classification: "VA", Station: "1", Waste: "Motion", Idea: "rafı yaklaştır", Type: "Walk" }, { Name: "Tarama", Classification: "SVA", Station: "2", Type: "Machine" }];
+  for (const lang of ["tr", "en"]) {
+    const sheets = reportSheets(st, new Date(2026, 10, 15), lang);
+    const names = sheets.map((x) => x.name);
+    assert.equal(names.length, 9, names.join());
+    assert.ok(sheets[1].rows[0].includes(lang === "tr" ? "Tempo puanı (%)" : "Rating (%)"));
+    assert.ok(sheets.find((x) => x.name === (lang === "tr" ? "Standart iş" : "Standard work")).rows.some((r) => r[2] === (lang === "tr" ? "Yürüme" : "Walking")));
+    assert.ok(sheets[0].rows.some((r) => r[0] === (lang === "tr" ? "Denge verimi (%)" : "Balance efficiency (%)")));
+  }
+  const plain = reportSheets(demo(), new Date(2026, 10, 15), "tr");
+  assert.equal(plain[1].rows[0].length, 9, "tempo/not yoksa ham sayfa v1.2 ile aynı");
+  const sm = newStudy({ Name: "Ö", Code: "K", StudyType: "sampling", Categories: [{ Name: "Çalışıyor", Classification: "VA" }],
+    Samples: [{ AtMs: 1000, Category: "Çalışıyor" }, { AtMs: 5000, Category: "Bekliyor" }] });
+  const ss = reportSheets(sm, new Date(2026, 10, 15), "en");
+  assert.deepEqual(ss.map((x) => x.name), ["Summary", "Work sampling", "Observations", "Settings"]);
+  assert.equal(ss[1].rows.length, 3);
+});

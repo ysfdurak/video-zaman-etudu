@@ -3,9 +3,11 @@ import {
   newStudy, newObservation, seconds, videoLabel, analyzeSteps, analyzeCycles, studentInv, validateSettings,
   exportPackage, importPackage, suggestedFileName, parseNumber, parsePositiveInt, EXTENSION,
   INFO_FIELDS, cleanInfo, cleanSteps, deriveSteps, inProcessOrder, cycleSpread, totalStandard, compareStudies, cleanTakt, stepOrder, VERSION, requiredObservations,
-  ALLOWANCE_PARTS, cleanAllowanceParts, allowanceSum
+  ALLOWANCE_PARTS, cleanAllowanceParts, allowanceSum,
+  cleanRating, cleanCategories, cleanSampleError, WORK_TYPES, WASTES
 } from "./core.js";
-import { stepChart, cycleChart, CLASS_COLORS } from "./charts.js";
+import { outliers, histogram, lineBalance, autoBalance, standardWork, improvements, analyzeSampling, randomMoment, stepFrame } from "./advanced.js";
+import { stepChart, cycleChart, CLASS_COLORS, histogramChart, yamazumiChart, workChart, samplingChart } from "./charts.js";
 import { reportBytes } from "./report.js";
 import { makeBackup, readBackup, isZip } from "./backup.js";
 import { StudyStore } from "./store.js";
@@ -32,6 +34,7 @@ const state = {
   undo: [],                  // bu oturumda eklenen kayıtlar: {row, stepIndex, cycle}
   newVideo: null,            // {file, handle}
   videos: new Map(),         // etüt Id → {file, url} (bu oturumda bağlanan videolar)
+  selectedSample: null, sampleUndo: [],   // iş örneklemesi (v1.8)
   saving: Promise.resolve()
 };
 
@@ -234,15 +237,17 @@ on("pick-new-video", async () => {
 on("create", async () => {
   const name = $("new-name").value.trim(), code = $("new-code").value.trim();
   if (!name || !code || !state.newVideo) throw new Error(t("msg.createMissing"));
-  const steps = cleanSteps($("new-steps").value.split("\n").map((x) => ({ Name: x, Classification: "" })));
+  const lines = $("new-steps").value.split("\n").map((x) => ({ Name: x, Classification: "" }));
   const info = readInfo("new-info");
-  const study = newStudy({ Name: name, Code: code, Video: state.newVideo.file.name, Steps: steps, Info: info });
+  const sampling = $("new-type").value === "sampling";
+  const study = newStudy({ Name: name, Code: code, Video: state.newVideo.file.name, Info: info,
+    ...(sampling ? { StudyType: "sampling", Categories: cleanCategories(lines) } : { Steps: cleanSteps(lines) }) });
   attachVideo(study, state.newVideo.file);
   if (state.newVideo.handle) await store.saveHandle(study.Id, state.newVideo.handle);
   await store.save(study);
   requestPersistence();
   state.newVideo = null;
-  $("new-name").value = ""; $("new-code").value = ""; $("new-video").value = ""; $("new-steps").value = "";
+  $("new-name").value = ""; $("new-code").value = ""; $("new-video").value = ""; $("new-steps").value = ""; $("new-type").value = ""; syncNewType();
   renderInfoFields("new-info", {});
   await openStudy(study);
 });
@@ -362,7 +367,11 @@ async function openStudy(study) {
   state.resumeAt = point.at;
   $("cycle").value = String(point.cycle);
   $("excluded").checked = false;
+  document.body.classList.toggle("sampling-study", isSampling());
+  $("sampling-side").hidden = !isSampling();
+  $("time-side").hidden = isSampling();
   renderSteps();
+  renderSampling();
   renderInfoFields("info-fields", study.Info);
   setTabsEnabled(true);
   selectTab(1);
@@ -475,7 +484,7 @@ video.addEventListener("loadedmetadata", () => {
   state.ready = Number.isFinite(video.duration) && video.duration > 0;
   timeline.disabled = !state.ready;
   if (state.ready) timeline.max = String(Math.max(1, Math.round(video.duration * 1000)));
-  setStatus(state.ready ? (state.current?.Steps.length ? t("status.ready") : t("status.addSteps")) : t("status.noDuration"));
+  setStatus(state.ready ? (isSampling() ? t("s.ready") : state.current?.Steps.length ? t("status.ready") : t("status.addSteps")) : t("status.noDuration"));
   if (state.ready && state.resumeAt !== null && state.resumeAt !== undefined) {
     const at = Math.min(state.resumeAt, Math.round(video.duration * 1000));
     state.resumeAt = null;
@@ -603,7 +612,10 @@ function renderSteps() {
   });
   const st = currentStep();
   $("step-tools").hidden = !st;
-  if (st) { $("step-class").value = st.Classification; $("step-note").value = st.Note ?? ""; }
+  if (st) {
+    $("step-class").value = st.Classification; $("step-note").value = st.Note ?? "";
+    $("step-type").value = st.Type ?? ""; $("step-waste").value = st.Waste ?? ""; $("step-idea").value = st.Idea ?? "";
+  }
   $("step-left").disabled = state.stepIndex <= 0;
   $("step-right").disabled = state.stepIndex >= list.length - 1;
   $("step-names").replaceChildren(...list.map((x) => Object.assign(document.createElement("option"), { value: x.Name })));
@@ -684,6 +696,25 @@ on("step-note", async () => {
   if (note) st.Note = note; else delete st.Note;
   await saveSteps();
 }, "change");
+/** v1.8: adımın türü, israf türü ve iyileştirme fikri. */
+for (const [id, field, clean] of [["step-type", "Type", (v) => (WORK_TYPES.includes(v) ? v : "")], ["step-waste", "Waste", (v) => (WASTES.includes(v) ? v : "")],
+  ["step-idea", "Idea", (v) => v.trim().slice(0, 200)]])
+  on(id, async () => {
+    const st = currentStep();
+    if (!st) return;
+    const v = clean($(id).value);
+    if (v) st[field] = v; else delete st[field];
+    await saveSteps();
+  }, "change");
+on("step-frame", async () => {
+  requireVideo();
+  const st = currentStep();
+  if (!st) throw new Error(t("msg.noSteps"));
+  st.FrameMs = positionMs();
+  await saveSteps();
+  setStatus(t("status.frameSet", { step: st.Name, at: fmtClock(st.FrameMs) }));
+});
+
 on("step-rename", async () => {
   const st = currentStep();
   if (!st) return;
@@ -783,7 +814,9 @@ function addObservation(start, end) {
   if (end <= start) throw new Error(t("msg.endAfterStart"));
   const st = currentStep();
   const cycle = cycleValue();
-  const row = newObservation({ StartMs: start, EndMs: end, Step: st.Name, Classification: st.Classification, Excluded: $("excluded").checked, Cycle: cycle });
+  const rating = readRating($("now-rating").value);
+  const row = newObservation({ StartMs: start, EndMs: end, Step: st.Name, Classification: st.Classification, Excluded: $("excluded").checked, Cycle: cycle,
+    ...(rating !== null ? { Rating: rating } : {}) });
   if (state.current.Observations.some((x) => x.StartMs === start && x.EndMs === end && x.Cycle === row.Cycle && x.Step === row.Step && x.Excluded === row.Excluded))
     throw new Error(t("msg.duplicate"));
   state.current.Observations.push(row);
@@ -830,6 +863,7 @@ function selectRow(row) {
     $("row-class").value = row.Classification;
     $("row-excluded").checked = row.Excluded;
     $("row-note").value = row.Note ?? "";
+    $("row-rating").value = cleanRating(row.Rating) === null ? "" : fmtNum(row.Rating);
   }
 }
 
@@ -844,6 +878,8 @@ on("edit-row", async () => {
   row.Excluded = $("row-excluded").checked;
   const note = $("row-note").value.trim().slice(0, 200);
   if (note) row.Note = note; else delete row.Note;
+  const rating = readRating($("row-rating").value);
+  if (rating !== null) row.Rating = rating; else delete row.Rating;
   if (!steps().some((x) => x.Name === name)) { steps().push({ Name: name, Classification: row.Classification }); renderSteps(); }
   refreshObservations();
   setStatus(t("status.rowUpdated", { step: row.Step }));
@@ -887,7 +923,7 @@ function refreshObservations() {
   const rows = all.filter((o) => (!fs || o.Step === fs) && (!fc || String(o.Cycle) === fc));
   $("obs-count").textContent = all.length ? t(rows.length === all.length ? "filter.countAll" : "filter.count", { n: rows.length, total: all.length }) : "";
   renderTable("observations", rows,
-    (r) => [num(fmtTime(r.StartMs)), num(fmtTime(r.EndMs)), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle), txt(r.Note ?? "")],
+    (r) => [num(fmtTime(r.StartMs)), num(fmtTime(r.EndMs)), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle), num(cleanRating(r.Rating) === null ? "" : fmtNum(r.Rating)), txt(r.Note ?? "")],
     {
       isSelected: (r) => r === state.selectedRow,
       onSelect: (r) => {
@@ -908,6 +944,14 @@ function renderSegments() {
   box.replaceChildren();
   const total = Number(timeline.max);
   if (!state.current || !state.ready || !(total > 0)) { updateLiveSegment(); return; }
+  // İş örneklemesi: gözlem anları ince işaret.
+  for (const x of isSampling() ? state.current.Samples : []) {
+    const tick = document.createElement("span");
+    tick.className = "seg tick";
+    tick.style.left = (x.AtMs / total) * 100 + "%";
+    tick.style.setProperty("--cls", CLASS_COLORS[categoryClass(x.Category)] ?? CLASS_COLORS[""]);
+    box.append(tick);
+  }
   for (const o of state.current.Observations) {
     const seg = document.createElement("span");
     seg.className = "seg" + (o.Excluded ? " excluded" : "") + (o === state.selectedRow ? " selected" : "");
@@ -968,8 +1012,9 @@ window.addEventListener("keydown", (e) => {
   if (isEditable(document.activeElement)) return;
   const step = e.shiftKey ? 1000 : e.ctrlKey ? 40 : 100;
   let action;
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") action = undoLast;
-  else if (!e.ctrlKey && /^[1-9]$/.test(e.key)) { const i = Number(e.key) - 1; action = () => selectStep(i); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") action = isSampling() ? undoSample : undoLast;
+  else if (!e.ctrlKey && /^[1-9]$/.test(e.key)) { const i = Number(e.key) - 1; action = isSampling() ? () => recordSample(i) : () => selectStep(i); }
+  else if (isSampling() && e.key === "Enter") action = goRandomMoment;
   else switch (e.key) {
     case " ": action = () => (video.paused ? play() : pause()); break;
     case "Enter": action = measure; break;
@@ -996,6 +1041,7 @@ function loadSettings() {
   const s = state.current?.Settings;
   if (!s) return;
   $("takt").value = state.current.Takt === null || state.current.Takt === undefined ? "" : fmtNum(state.current.Takt);
+  $("sample-error").value = state.current.SampleError === null || state.current.SampleError === undefined ? "" : fmtNum(state.current.SampleError);
   $("confidence").value = fmtNum(s.Confidence);
   $("target").value = fmtNum(s.TargetError);
   $("pace").value = fmtNum(s.Pace);
@@ -1033,8 +1079,12 @@ async function applySettings() {
   const taktText = $("takt").value.trim();
   const takt = taktText === "" ? null : cleanTakt(parseNumber(taktText, t("name.takt")));
   if (taktText !== "" && takt === null) throw new Error(t("msg.taktInvalid"));
+  const errText = $("sample-error").value.trim();
+  const sampleError = errText === "" ? null : cleanSampleError(parseNumber(errText, t("field.sampleError")));
+  if (errText !== "" && sampleError === null) throw new Error(t("msg.sampleErrorInvalid"));
   state.current.Settings = settings;
   state.current.Takt = takt;
+  state.current.SampleError = sampleError;
   state.current.AllowanceParts = cleanAllowanceParts(parts);
   $("allowance").value = fmtNum(settings.Allowance);
   syncAllowanceField();
@@ -1045,7 +1095,7 @@ async function applySettingsInline() {
   try { await applySettings(); }
   catch (error) { $("settings-error").textContent = errorText(error); $("settings-error").hidden = false; }
 }
-for (const id of ["confidence", "target", "pace", "allowance", "group-ms", "method", "stable", "takt", ...ALLOWANCE_PARTS.map((k) => "al-" + k)])
+for (const id of ["confidence", "target", "pace", "allowance", "group-ms", "method", "stable", "takt", "sample-error", ...ALLOWANCE_PARTS.map((k) => "al-" + k)])
   $(id).addEventListener("change", applySettingsInline);
 
 /** Kalemler doluysa toplam alanı salt okunur olur ve toplamı gösterir. */
@@ -1062,6 +1112,8 @@ for (const id of ["filter-step", "filter-cycle"]) $(id).addEventListener("change
 function refreshAnalysis() {
   const study = state.current;
   if (!study) return;
+  $("sampling-body").hidden = !isSampling();
+  if (isSampling()) { $("analysis-body").hidden = true; $("analysis-empty").hidden = true; refreshSampling(); return; }
   const previous = state.selectedResult;
   const rows = inProcessOrder(study, analyzeSteps(study));
   const selected = rows.find((r) => r.Step === previous) ?? rows[0] ?? null;
@@ -1086,6 +1138,7 @@ function refreshAnalysis() {
   renderCharts(study, rows, spread);
   renderTable("groups", selected?.Groups ?? [], (g) => [num(fmt3(g.Seconds)), num(g.Count)], { empty: t("groups.empty") });
   renderSummary(study, rows);
+  renderAdvanced(study, rows, selected);
   const notes = [`${t(study.Settings.Stable ? "guide.stable" : "guide.general")} ${t("guide.tail")}`];
   if (study.Settings.Allowance === 0 && rows.length) notes.push(t("guide.noAllowance"));
   $("analysis-status").textContent = notes.join(" ");
@@ -1144,6 +1197,8 @@ function renderSummary(study, rows) {
     byClass.set(k, (byClass.get(k) ?? 0) + (o.EndMs - o.StartMs));
     all += o.EndMs - o.StartMs;
   }
+  const outs = outliers(study).reduce((sum, g) => sum + g.Rows.length, 0);
+  if (outs) card(t("summary.outliersLabel"), t("summary.outliers", { n: outs }), [t("summary.outliersDetail")]);
   if (all > 0) card(t("summary.classes"), [...byClass.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => (getLang() === "tr" ? `${k} %${Math.round((v / all) * 100)}` : `${k} ${Math.round((v / all) * 100)}%`)).join(" · "));
 }
 
@@ -1232,6 +1287,7 @@ function renderComparison() {
   $("compare-summary").textContent = c.Before !== null && c.After !== null
     ? t("compare.result", { before: fmt3(c.Before) + " " + unit, after: fmt3(c.After) + " " + unit, d: pct(c.DiffPercent, 1), rb: rate(c.Before), ra: rate(c.After) })
     : t("compare.incomplete");
+  fillCompareSteps(a, b);
 }
 
 on("apply-step", async () => {
@@ -1261,8 +1317,18 @@ on("print", async () => {
   if (!state.current) return;
   await applySettings();
   await saveInfo();
+  document.body.classList.remove("print-story");
   window.print();
 });
+/** Yalnız adım kartları (görsel iş talimatı) yazdırılır. */
+on("print-story", async () => {
+  if (!state.current) return;
+  await applySettings();
+  await loadStory();
+  document.body.classList.add("print-story");
+  window.print();
+});
+window.addEventListener("afterprint", () => document.body.classList.remove("print-story"));
 /** Yazdırma başlığı: etüt bilgileri ve analizin dayandığı ayarlar (Ctrl+P ile de dolar). */
 function fillPrintHead() {
   const s = state.current;
@@ -1303,9 +1369,11 @@ function renderLanguage() {
   updateHeader();
   $("measure").textContent = state.anchor === null ? t("btn.start") : t("btn.measure");
   renderInfoFields("new-info", readInfoSafe("new-info"));
+  syncNewType();
   if (state.current) {
     loadSettings();
     renderSteps();
+    renderSampling();
     renderInfoFields("info-fields", state.current.Info);
     refreshObservations();
     if (activeTab === 2) guard(refreshAnalysis);
@@ -1314,6 +1382,396 @@ function renderLanguage() {
   url.searchParams.set("lang", getLang());
   history.replaceState(null, "", url);
 }
+
+// ------------------------------------------------------------ v1.8: kayıt temposu, örnekleme, ileri analiz
+
+const isSampling = () => state.current?.StudyType === "sampling";
+
+/** Tempo puanı alanı: boş → null; geçersiz → hata. */
+function readRating(text) {
+  const t_ = String(text).trim();
+  if (t_ === "") return null;
+  const v = cleanRating(parseNumber(t_, t("name.rating")));
+  if (v === null) throw new Error(t("msg.ratingInvalid"));
+  return v;
+}
+
+/** Yeni etüt formu: örneklemede adımlar yerine kategoriler. */
+function syncNewType() {
+  const sampling = $("new-type").value === "sampling";
+  $("new-steps-label").textContent = t(sampling ? "field.newCategories" : "field.newSteps");
+  $("new-steps").placeholder = t(sampling ? "placeholder.newCategories" : "placeholder.newSteps");
+}
+$("new-type").addEventListener("change", syncNewType);
+
+const categoryClass = (name) => state.current?.Categories.find((c) => c.Name === name)?.Classification ?? "";
+
+function renderSampling() {
+  if (!state.current || !isSampling()) return;
+  const study = state.current;
+  const box = $("categories");
+  box.replaceChildren();
+  if (!study.Categories.length) {
+    const p = document.createElement("p");
+    p.className = "hint empty-steps";
+    p.textContent = t("s.empty");
+    box.append(p);
+  }
+  const counts = new Map();
+  for (const x of study.Samples) counts.set(x.Category, (counts.get(x.Category) ?? 0) + 1);
+  study.Categories.forEach((c, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "step-chip";
+    const k = document.createElement("span"); k.className = "key"; k.textContent = i < 9 ? String(i + 1) : "·";
+    const n = document.createElement("span"); n.className = "name"; n.textContent = `${c.Name} · ${counts.get(c.Name) ?? 0}`;
+    b.append(k, n);
+    if (c.Classification) {
+      const cl = document.createElement("span");
+      cl.className = "cls"; cl.textContent = c.Classification;
+      cl.style.setProperty("--cls", CLASS_COLORS[c.Classification]);
+      b.append(cl);
+    }
+    b.addEventListener("click", () => guard(() => recordSample(i)));
+    box.append(b);
+  });
+  const sorted = [...study.Samples].sort((a, b) => a.AtMs - b.AtMs);
+  renderTable("samples", sorted, (x) => [num(fmtClock(x.AtMs)), txt(x.Category), txt(categoryClass(x.Category)), txt(x.Note ?? "")], {
+    isSelected: (x) => x === state.selectedSample,
+    onSelect: (x) => { state.selectedSample = x; $("sample-note").value = x.Note ?? ""; $("sample-editor").hidden = false; if (state.ready) seek(x.AtMs); renderSampling(); },
+    empty: t("s.countNone")
+  });
+  $("sample-editor").hidden = !state.selectedSample || !study.Samples.includes(state.selectedSample);
+  const r = analyzeSampling(study);
+  $("sample-count").textContent = r.N ? t("s.count", { n: r.N, e: fmtNum(r.Error), req: r.Required }) : t("s.countNone");
+  renderSegments();
+}
+
+async function recordSample(index) {
+  requireVideo();
+  const study = state.current;
+  const cat = study.Categories[index];
+  if (!cat) throw new Error(t("s.noCategory"));
+  const at = positionMs();
+  if (study.Samples.some((x) => x.AtMs === at)) throw new Error(t("s.duplicate"));
+  const sample = { AtMs: at, Category: cat.Name };
+  study.Samples.push(sample);
+  state.sampleUndo = [...(state.sampleUndo ?? []), sample];
+  setStatus(t("s.saved", { cat: cat.Name, at: fmtClock(at) }));
+  renderSampling();
+  await save();
+}
+
+async function undoSample() {
+  const study = state.current;
+  let last;
+  while ((last = state.sampleUndo?.pop()) && !study.Samples.includes(last)) { /* silinmişleri atla */ }
+  if (!last) { setStatus(t("s.nothing")); return; }
+  study.Samples.splice(study.Samples.indexOf(last), 1);
+  setStatus(t("s.undone", { cat: last.Category, at: fmtClock(last.AtMs) }));
+  renderSampling();
+  await save();
+}
+
+function goRandomMoment() {
+  requireVideo();
+  pause();
+  const at = randomMoment(state.current, Number(timeline.max));
+  if (at !== null) setPosition(at);
+}
+on("random-moment", goRandomMoment);
+on("next-moment", () => {
+  requireVideo();
+  pause();
+  const stepS = parsePositiveInt($("sample-step").value, t("s.every"));
+  setPosition(Math.min(Number(timeline.max), positionMs() + stepS * 1000));
+});
+on("undo-sample", undoSample);
+on("add-category", async () => {
+  const study = state.current;
+  const name = $("new-category").value.trim();
+  if (!name) throw new Error(t("s.emptyName"));
+  if (study.Categories.some((c) => c.Name === name)) throw new Error(t("s.exists", { cat: name }));
+  study.Categories = cleanCategories([...study.Categories, { Name: name, Classification: $("new-category-class").value }]);
+  $("new-category").value = "";
+  renderSampling();
+  await save();
+});
+$("new-category").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("add-category").click(); } });
+on("sample-save", async () => {
+  const x = state.selectedSample;
+  if (!x) return;
+  const note = $("sample-note").value.trim().slice(0, 200);
+  if (note) x.Note = note; else delete x.Note;
+  renderSampling();
+  await save();
+});
+on("sample-delete", async () => {
+  const x = state.selectedSample;
+  if (!x) return;
+  state.current.Samples.splice(state.current.Samples.indexOf(x), 1);
+  state.selectedSample = null;
+  renderSampling();
+  await save();
+});
+
+/** Örnekleme analizi: kartlar, grafik, tablo. */
+function refreshSampling() {
+  const study = state.current;
+  const r = analyzeSampling(study);
+  const box = $("s-summary");
+  box.replaceChildren();
+  const card = (label, value, detail = []) => {
+    const el = document.createElement("div");
+    el.className = "sum-card";
+    const l = document.createElement("span"); l.className = "sum-label"; l.textContent = label;
+    const v = document.createElement("strong"); v.textContent = value;
+    el.append(l, v);
+    for (const d of detail) { const p = document.createElement("small"); p.textContent = d; el.append(p); }
+    box.append(el);
+  };
+  $("analysis-status").textContent = r.N ? "" : t("s.empty.analysis");
+  card(t("s.card.n"), String(r.N));
+  if (r.N) {
+    card(t("s.card.required"), t("s.card.requiredValue", { n: r.Required }), [r.Required <= r.N ? t("s.card.enough", { e: fmtNum(r.Error) }) : t("s.card.more", { k: r.Required - r.N })]);
+    card(t("s.card.classes"), ["VA", "SVA", "NVA", ""].filter((c) => r.ByClass[c] > 0).map((c) => `${c || t("summary.noClass")} ${pct(r.ByClass[c]).replace(/^[+]/, "")}`).join(" · "));
+  }
+  const fig = $("s-chart");
+  fig.replaceChildren();
+  if (r.N) {
+    const cap = document.createElement("figcaption"); cap.textContent = t("s.chart");
+    fig.append(cap, samplingChart(r.Rows.map((x) => ({ label: x.Category, share: x.Share, low: x.Low, high: x.High, cls: x.Classification,
+      text: `${pct(x.Share, 1).replace(/^[+]/, "")} ± ${(Math.round(x.Half * 10) / 10).toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` })), { width: chartWidth(fig), classLabel: (c) => c || t("summary.noClass") }));
+  }
+  renderTable("s-results", r.Rows, (x) => [txt(x.Category), txt(x.Classification), num(x.Count), num(x.Share === null ? "" : pct(x.Share, 1).replace(/^[+]/, "")),
+    num(x.Low === null ? "" : `${pct(x.Low, 1).replace(/^[+]/, "")} – ${pct(x.High, 1).replace(/^[+]/, "")}`), num(x.Required ?? "")], { empty: t("s.countNone") });
+}
+
+const chartWidth = (el) => Math.max(300, Math.min(760, (el.clientWidth || el.parentElement?.clientWidth || window.innerWidth) - 24));
+const sec = (v) => `${fmt3(v)} ${getLang() === "tr" ? "sn" : "s"}`;
+const stationLabel = (name) => (/^\d+$/.test(name) ? t("lb.station", { n: name }) : name);
+
+/** v1.8 bölümleri: dağılım ve aykırılar, hat dengeleme, standart iş, iyileştirme fikirleri (kartlar istekle yüklenir). */
+function renderAdvanced(study, rows, selected) {
+  // Dağılım
+  const hist = $("hist-box");
+  hist.replaceChildren();
+  const bins = selected ? histogram(study, selected.Step) : [];
+  if (bins.length) {
+    const cap = document.createElement("figcaption"); cap.textContent = t("chart.hist", { step: selected.Step });
+    hist.append(cap, histogramChart(bins, { width: chartWidth(hist), axis: t("chart.histAxis"), format: (v) => v.toLocaleString(locale(), { maximumFractionDigits: 2 }) }));
+  } else { const p = document.createElement("p"); p.className = "hint"; p.textContent = t("hist.empty"); hist.append(p); }
+  const outs = outliers(study);
+  const flat = outs.flatMap((g) => g.Rows.map((o) => ({ g, o })));
+  renderTable("outliers", flat, ({ g, o }) => [txt(g.Step), num(o.Cycle), num(fmtTime(o.StartMs)), num(fmt3(seconds(o))), num(`${fmt3(Math.max(0, g.Low))} – ${fmt3(g.High)}`)],
+    { empty: t("outliers.none"), onSelect: ({ o }) => { selectTab(1); selectRow(o); if (state.ready) seek(o.StartMs); refreshObservations(); } });
+  $("exclude-outliers").disabled = flat.length === 0;
+
+  // Hat dengeleme
+  const b = lineBalance(study);
+  const defs = new Map(study.Steps.map((x) => [x.Name, x]));
+  const withStd = rows.filter((r) => r.Contribution !== null);
+  renderTable("balance", withStd, (r) => [txt(r.Step), txt(defs.get(r.Step)?.Classification ?? ""), num(fmt3(r.Contribution)), { text: defs.get(r.Step)?.Station ?? "", station: r.Step }], {});
+  // İstasyon hücresi düzenlenebilir.
+  for (const td of $("balance").tBodies[0].querySelectorAll("tr td:last-child")) {
+    const tr = td.parentElement, step = withStd[tr.sectionRowIndex]?.Step;
+    if (!step) continue;
+    const input = document.createElement("input");
+    input.type = "text"; input.size = 8; input.maxLength = 40; input.value = defs.get(step)?.Station ?? "";
+    input.placeholder = t("placeholder.station");
+    input.setAttribute("aria-label", `${t("th.station")} · ${step}`);
+    input.addEventListener("change", () => guard(async () => { await setStation(step, input.value); }));
+    td.replaceChildren(input);
+  }
+  const summaryEl = $("balance-summary");
+  const parts = [];
+  if (b.Stations.length) parts.push(t("balance.summary", { k: b.Stations.length, b: stationLabel(b.Bottleneck), max: fmt3(b.Max),
+    eff: pct(b.Efficiency, 1).replace(/^[+]/, ""), loss: pct(b.Loss, 1).replace(/^[+]/, "") }));
+  else parts.push(t("balance.none"));
+  if (b.MinOperators !== null) parts.push(t("balance.minOps", { n: b.MinOperators, takt: fmtNum(study.Takt) }));
+  if (b.OverTakt.length) parts.push(t("balance.over", { list: b.OverTakt.map(stationLabel).join(", ") }));
+  summaryEl.textContent = parts.join(" ");
+  const yb = $("yamazumi-box");
+  yb.replaceChildren();
+  if (b.Stations.length) {
+    const st = [...b.Stations.map((x) => ({ label: stationLabel(x.Station), steps: x.Steps.map((p) => ({ label: p.Step, value: p.Contribution, cls: p.Classification })), load: x.Load, text: fmt3(x.Load) }))];
+    if (b.Unassigned.length) {
+      const load = b.Unassigned.reduce((sum, p) => sum + p.Contribution, 0);
+      st.push({ label: t("balance.unassigned"), steps: b.Unassigned.map((p) => ({ label: p.Step, value: p.Contribution, cls: p.Classification })), load, text: fmt3(load) });
+    }
+    const cap = document.createElement("figcaption"); cap.textContent = t("chart.yamazumi");
+    yb.append(cap, yamazumiChart(st, { width: chartWidth(yb), takt: study.Takt, taktLabel: t("chart.takt", { v: sec(study.Takt ?? 0) }),
+      format: (v) => v.toLocaleString(locale(), { maximumFractionDigits: v < 10 ? 1 : 0 }), classLabel: (c) => c || t("summary.noClass") }));
+  }
+
+  // Standart iş
+  const w = standardWork(study);
+  const wb = $("work-box");
+  wb.replaceChildren();
+  if (w.Rows.length) {
+    const cap = document.createElement("figcaption"); cap.textContent = `${t("chart.work")} · ${t("work.summary", { op: sec(w.Operator), total: sec(w.Total) })}`;
+    wb.append(cap, workChart(w.Rows.map((r) => ({ label: r.Step, type: r.Type, typeLabel: t("type." + r.Type), start: r.Start, end: r.End, text: fmt3(r.Seconds) })),
+      { width: chartWidth(wb), takt: study.Takt, taktLabel: t("chart.takt", { v: sec(study.Takt ?? 0) }), total: w.Total,
+        format: (v) => v.toLocaleString(locale(), { maximumFractionDigits: v < 10 ? 1 : 0 }) }));
+    const legend = document.createElement("p");
+    legend.className = "hint";
+    legend.textContent = WORK_TYPES.map((k) => `${{ Manual: "━", Machine: "╍", Walk: "┅", Wait: "┈" }[k]} ${t("type." + k)}`).join("   ");
+    wb.append(legend);
+  } else { const p = document.createElement("p"); p.className = "hint"; p.textContent = t("work.empty"); wb.append(p); }
+
+  // İyileştirme
+  renderTable("ideas", improvements(study), (x) => [txt(x.Step), txt(x.Classification), txt(x.Waste ? t("waste." + x.Waste) : ""), txt(x.Idea), num(fmt3(x.Contribution)),
+    num(x.Share === null ? "" : pct(x.Share, 1).replace(/^[+]/, ""))], { empty: t("ideas.empty") });
+
+  // Kartlar: veri hemen, kareler istekle.
+  renderStory(false);
+}
+
+async function setStation(step, value) {
+  const st = state.current.Steps.find((x) => x.Name === step);
+  if (!st) { state.current.Steps.push({ Name: step, Classification: "" }); return setStation(step, value); }
+  const v = value.trim().slice(0, 40);
+  if (v) st.Station = v; else delete st.Station;
+  state.current.Steps = cleanSteps(state.current.Steps);
+  await save();
+  refreshAnalysis();
+}
+
+on("auto-balance", async () => {
+  const study = state.current;
+  if (!(study.Takt > 0)) throw new Error(t("balance.needTakt"));
+  study.Steps = deriveSteps(study).map((x) => ({ ...x }));
+  for (const [step, station] of autoBalance(study)) {
+    let st = study.Steps.find((x) => x.Name === step);
+    if (!st) { st = { Name: step, Classification: "" }; study.Steps.push(st); }
+    st.Station = station;
+  }
+  study.Steps = cleanSteps(study.Steps);
+  await save();
+  refreshAnalysis();
+});
+on("clear-balance", async () => {
+  for (const st of state.current.Steps) delete st.Station;
+  await save();
+  refreshAnalysis();
+});
+
+on("exclude-outliers", async () => {
+  const rows = outliers(state.current).flatMap((g) => g.Rows);
+  if (!rows.length) return;
+  if (!(await ask(t("msg.excludeOutliersConfirm", { n: rows.length }), t("title.excludeOutliers")))) return;
+  for (const o of rows) { o.Excluded = true; if (!o.Note) o.Note = t("note.outlier"); }
+  refreshObservations();
+  await save();
+  refreshAnalysis();
+  $("analysis-status").textContent = t("status.outliersExcluded", { n: rows.length });
+});
+
+/** Adım kartları: kare, ad, sınıf, tür, bitiş anı, standart süre, israf/fikir. withFrames: video karelerini çiz. */
+function renderStory(withFrames) {
+  const study = state.current;
+  const box = $("story");
+  box.replaceChildren();
+  const rows = new Map(inProcessOrder(study, analyzeSteps(study)).map((r) => [r.Step, r]));
+  const list = stepOrderOf(study).filter((n) => rows.get(n)?.Count > 0);
+  if (!list.length) { const p = document.createElement("p"); p.className = "hint"; p.textContent = t("story.empty"); box.append(p); return []; }
+  const title = document.createElement("h2");
+  title.className = "print-only story-title";
+  title.textContent = t("story.title", { code: study.Code, name: study.Name });
+  box.append(title);
+  const canvases = [];
+  list.forEach((name, i) => {
+    const def = study.Steps.find((x) => x.Name === name) ?? { Name: name, Classification: "" };
+    const r = rows.get(name);
+    const card = document.createElement("article");
+    card.className = "story-card";
+    const frame = stepFrame(study, name);
+    const canvas = document.createElement("canvas");
+    canvas.width = 320; canvas.height = 180;
+    canvas.setAttribute("role", "img");
+    canvas.setAttribute("aria-label", `${name} · ${t("story.frame", { t: frame === null ? "—" : fmtClock(frame) })}`);
+    if (withFrames && frame !== null) canvases.push({ canvas, frame });
+    const h = document.createElement("h3"); h.textContent = `${i + 1}. ${name}`;
+    const meta = document.createElement("p");
+    meta.className = "story-meta";
+    meta.textContent = [def.Classification, def.Type ? t("type." + def.Type) : "", r?.Standard !== null && r?.Standard !== undefined ? sec(r.Standard) : ""].filter(Boolean).join(" · ");
+    card.append(canvas, h, meta);
+    for (const [text, cls] of [[def.Note ? t("now.note", { note: def.Note }) : "", ""], [def.Waste ? `${t("field.waste")}: ${t("waste." + def.Waste)}` : "", "story-waste"], [def.Idea ? `${t("field.idea")}: ${def.Idea}` : "", "story-idea"]]) {
+      if (!text) continue;
+      const p = document.createElement("p"); p.textContent = text; if (cls) p.className = cls; card.append(p);
+    }
+    box.append(card);
+  });
+  return canvases;
+}
+const stepOrderOf = (study) => { const names = deriveSteps(study).map((x) => x.Name); for (const o of study.Observations) if (!names.includes(o.Step)) names.push(o.Step); return names; };
+
+/** Kareler ayrı bir video öğesinden çizilir (oynatıcının konumu değişmez). */
+async function loadStory() {
+  const attached = state.videos.get(state.current.Id);
+  if (!attached) throw new Error(t("story.noVideo"));
+  const canvases = renderStory(true);
+  const v = document.createElement("video");
+  v.muted = true; v.preload = "auto"; v.src = attached.url;
+  await new Promise((resolve, reject) => { v.onloadeddata = resolve; v.onerror = () => reject(new Error(t("status.videoError"))); });
+  for (const { canvas, frame } of canvases) {
+    await new Promise((resolve) => { v.onseeked = resolve; v.currentTime = Math.min(frame / 1000, Math.max(0, v.duration - 0.05)); });
+    const ctx = canvas.getContext("2d");
+    const ratio = v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : 16 / 9;
+    canvas.height = Math.round(canvas.width / ratio);
+    ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+  }
+  v.removeAttribute("src"); v.load();
+}
+on("load-story", loadStory);
+
+// ---- yan yana video (önce / sonra)
+
+const cmpVideos = { before: null, after: null };
+function compareStudy(side) { return state.studies.find((s) => s.Id === $(side === "before" ? "compare-before" : "compare-after").value) ?? null; }
+function setCompareVideo(side, url) {
+  const v = $(side === "before" ? "cmp-video-before" : "cmp-video-after");
+  if (url) v.src = url; else v.removeAttribute("src");
+  const s = compareStudy(side);
+  $(side === "before" ? "cmp-cap-before" : "cmp-cap-after").textContent = s ? `${s.Code} · ${s.Name}${url ? "" : " · " + t("cmp.noVideo")}` : "";
+}
+function fillCompareSteps(a, b) {
+  const sel = $("cmp-step"), keep = sel.value;
+  const names = [...new Set([...stepOrderOf(a), ...stepOrderOf(b)])];
+  sel.replaceChildren(...names.map((n) => Object.assign(document.createElement("option"), { value: n, textContent: n })));
+  if (names.includes(keep)) sel.value = keep;
+  for (const side of ["before", "after"]) {
+    const s = compareStudy(side);
+    const own = s ? state.videos.get(s.Id)?.url : null;
+    setCompareVideo(side, own ?? cmpVideos[side]?.url ?? null);
+  }
+}
+for (const side of ["before", "after"])
+  on(side === "before" ? "cmp-pick-before" : "cmp-pick-after", async () => {
+    const file = await chooseFile($("video-file"));
+    if (!file) return;
+    if (cmpVideos[side]) URL.revokeObjectURL(cmpVideos[side].url);
+    cmpVideos[side] = { url: URL.createObjectURL(file) };
+    setCompareVideo(side, cmpVideos[side].url);
+  });
+function firstStart(study, step) {
+  const o = study?.Observations.filter((x) => x.Step === step && !x.Excluded && x.EndMs > x.StartMs).sort((x, y) => x.StartMs - y.StartMs)[0];
+  return o ? o.StartMs : null;
+}
+on("cmp-step", () => {
+  const step = $("cmp-step").value;
+  for (const side of ["before", "after"]) {
+    const v = $(side === "before" ? "cmp-video-before" : "cmp-video-after");
+    const at = firstStart(compareStudy(side), step);
+    const s = compareStudy(side);
+    $(side === "before" ? "cmp-cap-before" : "cmp-cap-after").textContent = s ? `${s.Code} · ${s.Name} · ${step}${at === null ? " · " + t("cmp.missing") : " · " + fmtClock(at)}` : "";
+    if (at !== null && v.getAttribute("src")) { v.pause(); v.currentTime = at / 1000; }
+  }
+}, "change");
+on("cmp-play", () => { for (const id of ["cmp-video-before", "cmp-video-after"]) if ($(id).getAttribute("src")) $(id).play().catch(() => {}); });
+on("cmp-pause", () => { for (const id of ["cmp-video-before", "cmp-video-after"]) $(id).pause(); });
+$("compare-dialog").addEventListener("close", () => { for (const id of ["cmp-video-before", "cmp-video-after"]) $(id).pause(); });
+
 function readInfoSafe(boxId) { return $(`${boxId}-Operator`) ? readInfo(boxId) : {}; }
 $("lang-switch").addEventListener("click", () => guard(async () => {
   setLang(getLang() === "tr" ? "en" : "tr");

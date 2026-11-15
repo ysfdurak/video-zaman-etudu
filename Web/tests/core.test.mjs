@@ -153,8 +153,9 @@ test("Excel: özet sayfası + masaüstüyle aynı sayfalar, İngilizce çevrilmi
   demo.Info = { Operator: "A. Kaya", Station: "Toplama hattı 2" };
   const tr = reportSheets(demo, new Date(2026, 10, 15, 9, 5), "tr");
   const en = reportSheets(demo, new Date(2026, 10, 15, 9, 5), "en");
-  assert.deepEqual(tr.map((x) => x.name), ["Özet", "Ham ölçümler", "Adım analizi", "Çevrimler", "Süre grupları", "Ayarlar"]);
-  assert.deepEqual(en.map((x) => x.name), ["Summary", "Raw measurements", "Step analysis", "Cycles", "Duration groups", "Settings"]);
+  // İlk altı sayfa sabit; v1.8 sayfaları (Standart iş, İyileştirme…) sonra gelir.
+  assert.deepEqual(tr.map((x) => x.name).slice(0, 6), ["Özet", "Ham ölçümler", "Adım analizi", "Çevrimler", "Süre grupları", "Ayarlar"]);
+  assert.deepEqual(en.map((x) => x.name).slice(0, 6), ["Summary", "Raw measurements", "Step analysis", "Cycles", "Duration groups", "Settings"]);
   // Masaüstüyle ortak sayfalar değişmedi.
   assert.equal(tr[1].rows[0].length, 9); assert.equal(en[2].rows[0].length, 17);
   const enToplama = en[2].rows.find((r) => r[0] === "Toplama");
