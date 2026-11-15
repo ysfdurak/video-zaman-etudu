@@ -21,6 +21,8 @@ body {
 }
 .top { padding: 18px 24px 6px; }
 .top h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: .02em; }
+.top-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+button.link.lang { font-weight: 600; font-size: 14px; }
 .top .sep { color: var(--accent); margin: 0 .35em; }
 .edition { margin: 2px 0 0; color: var(--ink-soft); font-size: 13px; }
 .edition a { color: var(--accent-dark); }

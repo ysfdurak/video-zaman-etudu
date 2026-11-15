@@ -120,3 +120,44 @@ test("yerel kayıt gidiş-dönüşü ve bozuk kayıt", () => {
   for (const bad of [null, {}, { Id: "x", Name: "a", Code: "b", Observations: "x", Settings: {}, Frequency: [] }])
     assert.throws(() => fromRecord(bad), ValidationError);
 });
+
+test("TR/EN sözlükleri aynı anahtarlara sahip", async () => {
+  const { missingKeys } = await import("../js/i18n.js");
+  assert.deepEqual(missingKeys(), { onlyTr: [], onlyEn: [] });
+});
+
+test("çekirdek hata anahtarları sözlükte var ve İngilizceye çevrilir", async () => {
+  const { t } = await import("../js/i18n.js");
+  const keys = new Set();
+  const grab = (fn) => { try { fn(); } catch (e) { if (e.key) keys.add(e.key); } };
+  grab(() => validateSettings({ ...newSettings(), Allowance: 100 }));
+  grab(() => parseNumber("x", "Güven"));
+  grab(() => parsePositiveInt("0", "Çevrim"));
+  for (const content of ["", "x", '{"Kind":"baska","Version":1}', '{"Kind":"video-zaman-etudu","Version":2}'])
+    grab(() => importPackage(enc(content)));
+  const base = exportPackage(S({}, R(0, 1000)));
+  grab(() => importPackage(enc(base.replace('"Allowance":0', '"Allowance":100'))));
+  grab(() => importPackage(enc(base.replace('"EndMs":1000', '"EndMs":0'))));
+  grab(() => importPackage(enc(base.replace('"Code":"K-1"', '"Code":" "'))));
+  grab(() => importPackage(enc(base.replace('"Frequency":{}', '"Frequency":{"İş":0}'))));
+  for (const k of ["settings.invalid", "number.invalid", "int.invalid", "pkg.size", "pkg.corrupt", "pkg.notPackage", "pkg.version",
+    "pkg.settings", "pkg.observation", "pkg.required", "pkg.frequency"]) {
+    assert.ok(keys.has(k), `anahtar üretilmedi: ${k}`);
+    assert.notEqual(t(k, {}, "en"), t(k, {}, "tr"), `İngilizce çeviri yok: ${k}`);
+  }
+});
+
+test("Excel: Türkçe masaüstüyle aynı başlıklar, İngilizce çevrilmiş", async () => {
+  const { reportSheets } = await import("../js/report.js");
+  const demo = importPackage(new Uint8Array(readFileSync(new URL("../../demo/sentetik-depo-etudu.vzetud", import.meta.url))));
+  const tr = reportSheets(demo, new Date(2026, 10, 15, 9, 5), "tr");
+  const en = reportSheets(demo, new Date(2026, 10, 15, 9, 5), "en");
+  assert.deepEqual(tr.map((x) => x.name), ["Ham ölçümler", "Adım analizi", "Çevrimler", "Süre grupları", "Ayarlar"]);
+  assert.deepEqual(en.map((x) => x.name), ["Raw measurements", "Step analysis", "Cycles", "Duration groups", "Settings"]);
+  assert.equal(tr[0].rows[0].length, 9); assert.equal(en[1].rows[0].length, 17);
+  const enToplama = en[1].rows.find((r) => r[0] === "Toplama");
+  assert.equal(enToplama[10], "Insufficient"); assert.equal(enToplama[16], "Mean");
+  assert.equal(tr[1].rows.find((r) => r[0] === "Toplama")[10], "Yetersiz");
+  assert.equal(en[4].rows.find((r) => r[0] === "Exported at")[1], "2026-11-15 09:05");
+  assert.equal(tr[4].rows.find((r) => r[0] === "Dışa aktarım zamanı")[1], "15.11.2026 09:05");
+});

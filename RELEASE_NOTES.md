@@ -1,3 +1,13 @@
+# v1.3.0 · Video Zaman Etüdü — tarayıcıda İngilizce arayüz
+
+Yalnız tarayıcı sürümü değişti; Windows sürümü v1.2.0 (Türkçe) olarak kalır. Hesap kuralları ve `.vzetud` biçimi değişmedi.
+
+- **Türkçe / English:** Arayüz, mesajlar, t tablosu ve Excel raporu iki dilde. Dil sırası: adresteki `?lang=tr|en` → son seçim → tarayıcı dili. Sağ üstteki düğmeyle değiştirilir ve hatırlanır.
+- İngilizcede sayılar ondalık noktayla, tarihler `yyyy-MM-dd` biçiminde gösterilir; Excel dosyası `_analysis` ekiyle adlandırılır. Türkçe Excel çıktısı masaüstüyle birebir aynı kalır.
+- Hesap çekirdeği Türkçe sonuç metinleri üretmeye devam eder (masaüstüyle eşdeğerlik testleri için); ekranda ve raporda çevrilir. Çekirdek hataları çeviri anahtarı taşır.
+- Testler: iki dilin sözlük anahtarlarının eşitliği, çekirdek hata anahtarlarının çevirisi, iki dilde Excel; Chrome uçtan uca testine İngilizce ziyaretçi senaryosu (65/65).
+- Demo etütteki adım adları ve video etiketleri Türkçedir; İngilizce arayüzde bu belirtilir.
+
 # v1.2.1 · Video Zaman Etüdü — tarayıcıda tek tıkla demo
 
 Yalnız tarayıcı sürümü değişti; Windows sürümü v1.2.0 olarak kalır.

@@ -5,6 +5,7 @@ import {
 } from "./core.js";
 import { reportBytes } from "./report.js";
 import { StudyStore } from "./store.js";
+import { t, result, getLang, setLang, locale, applyStatic } from "./i18n.js";
 
 /** Siteye konulduğunda Windows sürümünün indirme adresi (boşsa bağlantı gizlenir). */
 const DESKTOP_URL = document.documentElement.dataset.desktopUrl ?? "";
@@ -29,12 +30,14 @@ const timeline = $("timeline");
 
 // ------------------------------------------------------------ biçimlendirme
 
-const fmt3 = (v) => (v === null || v === undefined ? "" : v.toLocaleString("tr-TR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }));
-const fmtNum = (v) => v.toLocaleString("tr-TR", { useGrouping: false, maximumFractionDigits: 10 });
+const fmt3 = (v) => (v === null || v === undefined ? "" : v.toLocaleString(locale(), { minimumFractionDigits: 3, maximumFractionDigits: 3 }));
+const fmtNum = (v) => v.toLocaleString(locale(), { useGrouping: false, maximumFractionDigits: 10 });
 const pad = (n, w = 2) => String(n).padStart(w, "0");
 const fmtDate = (iso) => {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (Number.isNaN(d.getTime())) return "";
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return getLang() === "tr" ? `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()} ${time}` : `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`;
 };
 const fmtClock = (ms) => {
   const t = Math.max(0, Math.round(ms));
@@ -46,13 +49,14 @@ const fmtClock = (ms) => {
 const dialog = $("dialog");
 let dialogOpen = false;
 
-function showDialog(text, { confirm = false, pre = null, title = "Video Zaman Etüdü" } = {}) {
+function showDialog(text, { confirm = false, pre = null, title = t("app.title") } = {}) {
   $("dialog-title").textContent = title;
   $("dialog-text").textContent = text;
   $("dialog-pre").hidden = pre === null;
   $("dialog-pre").textContent = pre ?? "";
   $("dialog-no").hidden = !confirm;
-  $("dialog-yes").textContent = confirm ? "Evet" : "Tamam";
+  $("dialog-yes").textContent = confirm ? t("dialog.yes") : t("dialog.ok");
+  $("dialog-no").textContent = t("dialog.no");
   dialog.returnValue = "";
   dialogOpen = true;
   dialog.showModal();
@@ -65,7 +69,13 @@ const ask = (text, title) => showDialog(text, { confirm: true, title });
 
 /** MainWindow.Guard: hatayı kullanıcıya gösterir, uygulamayı durdurmaz. */
 async function guard(action) {
-  try { await action(); } catch (error) { await showDialog(error?.message || String(error)); }
+  try { await action(); } catch (error) { await showDialog(errorText(error)); }
+}
+/** Çekirdek hataları anahtarla gelir (core.js); anahtarsız hata mesajı olduğu gibi gösterilir. */
+function errorText(error) {
+  if (!error?.key) return error?.message || String(error);
+  const params = Object.fromEntries(Object.entries(error.params ?? {}).map(([k, v]) => [k, v && typeof v === "object" && v.key ? t(v.key) : v]));
+  return t(error.key, params);
 }
 const on = (id, action, event = "click") => $(id).addEventListener(event, () => guard(action));
 
@@ -122,12 +132,12 @@ function setTabsEnabled(enabled) {
 
 function updateHeader() {
   const h = $("header");
-  h.replaceChildren("VIDEO ZAMAN ETÜDÜ ");
+  h.replaceChildren(t("header.brand") + " ");
   const sep = document.createElement("span");
   sep.className = "sep";
   sep.textContent = "/";
-  h.append(sep, state.current ? `${state.current.Code} · ${state.current.Name}` : "Çalışmalar");
-  document.title = state.current ? `${state.current.Code} · Video Zaman Etüdü` : "Video Zaman Etüdü";
+  h.append(sep, state.current ? `${state.current.Code} · ${state.current.Name}` : t("header.studies"));
+  document.title = state.current ? `${state.current.Code} · ${t("app.title")}` : t("app.title");
 }
 
 // ------------------------------------------------------------ çalışmalar
@@ -140,7 +150,7 @@ async function reloadStudies() {
       isSelected: (s) => s.Id === state.selectedStudyId,
       onSelect: (s) => { state.selectedStudyId = s.Id; reloadStudiesView(); },
       onOpen: (s) => openStudy(s),
-      empty: "Henüz etüt yok. Yeni bir etüt başlatın veya demo etüdü içe alın."
+      empty: t("list.empty")
     });
 }
 const reloadStudiesView = () => reloadStudies();
@@ -151,7 +161,7 @@ async function pickVideo() {
   if (window.showOpenFilePicker) {
     try {
       const [handle] = await window.showOpenFilePicker({
-        types: [{ description: "Video dosyaları", accept: { "video/*": [".mp4", ".m4v", ".mov", ".webm", ".mkv", ".avi", ".wmv", ".mpg", ".mpeg"] } }],
+        types: [{ description: t("picker.videos"), accept: { "video/*": [".mp4", ".m4v", ".mov", ".webm", ".mkv", ".avi", ".wmv", ".mpg", ".mpeg"] } }],
         excludeAcceptAllOption: false, multiple: false
       });
       return { file: await handle.getFile(), handle };
@@ -188,7 +198,7 @@ on("pick-new-video", async () => {
 
 on("create", async () => {
   const name = $("new-name").value.trim(), code = $("new-code").value.trim();
-  if (!name || !code || !state.newVideo) throw new Error("Etüt adı, kodu ve geçerli video dosyası seçin.");
+  if (!name || !code || !state.newVideo) throw new Error(t("msg.createMissing"));
   const study = newStudy({ Name: name, Code: code, Video: state.newVideo.file.name });
   attachVideo(study, state.newVideo.file);
   if (state.newVideo.handle) await store.saveHandle(study.Id, state.newVideo.handle);
@@ -206,7 +216,7 @@ on("demo", async () => {
   let study = state.studies.find((s) => s.Code === DEMO.code && s.ExpectedVideoName === DEMO.videoName);
   if (!study) {
     const response = await fetch(DEMO.package);
-    if (!response.ok) throw new Error("Demo etüdü yüklenemedi. Sayfayı yenileyip tekrar deneyin.");
+    if (!response.ok) throw new Error(t("msg.demoFailed"));
     study = importPackage(new Uint8Array(await response.arrayBuffer()));
     await store.save(study);
     requestPersistence();
@@ -229,7 +239,7 @@ on("import", async () => {
   const file = await chooseFile($("package-file"));
   if (!file) return;
   const study = importPackage(new Uint8Array(await file.arrayBuffer()));
-  if (!(await ask(`“${study.Name}” (${study.Code}) yeni bir etüt olarak eklenecek. Devam edilsin mi?`, "Etüdü içe al"))) return;
+  if (!(await ask(t("msg.importConfirm", { name: study.Name, code: study.Code }), t("title.import")))) return;
   await store.save(study);
   requestPersistence();
   await openStudy(study);
@@ -237,15 +247,14 @@ on("import", async () => {
 
 on("export", () => {
   const s = selectedStudy();
-  if (!s) throw new Error("Dışa aktarmak için listeden bir etüt seçin.");
+  if (!s) throw new Error(t("msg.selectToExport"));
   download(new Blob([exportPackage(s)], { type: "application/octet-stream" }), suggestedFileName(s, EXTENSION));
 });
 
 on("delete", async () => {
   const s = selectedStudy();
-  if (!s) throw new Error("Silmek için listeden bir etüt seçin.");
-  if (!(await ask(`“${s.Name}” (${s.Code}) etüdü ve tüm ölçümleri bu tarayıcıdan silinecek. Video dosyası silinmez. ` +
-      "Bu işlem geri alınamaz; gerekirse önce dışa aktarın. Silinsin mi?", "Etüdü sil"))) return;
+  if (!s) throw new Error(t("msg.selectToDelete"));
+  if (!(await ask(t("msg.deleteConfirm", { name: s.Name, code: s.Code }), t("title.delete")))) return;
   if (state.current?.Id === s.Id) closeStudy();
   detachVideo(s.Id);
   await store.delete(s.Id);
@@ -336,12 +345,10 @@ async function loadVideo() {
   if (!attached && (await attachDemoVideo(study))) attached = state.videos.get(study.Id);
   if (!attached) {
     const expected = videoLabel(study);
-    setStatus(expected
-      ? `Video bağlı değil veya bulunamadı. Beklenen dosya: ${expected}. Videoyu yeniden seçebilirsiniz.`
-      : "Video bağlı değil. Ölçümleri inceleyebilir veya bir video seçebilirsiniz.");
+    setStatus(expected ? t("status.noVideoExpected", { name: expected }) : t("status.noVideo"));
     return;
   }
-  setStatus("Video açılıyor…");
+  setStatus(t("status.opening"));
   video.src = attached.url;
   video.load();
 }
@@ -360,10 +367,9 @@ on("relink", async () => {
   picked ??= await pickVideo();
   if (!picked) return;
   const expected = videoLabel(study);
-  const differs = expected && picked.file.name !== expected ? ` Seçilen dosyanın adı (${picked.file.name}) beklenenden farklı.` : "";
-  const note = expected ? ` Beklenen dosya: ${expected}.` : "";
-  if (study.Observations.length > 0 && !(await ask("Mevcut ölçümler seçilen videoya aynı zaman damgalarıyla bağlanacak. Aynı videoyu seçtiğinizden emin olun." +
-      note + differs + " Devam edilsin mi?", "Videoyu yeniden bağla"))) return;
+  const differs = expected && picked.file.name !== expected ? t("relink.differs", { name: picked.file.name }) : "";
+  const note = expected ? t("relink.note", { name: expected }) : "";
+  if (study.Observations.length > 0 && !(await ask(t("relink.confirm", { note, differs }), t("title.relink")))) return;
   study.Video = picked.file.name;
   attachVideo(study, picked.file);
   if (picked.handle) await store.saveHandle(study.Id, picked.handle);
@@ -379,20 +385,20 @@ video.addEventListener("loadedmetadata", () => {
   state.ready = Number.isFinite(video.duration) && video.duration > 0;
   timeline.disabled = !state.ready;
   if (state.ready) timeline.max = String(Math.max(1, Math.round(video.duration * 1000)));
-  setStatus(state.ready ? "Video hazır. İstediğiniz konuma gidip Başla’ya basın." : "Video süresi okunamadı.");
+  setStatus(state.ready ? t("status.ready") : t("status.noDuration"));
 });
 video.addEventListener("error", () => {
   if (!video.getAttribute("src")) return;
   state.ready = false;
   timeline.disabled = true;
   stopMeasure();
-  setStatus("Video açılamadı. Dosyayı veya tarayıcının video biçimi desteğini kontrol edin (H.264 MP4 önerilir).");
+  setStatus(t("status.videoError"));
 });
 video.addEventListener("ended", () => { pause(); updatePosition(); });
 // Uygulama dışından gelen konum değişikliği (ör. medya tuşları) de ardışık ölçümü keser.
 video.addEventListener("seeking", () => {
   if (state.internalSeek) return;
-  if (state.anchor !== null) { stopMeasure(); setStatus("Konum değişti. Yeni konumda Başla’ya basın."); }
+  if (state.anchor !== null) { stopMeasure(); setStatus(t("status.positionChanged")); }
 });
 video.addEventListener("seeked", () => { state.internalSeek = false; });
 timeline.addEventListener("input", () => { if (state.ready) seek(Number(timeline.value)); });
@@ -429,7 +435,7 @@ function setPosition(ms) {
 function seek(ms) {
   if (state.anchor !== null) {
     stopMeasure();
-    setStatus("Konum değişti. Yeni konumda Başla’ya basın.");
+    setStatus(t("status.positionChanged"));
   }
   setPosition(ms);
 }
@@ -442,7 +448,7 @@ function nudge(deltaMs) {
   const target = Math.max(0, Math.min(positionMs() + delta, Number(timeline.max)));
   setPosition(target);
   if (state.anchor !== null && target <= state.anchor)
-    setStatus(`Konum ölçüm başlangıcında veya gerisinde (${fmt3(state.anchor / 1000)} sn). Ölç için ileri alın.`);
+    setStatus(t("status.nudgeBehind", { s: fmt3(state.anchor / 1000) }));
 }
 
 on("play", play);
@@ -456,12 +462,12 @@ function setStatus(text) { $("status").textContent = text; }
 
 function stopMeasure() {
   state.anchor = null;
-  $("measure").textContent = "Başla";
+  $("measure").textContent = t("btn.start");
   $("measure").classList.remove("on");
 }
 
 function requireVideo() {
-  if (!state.ready || !state.current) throw new Error("Ölçüm için önce bir video açın.");
+  if (!state.ready || !state.current) throw new Error(t("msg.needVideo"));
 }
 
 async function measure() {
@@ -469,9 +475,9 @@ async function measure() {
   const now = positionMs();
   if (state.anchor === null) {
     state.anchor = now;
-    $("measure").textContent = "Ölç";
+    $("measure").textContent = t("btn.measure");
     $("measure").classList.add("on");
-    setStatus(`Ölçüm başladı (${fmt3(now / 1000)} sn).`);
+    setStatus(t("status.started", { s: fmt3(now / 1000) }));
     return;
   }
   // Kayıt eşzamanlı eklenir, çapa hemen ilerler; diske yazma arkadan gelir.
@@ -485,12 +491,12 @@ function markStart() {
   requireVideo();
   stopMeasure();
   state.selectedStart = positionMs();
-  setStatus(`Aralık başlangıcı alındı (${fmt3(state.selectedStart / 1000)} sn).`);
+  setStatus(t("status.markStart", { s: fmt3(state.selectedStart / 1000) }));
 }
 
 async function addMarked() {
   requireVideo();
-  if (state.selectedStart === null) throw new Error("Önce aralık başlangıcını alın.");
+  if (state.selectedStart === null) throw new Error(t("msg.markFirst"));
   const saving = addObservation(state.selectedStart, positionMs());
   state.selectedStart = null;
   await saving;
@@ -498,8 +504,8 @@ async function addMarked() {
 
 function fillRow(row) {
   const name = $("step").value.trim();
-  if (name.length === 0) throw new Error("Adım adı boş olamaz.");
-  const cycle = parsePositiveInt($("cycle").value, "Çevrim");
+  if (name.length === 0) throw new Error(t("msg.stepEmpty"));
+  const cycle = parsePositiveInt($("cycle").value, t("name.cycle"));
   row.Step = name;
   row.Cycle = cycle;
   row.Classification = $("classification").value;
@@ -508,14 +514,14 @@ function fillRow(row) {
 
 /** Doğrulama ve ekleme eşzamanlıdır (hata varsa hiçbir şey değişmez); kayıt sözü döner. */
 function addObservation(start, end) {
-  if (end <= start) throw new Error("Bitiş, başlangıçtan sonra olmalı.");
+  if (end <= start) throw new Error(t("msg.endAfterStart"));
   const row = newObservation({ StartMs: start, EndMs: end });
   fillRow(row);
   if (state.current.Observations.some((x) => x.StartMs === start && x.EndMs === end && x.Cycle === row.Cycle && x.Step === row.Step && x.Excluded === row.Excluded))
-    throw new Error("Bu ölçüm aynı adım ve çevrim için zaten kayıtlı.");
+    throw new Error(t("msg.duplicate"));
   state.current.Observations.push(row);
   refreshObservations();
-  setStatus(`Kaydedildi · ${row.Step} · ${fmt3(seconds(row))} sn`);
+  setStatus(t("status.saved", { step: row.Step, s: fmt3(seconds(row)) }));
   return save();
 }
 
@@ -543,7 +549,7 @@ on("bulk-class", async () => {
 on("delete-row", async () => {
   const row = state.selectedRow;
   if (!row || !state.current) return;
-  if (!(await ask("Seçili ölçüm silinsin mi?", "Ölçümü sil"))) return;
+  if (!(await ask(t("msg.deleteRowConfirm"), t("title.deleteRow")))) return;
   state.current.Observations.splice(state.current.Observations.indexOf(row), 1);
   state.selectedRow = null;
   refreshObservations();
@@ -553,7 +559,7 @@ on("delete-row", async () => {
 function refreshObservations() {
   const rows = state.current ? [...state.current.Observations].sort((a, b) => a.StartMs - b.StartMs || a.EndMs - b.EndMs) : [];
   renderTable("observations", rows,
-    (r) => [num(r.StartMs), num(r.EndMs), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? "Evet" : "Hayır"), num(r.Cycle)],
+    (r) => [num(r.StartMs), num(r.EndMs), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle)],
     {
       isSelected: (r) => r === state.selectedRow,
       onSelect: (r) => {
@@ -565,7 +571,7 @@ function refreshObservations() {
         if (state.ready) seek(r.StartMs);
         refreshObservations();
       },
-      empty: "Henüz ölçüm yok."
+      empty: t("obs.empty")
     });
 }
 
@@ -597,7 +603,7 @@ window.addEventListener("keydown", (e) => {
     case " ": action = () => (video.paused ? play() : pause()); break;
     case "Enter": action = measure; break;
     case "Escape":
-      action = () => { if (state.anchor !== null) { stopMeasure(); setStatus("Ölçüm durduruldu. Yeni kayıt eklenmedi."); } };
+      action = () => { if (state.anchor !== null) { stopMeasure(); setStatus(t("status.stopped")); } };
       break;
     case "ArrowLeft": action = () => nudge(-step); break;
     case "ArrowRight": action = () => nudge(step); break;
@@ -628,9 +634,9 @@ function loadSettings() {
 async function applySettings() {
   if (!state.current) return;
   const settings = {
-    Confidence: parseNumber($("confidence").value, "Güven"), TargetError: parseNumber($("target").value, "Hedef hata"),
-    Pace: parseNumber($("pace").value, "Tempo"), Allowance: parseNumber($("allowance").value, "Tolerans"),
-    RepeatedLow: $("method").value === "1", GroupMs: parsePositiveInt($("group-ms").value, "Grup hassasiyeti"),
+    Confidence: parseNumber($("confidence").value, t("name.confidence")), TargetError: parseNumber($("target").value, t("name.target")),
+    Pace: parseNumber($("pace").value, t("name.pace")), Allowance: parseNumber($("allowance").value, t("name.allowance")),
+    RepeatedLow: $("method").value === "1", GroupMs: parsePositiveInt($("group-ms").value, t("name.group")),
     Stable: $("stable").checked
   };
   validateSettings(settings);
@@ -648,25 +654,24 @@ function refreshAnalysis() {
   state.selectedResult = selected?.Step ?? null;
   renderTable("results", rows,
     (r) => [txt(r.Step), num(r.Count), num(r.Excluded), num(fmt3(r.Mean)), num(fmt3(r.Median)), num(fmt3(r.Min)), num(fmt3(r.Max)),
-      num(fmt3(r.Deviation)), num(fmt3(r.CriticalT)), num(fmt3(r.ErrorPercent)), txt(r.Sufficiency), num(fmt3(r.Base)),
-      num(fmt3(r.Normal)), num(fmt3(r.Standard)), num(r.Every), num(fmt3(r.Contribution)), txt(r.Method)],
+      num(fmt3(r.Deviation)), num(fmt3(r.CriticalT)), num(fmt3(r.ErrorPercent)), txt(result(r.Sufficiency)), num(fmt3(r.Base)),
+      num(fmt3(r.Normal)), num(fmt3(r.Standard)), num(r.Every), num(fmt3(r.Contribution)), txt(result(r.Method))],
     {
       isSelected: (r) => r.Step === state.selectedResult,
       onSelect: (r) => { state.selectedResult = r.Step; $("every").value = String(r.Every); refreshAnalysis(); },
-      empty: "Analiz için ölçüm yok."
+      empty: t("analysis.empty")
     });
   if (selected && previous !== selected.Step) $("every").value = String(selected.Every);
   renderTable("cycles", analyzeCycles(study), (c) => [num(c.Cycle), num(fmt3(c.Elapsed)), num(fmt3(c.Workload))]);
   renderTable("groups", selected?.Groups ?? [], (g) => [num(fmt3(g.Seconds)), num(g.Count)]);
-  $("analysis-status").textContent = `Toyota esinli rehber: ${study.Settings.Stable ? "5 gözlem (kararlı süreç). Tekrar eden düşük süreyi inceleyin." : "10 gözlem (genel). Ortalama ile başlayın."} ` +
-    "İstatistiksel yeterlilik ayrı hesaplanır. Westinghouse puan tablosu doğrulanana kadar manuel tempo kullanılır.";
+  $("analysis-status").textContent = `${t(study.Settings.Stable ? "guide.stable" : "guide.general")} ${t("guide.tail")}`;
 }
 
 on("apply-settings", applySettings);
 
 on("apply-frequency", async () => {
   if (!state.current || state.selectedResult === null) return;
-  state.current.Frequency.set(state.selectedResult, parsePositiveInt($("every").value, "Sıklık"));
+  state.current.Frequency.set(state.selectedResult, parsePositiveInt($("every").value, t("name.frequency")));
   await save();
   refreshAnalysis();
 });
@@ -675,15 +680,15 @@ on("t-table", async () => {
   if (!state.current) return;
   const c = state.current.Settings.Confidence;
   const dfs = [...Array.from({ length: 30 }, (_, i) => i + 1), 40, 60, 120];
-  const lines = dfs.map((df) => `${String(df).padStart(4)}    ${studentInv(df, (1 + c / 100) / 2).toLocaleString("tr-TR", { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`);
-  await showDialog("Bağıl hata = t × s / (√n × ortalama)", { pre: "  sd    Kritik t\n" + lines.join("\n"), title: `Student-t tablosu · %${fmtNum(c)}` });
+  const lines = dfs.map((df) => `${String(df).padStart(4)}    ${studentInv(df, (1 + c / 100) / 2).toLocaleString(locale(), { minimumFractionDigits: 4, maximumFractionDigits: 4 })}`);
+  await showDialog(t("tTable.formula"), { pre: t("tTable.header") + "\n" + lines.join("\n"), title: t("tTable.title", { c: fmtNum(c) }) });
 });
 
 on("excel", async () => {
   if (!state.current) return;
   await applySettings();
-  const bytes = reportBytes(state.current);
-  download(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), suggestedFileName(state.current, ".xlsx", "_analiz"));
+  const bytes = reportBytes(state.current, new Date(), getLang());
+  download(new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), suggestedFileName(state.current, ".xlsx", t("file.analysisSuffix")));
 });
 
 // ------------------------------------------------------------ açılış
@@ -693,9 +698,34 @@ if (DESKTOP_URL) {
   $("desktop-link-wrap").hidden = false;
 }
 window.addEventListener("beforeunload", () => { for (const v of state.videos.values()) URL.revokeObjectURL(v.url); });
-updateHeader();
+/** Dil değişince sabit metinler, başlık, tablolar ve analiz yeniden çizilir; seçim hatırlanır ve adrese yazılır. */
+function renderLanguage() {
+  applyStatic();
+  // Kullanıcı adım adını değiştirmediyse varsayılan ad da dile uyar.
+  const other = getLang() === "tr" ? "en" : "tr";
+  if ($("step").value === t("default.step", {}, other)) $("step").value = t("default.step");
+  updateHeader();
+  $("measure").textContent = state.anchor === null ? t("btn.start") : t("btn.measure");
+  if (state.current) {
+    loadSettings();
+    refreshObservations();
+    if (activeTab === 2) guard(refreshAnalysis);
+  }
+  const url = new URL(location.href);
+  url.searchParams.set("lang", getLang());
+  history.replaceState(null, "", url);
+}
+$("lang-switch").addEventListener("click", () => guard(async () => {
+  setLang(getLang() === "tr" ? "en" : "tr");
+  $("lang-switch").setAttribute("lang", getLang() === "tr" ? "en" : "tr");
+  renderLanguage();
+  await reloadStudies();
+}));
+
+$("lang-switch").setAttribute("lang", getLang() === "tr" ? "en" : "tr");
+renderLanguage();
 guard(async () => {
   await reloadStudies();
   if (store.lastSkipped > 0)
-    await showDialog(`${store.lastSkipped} etüt kaydı okunamadığı için listede gösterilmiyor. Diğer kayıtlar kullanılabilir.`);
+    await showDialog(t("msg.skipped", { n: store.lastSkipped }));
 });

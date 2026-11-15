@@ -42,6 +42,7 @@ python -m http.server 8080   # sonra http://localhost:8080
 ```
 
 - Videolar ve ölçümler hiçbir sunucuya gönderilmez; sayfa yalnızca kendi dosyalarını yükler (içerik güvenliği politikası dış bağlantıyı engeller).
+- **Dil:** Arayüz Türkçe ve İngilizce. Adresteki `?lang=tr` / `?lang=en` önceliklidir; yoksa son seçim, o da yoksa tarayıcı dili kullanılır. Metinler `Web/js/i18n.js` sözlüğündedir; yeni metin eklerken iki dile de ekle (test anahtarların eşit olduğunu denetler). Windows sürümü şimdilik yalnız Türkçedir.
 - **Demo etüdü aç** bağlantısı örnek etüdü ve videoyu sitenin kendi `Web/demo/` kopyasından tek tıkla açar. Kökteki `demo/` değişirse bu kopyayı da güncelle; test ikisinin aynı olduğunu denetler.
 - Etütler o tarayıcıya ve o bilgisayara özeldir. Tarayıcı verilerini temizlemek etütleri siler; **dışa aktararak** yedekle veya başka bilgisayara taşı.
 - Video, açık oturumda bellekte tutulur. Chrome ve Edge dosya iznini hatırlayabilir; diğer tarayıcılarda etüdü yeniden açınca **Videoyu yeniden seç** gerekir.

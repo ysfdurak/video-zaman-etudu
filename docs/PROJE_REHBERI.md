@@ -32,6 +32,13 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 4. **Analiz** sekmesine geçince `Analysis.Steps/Cycles` yeniden hesaplanır; Excel de aynı fonksiyonları çağırır.
 5. **Dışa aktarım** yalnız adı, kodu, video **adını**, ayarları, ölçümleri ve sıklıkları yazar; yerel kimlik ve klasör yolu yazmaz. İçe alımda her seferinde yeni kimlik verilir.
 
+## 3a. Tarayıcı sürümünde dil (TR/EN)
+- Tüm arayüz metinleri `Web/js/i18n.js` sözlüğünde, anahtar → metin olarak durur. HTML'de `data-i18n="anahtar"` işaretli öğeler dil değişince yeniden yazılır; JavaScript mesajları `t("anahtar", {parametre})` ile alınır.
+- Hesap çekirdeği (`core.js`) Türkçe sonuç metni üretir (“Yeterli”, “Ortalama”…), çünkü masaüstüyle eşdeğerlik testleri bu metinleri karşılaştırır. Ekranda ve Excel'de `result()` ile çevrilir. Çekirdek hataları Türkçe mesajla birlikte bir çeviri anahtarı taşır.
+- Dil sırası: adres parametresi (`?lang=en`) → kaydedilmiş seçim → tarayıcı dili. Sitedeki İngilizce proje sayfası “Try it” bağlantısına `?lang=en` ekler.
+- Yeni metin eklerken iki dile de yaz; `npm test` iki sözlüğün anahtarları eşit değilse kırmızı olur.
+- Sık sorulabilecek: “Neden Windows sürümü İngilizce değil?” → Önce ziyaretçinin denediği tarayıcı sürümü çevrildi; masaüstü şirket içi kullanım için Türkçe kaldı, gerekirse aynı sözlük mantığıyla (WPF kaynak dosyaları) çevrilebilir.
+
 ## 3b. İki sürüm nasıl aynı kalıyor?
 - Hesap kuralları iki yerde yazılı: `Core/Study.cs` (C#) ve `Web/js/core.js` (JavaScript). Tek kaynak yerine iki uygulama seçildi, çünkü tarayıcı sürümü sunucusuz ve hafif olmalı (C#'ı tarayıcıda çalıştırmak 5–10 MB indirme demek).
 - Kopukluğu önleyen şey ortak örnek dosyası: C# üretir, her iki taraf her gönderimde ona karşı sınanır. Birinde kural değişip diğerinde değişmezse GitHub Actions kırmızı olur.

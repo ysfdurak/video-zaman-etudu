@@ -238,6 +238,43 @@ async def main():
         await page.set_viewport_size({"width": 390, "height": 844})
         await page.screenshot(path=f"{OUT}/mobil.png", full_page=False)
         check("konsol hatası yok", not errors, "; ".join(errors)[:300])
+
+        # ── İngilizce: tarayıcı dili İngilizce olan yeni ziyaretçi ──
+        ctx2 = await browser.new_context(accept_downloads=True, viewport={"width": 1440, "height": 900}, locale="en-US", bypass_csp=True)
+        await ctx2.add_init_script("window.showOpenFilePicker = undefined;")
+        en = await ctx2.new_page()
+        en_errors = []
+        en.on("pageerror", lambda e: en_errors.append(str(e)))
+        await en.goto(URL); await en.wait_for_selector("#studies tbody tr")
+        check("EN: tarayıcı diline göre İngilizce açılır", "VIDEO TIME STUDY" in await en.inner_text("#header") and await en.inner_text("#tab-0") == "1 Studies")
+        check("EN: boş liste ve demo bağlantısı İngilizce", "No studies yet" in await en.inner_text("#studies tbody") and await en.inner_text("#demo") == "Open demo study")
+        await en.click("#demo")
+        await en.wait_for_function("document.getElementById('status').textContent.includes('Video ready')", timeout=15000)
+        check("EN: ölçüm ekranı İngilizce", await en.inner_text("#measure") == "Start" and await en.inner_text("#tab-1") == "2 Video & measurement")
+        await en.locator("#observations").click(position={"x": 5, "y": 5}); await en.keyboard.press("Enter")
+        check("EN: durum mesajı ve ondalık nokta", re.match(r"Measurement started \(\d+\.\d{3} s\)\.", await en.inner_text("#status")) is not None, await en.inner_text("#status"))
+        await en.keyboard.press("Escape")
+        await en.click("#tab-2")
+        r = {x[0]: x for x in await en.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")}
+        check("EN: analiz 6.902, Insufficient, Mean", r["Toplama"][13] == "6.902" and r["Toplama"][10] == "Insufficient" and r["Toplama"][16] == "Mean", str(r["Toplama"][10:17]))
+        check("EN: rehber metni İngilizce", "Toyota-inspired guide" in await en.inner_text("#analysis-status"))
+        await en.fill("#allowance", "100"); await en.click("#apply-settings"); await en.wait_for_selector("dialog[open]")
+        check("EN: doğrulama hatası İngilizce", "Confidence must be between 0 and 100" in await en.inner_text("#dialog-text") and await en.inner_text("#dialog-yes") == "OK")
+        await en.click("#dialog-yes"); await en.fill("#allowance", "15")
+        async with en.expect_download() as dl:
+            await en.click("#excel")
+        d = await dl.value; await d.save_as(f"{OUT}/en.xlsx")
+        check("EN: Excel dosya adı", d.suggested_filename == "DEMO-01_analysis.xlsx", d.suggested_filename)
+        # dil değiştirme
+        await en.click("#lang-switch")
+        r = {x[0]: x for x in await en.eval_on_selector_all("#results tbody tr", "rs => rs.map(r => [...r.cells].map(c => c.textContent))")}
+        check("TR'ye geçiş: başlık, analiz 6,902 Yetersiz", "VIDEO ZAMAN ETÜDÜ" in await en.inner_text("#header") and r["Toplama"][13] == "6,902" and r["Toplama"][10] == "Yetersiz")
+        check("TR'ye geçiş: adres ?lang=tr", en.url.endswith("lang=tr"), en.url)
+        await en.goto(URL); await en.wait_for_selector("#studies tbody tr")
+        check("seçim hatırlanır (yeniden açılışta Türkçe)", await en.inner_text("#tab-0") == "1 Çalışmalar")
+        await en.goto(URL + "?lang=en"); await en.wait_for_selector("#studies tbody tr")
+        check("?lang=en parametresi seçimi geçersiz kılar", await en.inner_text("#tab-0") == "1 Studies" and await en.get_attribute("html", "lang") == "en")
+        check("EN: konsol hatası yok", not en_errors, "; ".join(en_errors)[:300])
         await browser.close()
 
 asyncio.run(main())

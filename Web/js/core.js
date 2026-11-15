@@ -5,7 +5,7 @@ import {
   parseStrict, JsonError, JsonObject, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
 } from "./strict-json.js";
 
-export const VERSION = "1.2.1";
+export const VERSION = "1.3.0";
 export const EXTENSION = ".vzetud";
 export const CLASSES = ["", "VA", "SVA", "NVA"];
 const FORMAT = "video-zaman-etudu";
@@ -14,8 +14,13 @@ const MAX_BYTES = 32 * 1024 * 1024;
 /** (long)TimeSpan.MaxValue.TotalMilliseconds */
 const MAX_MS = 922337203685477;
 
-export class ValidationError extends Error {}
-export class PackageError extends Error {}
+/** Hata: Türkçe mesaj (masaüstüyle aynı) + arayüz çevirisi için anahtar ve parametreler (i18n.js). */
+export class ValidationError extends Error {
+  constructor(message, key = null, params = {}) { super(message); this.key = key; this.params = params; }
+}
+export class PackageError extends Error {
+  constructor(message, key = null, params = {}) { super(message); this.key = key; this.params = params; }
+}
 
 // ---------------------------------------------------------------- model
 
@@ -43,7 +48,7 @@ export function validateSettings(s) {
       !finite(s.TargetError) || s.TargetError <= 0 || !finite(s.Pace) || s.Pace <= 0 ||
       !finite(s.Allowance) || s.Allowance < 0 || s.Allowance >= 100 ||
       !Number.isInteger(s.GroupMs) || s.GroupMs <= 0)
-    throw new ValidationError("Güven 0–100 arasında, tempo ve hedef hata pozitif, tolerans %0–%100 aralığında (%100 hariç) ve grup hassasiyeti pozitif olmalı.");
+    throw new ValidationError("Güven 0–100 arasında, tempo ve hedef hata pozitif, tolerans %0–%100 aralığında (%100 hariç) ve grup hassasiyeti pozitif olmalı.", "settings.invalid");
 }
 
 // ---------------------------------------------------------------- Student-t
@@ -207,18 +212,18 @@ export function suggestedFileName(study, extension, suffix = "") {
 function validatePackage(data) {
   if (isBlank(data.Name) || isBlank(data.Code) || data.VideoName === null || data.Settings === null ||
       data.Observations === null || data.Frequency === null)
-    throw new PackageError("Etüt paketinde zorunlu alanlar eksik.");
+    throw new PackageError("Etüt paketinde zorunlu alanlar eksik.", "pkg.required");
   try {
     validateSettings(data.Settings);
   } catch (error) {
-    throw new PackageError("Etüt paketindeki analiz ayarları geçersiz. " + error.message);
+    throw new PackageError("Etüt paketindeki analiz ayarları geçersiz. " + error.message, "pkg.settings", { detail: { key: "settings.invalid" } });
   }
   if (data.Observations.some((row) => row === null || typeof row.StartMs === "bigint" || typeof row.EndMs === "bigint" ||
       row.StartMs < 0 || row.EndMs <= row.StartMs || row.EndMs > MAX_MS || row.Cycle < 1 ||
       isBlank(row.Step) || !CLASSES.includes(row.Classification)))
-    throw new PackageError("Etüt paketinde geçersiz ölçüm var.");
+    throw new PackageError("Etüt paketinde geçersiz ölçüm var.", "pkg.observation");
   for (const [key, value] of data.Frequency)
-    if (isBlank(key) || value < 1) throw new PackageError("Etüt paketinde geçersiz iş sıklığı var.");
+    if (isBlank(key) || value < 1) throw new PackageError("Etüt paketinde geçersiz iş sıklığı var.", "pkg.frequency");
 }
 
 /** Etüt → .vzetud metni (masaüstüyle aynı alan adları ve sıra). */
@@ -241,7 +246,7 @@ export function exportPackage(study) {
     Frequency: Object.fromEntries(data.Frequency)
   });
   const bytes = new TextEncoder().encode(json);
-  if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.");
+  if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.", "pkg.size");
   return json;
 }
 
@@ -273,16 +278,16 @@ function readFrequency(node) {
 
 /** .vzetud baytları → yeni etüt. Geçersiz paket PackageError fırlatır; kayıt oluşturulmaz. */
 export function importPackage(bytes) {
-  if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.");
+  if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.", "pkg.size");
   let data;
   try {
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     const root = parseStrict(text);
     if (!(root instanceof JsonObject) || typeof root.get("Kind") !== "string" || root.get("Kind") !== FORMAT || !root.has("Version"))
-      throw new PackageError("Bu dosya bir Video Zaman Etüdü paketi değil.");
+      throw new PackageError("Bu dosya bir Video Zaman Etüdü paketi değil.", "pkg.notPackage");
     let version;
-    try { version = readInt32(root.get("Version")); } catch { throw new PackageError("Bu dosya bir Video Zaman Etüdü paketi değil."); }
-    if (version !== PACKAGE_VERSION) throw new PackageError("Bu etüt paketi sürümü desteklenmiyor.");
+    try { version = readInt32(root.get("Version")); } catch { throw new PackageError("Bu dosya bir Video Zaman Etüdü paketi değil.", "pkg.notPackage"); }
+    if (version !== PACKAGE_VERSION) throw new PackageError("Bu etüt paketi sürümü desteklenmiyor.", "pkg.version");
     for (const required of ["Kind", "Version", "Name", "Code", "VideoName", "Settings", "Observations", "Frequency"])
       if (!root.has(required)) throw new JsonError();
     const observations = readArray(root.get("Observations"));
@@ -294,7 +299,7 @@ export function importPackage(bytes) {
     };
   } catch (error) {
     if (error instanceof PackageError) throw error;
-    if (error instanceof JsonError || error instanceof TypeError) throw new PackageError("Etüt paketi eksik veya bozuk.");
+    if (error instanceof JsonError || error instanceof TypeError) throw new PackageError("Etüt paketi eksik veya bozuk.", "pkg.corrupt");
     throw error;
   }
   validatePackage(data);
@@ -313,7 +318,7 @@ export function parseNumber(text, name) {
     const v = Number(t.replace(",", "."));
     if (Number.isFinite(v)) return v;
   }
-  throw new ValidationError(`${name} geçerli bir sayı olmalı.`);
+  throw new ValidationError(`${name} geçerli bir sayı olmalı.`, "number.invalid", { name });
 }
 
 export function parsePositiveInt(text, name) {
@@ -322,7 +327,7 @@ export function parsePositiveInt(text, name) {
     const v = Number(t);
     if (Number.isSafeInteger(v) && v > 0 && v <= 2147483647) return v;
   }
-  throw new ValidationError(`${name} pozitif bir tam sayı olmalı.`);
+  throw new ValidationError(`${name} pozitif bir tam sayı olmalı.`, "int.invalid", { name });
 }
 
 /** IndexedDB kaydı ↔ çalışma nesnesi (Map yapısal kopyada saklanabilir ama açık tutuyoruz). */

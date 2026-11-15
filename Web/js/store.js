@@ -21,7 +21,8 @@ export class StudyStore {
 
   async open() {
     if (this.#db) return this.#db;
-    if (!globalThis.indexedDB) throw new Error("Bu tarayıcı yerel kayıt (IndexedDB) desteklemiyor. Gizli pencere kullanıyorsanız normal pencerede açın.");
+    if (!globalThis.indexedDB)
+      throw Object.assign(new Error("Bu tarayıcı yerel kayıt (IndexedDB) desteklemiyor. Gizli pencere kullanıyorsanız normal pencerede açın."), { key: "store.unsupported" });
     const open = indexedDB.open(DB_NAME, 1);
     open.onupgradeneeded = () => {
       const db = open.result;
