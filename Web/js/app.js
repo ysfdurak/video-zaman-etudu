@@ -663,8 +663,61 @@ function refreshAnalysis() {
     });
   if (selected && previous !== selected.Step) $("every").value = String(selected.Every);
   renderTable("cycles", analyzeCycles(study), (c) => [num(c.Cycle), num(fmt3(c.Elapsed)), num(fmt3(c.Workload))]);
-  renderTable("groups", selected?.Groups ?? [], (g) => [num(fmt3(g.Seconds)), num(g.Count)]);
+  renderTable("groups", selected?.Groups ?? [], (g) => [num(fmt3(g.Seconds)), num(g.Count)], { empty: t("groups.empty") });
+  renderSummary(study, rows);
   $("analysis-status").textContent = `${t(study.Settings.Stable ? "guide.stable" : "guide.general")} ${t("guide.tail")}`;
+}
+
+/** Hedef hataya inmek için gereken yaklaşık gözlem sayısı: t değeri serbestlik derecesine göre yinelemeli güncellenir. */
+function requiredObservations(r, settings) {
+  const p = (1 + settings.Confidence / 100) / 2;
+  const k = (r.Deviation * 100) / (settings.TargetError * r.Mean);
+  let n = r.Count;
+  for (let i = 0; i < 50; i++) {
+    const next = Math.max(r.Count + 1, Math.ceil(Math.pow(studentInv(n - 1, p) * k, 2)));
+    if (next === n) break;
+    n = next;
+  }
+  return n;
+}
+
+/** Analizin özeti: çevrim başına standart süre, saatlik kapasite, yeterlilik ve sınıf dağılımı. */
+function renderSummary(study, rows) {
+  const box = $("summary");
+  box.replaceChildren();
+  if (rows.length === 0) return;
+  const card = (label, value, detail = []) => {
+    const el = document.createElement("div");
+    el.className = "sum-card";
+    const l = document.createElement("span"); l.className = "sum-label"; l.textContent = label;
+    const v = document.createElement("strong"); v.textContent = value;
+    el.append(l, v);
+    for (const d of detail) { const p = document.createElement("small"); p.textContent = d; el.append(p); }
+    box.append(el);
+  };
+  const withStd = rows.filter((r) => r.Contribution !== null);
+  const total = withStd.reduce((s, r) => s + r.Contribution, 0);
+  const missing = rows.some((r) => r.Contribution === null && r.Count > 0);
+  card(t("summary.total"), withStd.length ? `${fmt3(total)} ${getLang() === "tr" ? "sn" : "s"}` : "—", missing ? [t("summary.incomplete")] : []);
+  card(t("summary.rate"), total > 0 ? t("summary.rateUnit", { n: (3600 / total).toLocaleString(locale(), { maximumFractionDigits: 1 }) }) : "—");
+  const settings = study.Settings;
+  const bad = rows.filter((r) => r.Sufficiency === "Yetersiz");
+  const na = rows.filter((r) => r.Sufficiency === "Hesaplanamıyor" && r.Count > 0);
+  const details = bad.map((r) => t("summary.needDetail", {
+    step: r.Step, c: r.Count,
+    n: requiredObservations(r, settings)
+  }));
+  if (na.length) details.push(t("summary.na", { k: na.length }));
+  card(t("summary.sufficiency"), bad.length ? t("summary.need", { k: bad.length }) : t("summary.allOk"), details);
+  const byClass = new Map();
+  let all = 0;
+  for (const o of study.Observations) {
+    if (o.Excluded || o.EndMs <= o.StartMs) continue;
+    const k = o.Classification || t("summary.noClass");
+    byClass.set(k, (byClass.get(k) ?? 0) + (o.EndMs - o.StartMs));
+    all += o.EndMs - o.StartMs;
+  }
+  if (all > 0) card(t("summary.classes"), [...byClass.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => (getLang() === "tr" ? `${k} %${Math.round((v / all) * 100)}` : `${k} ${Math.round((v / all) * 100)}%`)).join(" · "));
 }
 
 on("apply-settings", applySettings);

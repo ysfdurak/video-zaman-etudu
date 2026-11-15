@@ -1,3 +1,12 @@
+# v1.4.0 · Video Zaman Etüdü — tarayıcıda öğretici ekranlar ve analiz özeti
+
+Yalnız tarayıcı sürümü değişti; hesap kuralları, `.vzetud` biçimi ve Excel raporu aynı. Windows sürümü v1.2.0 olarak kalır.
+
+- **Analiz özeti:** Analiz ekranının üstünde çevrim başına standart süre (katkıların toplamı), saatlik kapasite, yetersiz adımlar için gereken yaklaşık gözlem sayısı (t değeri yinelemeli) ve ölçülen sürenin VA/SVA/NVA dağılımı.
+- **Öğretici içerik:** Çalışmalar ekranında 3 adımlık "Nasıl çalışır"; ölçüm ekranında VA/SVA/NVA, çevrim ve kapsam dışı açıklaması; analiz ekranında güven, hedef hata, tempo, tolerans, baz → normal → standart ve katkı sütunlarının açıklaması (katlanır, TR/EN).
+- Süre grupları tablosu boş kaldığında ne yapılacağını söyler.
+- **Telefon ve erişilebilirlik:** Sekmeler tek satırda yatay kayar; sekme listesi gezinme bölgesi içinde; kaydırılabilir tablolar klavyeyle odaklanır; pasif sekme rengi koyulaştı. axe denetimi masaüstü ve telefonda 0 ihlal; Chrome uçtan uca testi 65/65.
+
 # v1.3.0 · Video Zaman Etüdü — tarayıcıda İngilizce arayüz
 
 Yalnız tarayıcı sürümü değişti; Windows sürümü v1.2.0 (Türkçe) olarak kalır. Hesap kuralları ve `.vzetud` biçimi değişmedi.

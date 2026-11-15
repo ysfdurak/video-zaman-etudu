@@ -19,16 +19,19 @@
     <p class="edition"><span data-i18n="edition">Tarayıcı sürümü · Video bilgisayarınızdan çıkmaz</span><span id="desktop-link-wrap" hidden> · <a id="desktop-link" href="#" data-i18n="desktopLink">Windows sürümünü indir</a></span></p>
   </header>
 
-  <nav class="tabs" role="tablist" aria-label="Bölümler" data-i18n-attr="aria-label:tabs.label">
+  <nav class="tabs-nav" aria-label="Bölümler" data-i18n-attr="aria-label:tabs.label">
+  <div class="tabs" role="tablist" aria-label="Bölümler" data-i18n-attr="aria-label:tabs.label">
     <button role="tab" id="tab-0" aria-controls="panel-0" aria-selected="true" data-i18n="tab.0">1 Çalışmalar</button>
     <button role="tab" id="tab-1" aria-controls="panel-1" aria-selected="false" disabled data-i18n="tab.1">2 Video ve ölçüm</button>
     <button role="tab" id="tab-2" aria-controls="panel-2" aria-selected="false" disabled data-i18n="tab.2">3 Analiz ve rapor</button>
+  </div>
   </nav>
 
   <main>
     <!-- 1 Çalışmalar -->
     <section id="panel-0" role="tabpanel" aria-labelledby="tab-0">
       <p data-i18n="home.lead">Yeni etüt oluştur veya kayıtlı bir etüdü aç.</p>
+      <ol class="how" aria-label="Nasıl çalışır" data-i18n-attr="aria-label:how.label"><li data-i18n-html="how.1"></li><li data-i18n-html="how.2"></li><li data-i18n-html="how.3"></li></ol>
       <p class="note" data-i18n-html="home.note">Etütler yalnızca bu tarayıcıda saklanır. Tarayıcı verilerini temizlemek etütleri de siler; önemli etütleri <b>dışa aktararak</b> yedekleyin.</p>
       <p class="hint"><span data-i18n="demo.before">İlk kez mi deniyorsunuz?</span> <button id="demo" class="link" data-i18n="demo.button">Demo etüdü aç</button> <span data-i18n="demo.after">— sentetik depo videosu ve hazır ölçümlerle analiz ekranını hemen görün.</span></p>
       <div class="row">
@@ -46,7 +49,7 @@
         <button id="export" data-i18n="btn.export">Seçili etüdü dışa aktar…</button>
         <button id="delete" class="danger" data-i18n="btn.delete">Seçili etüdü sil…</button>
       </div>
-      <div class="table-wrap tall">
+      <div tabindex="0" class="table-wrap tall">
         <table id="studies" class="grid" aria-label="Kayıtlı etütler" data-i18n-attr="aria-label:studies.label">
           <thead><tr><th data-i18n="th.code">Kod</th><th data-i18n="th.name">Etüt adı</th><th data-i18n="th.video">Video</th><th data-i18n="th.updated">Son düzenleme</th></tr></thead>
           <tbody></tbody>
@@ -72,9 +75,10 @@
         <button id="bulk-class" data-i18n="btn.bulk">Sınıfı aynı adı taşıyanlara uygula</button>
         <button id="delete-row" class="danger" data-i18n="btn.deleteRow">Seçili satırı sil</button>
       </div>
+      <details class="help"><summary data-i18n="help.measure.title">Sınıf, çevrim ve kapsam dışı ne demek?</summary><dl data-i18n-html="help.measure.body"></dl></details>
       <p class="hint" data-i18n="measure.hint">Ölç son aralığı kaydeder. Durdur ölçüm modunu kapatır. Çakışan veya bağımsız aralık için başlangıcı alıp bitiş konumunda aralığı ekleyin.</p>
       <div class="split">
-        <div class="table-wrap">
+        <div tabindex="0" class="table-wrap">
           <table id="observations" class="grid" aria-label="Ölçümler" data-i18n-attr="aria-label:observations.label">
             <thead><tr><th data-i18n="th.start">Başlangıç (ms)</th><th data-i18n="th.end">Bitiş (ms)</th><th data-i18n="th.duration">Süre (sn)</th><th data-i18n="th.step">İş adımı</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.excluded">Kapsam dışı</th><th data-i18n="th.cycle">Çevrim</th></tr></thead>
             <tbody></tbody>
@@ -116,7 +120,9 @@
         <button id="excel" data-i18n="btn.excel">Excel’e aktar…</button>
       </div>
       <p id="analysis-status" class="hint"></p>
-      <div class="table-wrap">
+      <div id="summary" class="summary" aria-live="polite"></div>
+      <details class="help"><summary data-i18n="help.analysis.title">Ayarlar ve sütunlar ne anlatıyor?</summary><dl data-i18n-html="help.analysis.body"></dl></details>
+      <div tabindex="0" class="table-wrap">
         <table id="results" class="grid" aria-label="Adım analizi" data-i18n-attr="aria-label:results.label">
           <thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="th.r.n">n</th><th data-i18n="th.r.excluded">Dışarıda</th><th data-i18n="th.r.mean">Ort.</th><th data-i18n="th.r.median">Medyan</th><th data-i18n="th.r.min">Min</th><th data-i18n="th.r.max">Maks</th><th data-i18n="th.r.sd">Std sapma</th><th data-i18n="th.r.t">t</th><th data-i18n="th.r.error">Hata %</th><th data-i18n="th.r.sufficiency">Yeterlilik</th><th data-i18n="th.r.base">Baz</th><th data-i18n="th.r.normal">Normal</th><th data-i18n="th.r.standard">Standart</th><th data-i18n="th.r.every">Her N çevrim</th><th data-i18n="th.r.contribution">Katkı</th><th data-i18n="th.r.method">Yöntem</th></tr></thead>
           <tbody></tbody>
@@ -125,13 +131,13 @@
       <div class="lower">
         <div>
           <h2 data-i18n="h.cycles">Çevrimler</h2>
-          <div class="table-wrap short">
+          <div tabindex="0" class="table-wrap short">
             <table id="cycles" class="grid" aria-label="Çevrimler" data-i18n-attr="aria-label:h.cycles"><thead><tr><th data-i18n="th.c.cycle">Çevrim</th><th data-i18n="th.c.elapsed">Ölçülen geçen süre (sn)</th><th data-i18n="th.c.workload">İş yükü (sn)</th></tr></thead><tbody></tbody></table>
           </div>
         </div>
         <div>
           <h2 data-i18n="h.groups">Seçili adımın süre grupları</h2>
-          <div class="table-wrap short">
+          <div tabindex="0" class="table-wrap short">
             <table id="groups" class="grid" aria-label="Süre grupları" data-i18n-attr="aria-label:h.groups"><thead><tr><th data-i18n="th.g.mean">Grup ortalaması (sn)</th><th data-i18n="th.g.count">Tekrar</th></tr></thead><tbody></tbody></table>
           </div>
         </div>
