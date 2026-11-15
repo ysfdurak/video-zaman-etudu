@@ -39,7 +39,8 @@ internal static class ParityChecks
                 {
                     var x = e.GetProperty(field);
                     double? expected = x.ValueKind == JsonValueKind.Null ? null : x.GetDouble();
-                    if (!Same(actual, expected)) Fail($"{name}/{step}/{field}: {actual} ≠ {expected}");
+                    double tolerance = field is "CriticalT" or "ErrorPercent" ? TTolerance : Tolerance;
+                    if (!Same(actual, expected, tolerance)) Fail($"{name}/{step}/{field}: {actual:R} ≠ {expected:R}");
                 }
                 Num("Mean", r.Mean); Num("Median", r.Median); Num("Min", r.Min); Num("Max", r.Max);
                 Num("Deviation", r.Deviation); Num("CriticalT", r.CriticalT); Num("ErrorPercent", r.ErrorPercent);
@@ -68,8 +69,9 @@ internal static class ParityChecks
             total++;
             double c = item.GetProperty("Confidence").GetDouble();
             int df = item.GetProperty("Df").GetInt32();
-            if (!Same(StudentT.InvCDF(0, 1, df, (1 + c / 100) / 2), item.GetProperty("T").GetDouble()))
-                Fail($"t tablosu %{c}, sd {df}");
+            double actualT = StudentT.InvCDF(0, 1, df, (1 + c / 100) / 2), expectedT = item.GetProperty("T").GetDouble();
+            if (!Same(actualT, expectedT, TTolerance))
+                Fail($"t tablosu %{c}, sd {df}: {actualT:R} ≠ {expectedT:R}");
         }
 
         foreach (var item in root.GetProperty("Packages").EnumerateArray())
@@ -107,9 +109,18 @@ internal static class ParityChecks
         if (failures > 0) throw new Exception($"{failures} eşdeğerlik kontrolü başarısız.");
     }
 
-    /// <summary>MathNet ile örnekleri üreten ortam arasında 1e-12 düzeyinde fark olabilir; 1e-9 göreli tolerans yeterli.</summary>
-    private static bool Same(double? actual, double? expected) =>
+    /// <summary>t'ye bağlı olmayan değerler: iki uygulama aynı işlem sırasını izler, 1e-9 göreli tolerans.</summary>
+    private const double Tolerance = 1e-9;
+
+    /// <summary>
+    /// t'ye bağlı değerler (kritik t, bağıl hata): MathNet StudentT.InvCDF kök bulmayı mutlak olasılık hassasiyetiyle
+    /// durdurur; uç kuyrukta (ör. %99,9, sd 1, gerçek değer tan(π·0,4995) = 636,6192487687…) ~1e-9 göreli sapar.
+    /// Örnek dosyası daha doğru değeri (scipy ile fark &lt; 3e-12) taşır. Ekranda t 3 ondalıkla gösterildiği için 1e-7 yeterli.
+    /// </summary>
+    private const double TTolerance = 1e-7;
+
+    private static bool Same(double? actual, double? expected, double tolerance = Tolerance) =>
         actual is null || expected is null
             ? actual is null && expected is null
-            : Math.Abs(actual.Value - expected.Value) <= 1e-9 * Math.Max(1, Math.Abs(expected.Value));
+            : Math.Abs(actual.Value - expected.Value) <= tolerance * Math.Max(1, Math.Abs(expected.Value));
 }

@@ -35,7 +35,7 @@ Kullanıcı videodaki iş adımlarının başlangıç/bitişini işaretler; prog
 ## 3b. İki sürüm nasıl aynı kalıyor?
 - Hesap kuralları iki yerde yazılı: `Core/Study.cs` (C#) ve `Web/js/core.js` (JavaScript). Tek kaynak yerine iki uygulama seçildi, çünkü tarayıcı sürümü sunucusuz ve hafif olmalı (C#'ı tarayıcıda çalıştırmak 5–10 MB indirme demek).
 - Kopukluğu önleyen şey ortak örnek dosyası: C# üretir, her iki taraf her gönderimde ona karşı sınanır. Birinde kural değişip diğerinde değişmezse GitHub Actions kırmızı olur.
-- t değeri: masaüstü MathNet kütüphanesini, tarayıcı kendi yazdığımız ters t fonksiyonunu kullanır; fark 10⁻¹² mertebesinde, test toleransı 10⁻⁹.
+- t değeri: masaüstü MathNet kütüphanesini, tarayıcı kendi yazdığımız ters t fonksiyonunu kullanır; tarayıcının değeri daha doğru (scipy ile fark 10⁻¹² mertebesinde); MathNet uç kuyrukta (ör. %99,9 güven, sd 1) ~10⁻⁹ sapar. Test toleransı t'ye bağlı değerlerde 10⁻⁷, diğerlerinde 10⁻⁹; ekranda t 3 ondalıkla gösterilir.
 - Bilinçli farklar: tarayıcıda video yolu yok (yalnız dosya adı), etütler tarayıcıya özel, sıralama Türkçe alfabe (masaüstünde Windows bölge ayarı).
 
 ## 4. Formüller (sorulursa)
