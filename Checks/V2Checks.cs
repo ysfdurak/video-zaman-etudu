@@ -121,6 +121,12 @@ internal static class V2Checks
             Check("Bozuk isteğe bağlı alan paketi reddettirmez: " + name, () =>
                 StudyTransfer.ImportBytes(System.Text.Encoding.UTF8.GetBytes(bad)) is { Steps.Count: 0, Info.Count: 0, StepPace.Count: 0, Takt: null, AllowanceParts.Count: 0 });
         }
+        var badRating = json.Replace("\"Cycle\":1}", "\"Cycle\":1,\"Rating\":\"yüksek\"}");
+        Check("v2.1: metin tempo puanı yok sayılır, paket açılır", () => badRating != json && StudyTransfer.ImportBytes(System.Text.Encoding.UTF8.GetBytes(badRating)).Observations[0].Rating is null);
+        var badFrame = json[..^1] + ",\"Steps\":[{\"Name\":\"A\",\"Classification\":\"VA\",\"FrameMs\":\"x\",\"Type\":\"Uçan\",\"Station\":\" 1 \"}]}";
+        Check("v2.1: bozuk kare ve tür atılır, adım kalır", () =>
+            StudyTransfer.ImportBytes(System.Text.Encoding.UTF8.GetBytes(badFrame)).Steps is [{ Name: "A", FrameMs: null, Type: null, Station: "1" }]);
+        Check("v2.1: tempo puanı sınırları", () => new Observation { Rating = 0 }.Rating is null && new Observation { Rating = 301 }.Rating is null && new Observation { Rating = 95 }.Rating == 95);
         var withNote = json.Replace("\"Cycle\":1}", "\"Cycle\":1,\"Note\":5}");
         Check("Metin olmayan kayıt notu yok sayılır", () => withNote != json && StudyTransfer.ImportBytes(System.Text.Encoding.UTF8.GetBytes(withNote)).Observations[0].Note is null);
         Check("Hata iletilerinde çeviri anahtarı var", () =>
@@ -215,6 +221,7 @@ internal static class V2Checks
                 .SequenceEqual(e.GetProperty("Notes").EnumerateArray().Select(n => (n.GetProperty("StartMs").GetInt64(), n.GetProperty("Note").GetString()!))));
         Check("Ortak paket: etüt bilgileri, adım açıklamaları, takt", () =>
             study.Info["Operator"] == "A. Kaya" && study.Steps[0].Note == "kutu masaya konunca biter" && study.Takt == 18.5);
+        V21Shared(root, study);
         if (demoPath == null) return;
         var plain = StudyTransfer.Import(demoPath);
         Check("Ortak: adım listesi olmayan demoda çıkarılan adımlar", () =>
@@ -231,5 +238,73 @@ internal static class V2Checks
             cmp.Rows.Count == ec.GetProperty("Rows").GetArrayLength() &&
             cmp.Rows.Zip(ec.GetProperty("Rows").EnumerateArray()).All(p => p.First.Step == p.Second.GetProperty("Step").GetString() &&
                 Same(p.First.Before, Num(p.Second.GetProperty("Before"))) && Same(p.First.After, Num(p.Second.GetProperty("After")))));
+    }
+
+    /// <summary>v2.1 (tarayıcı v1.8): kayıt temposu, aykırı değer, histogram, hat dengeleme, standart iş, iyileştirme, kare, iş örneklemesi.</summary>
+    private static void V21Shared(JsonElement root, Study study)
+    {
+        var e = root.GetProperty("Expected");
+        Check("v2.1 ortak: kayıt temposu puanları", () =>
+            study.Observations.Where(o => o.Rating != null).Select(o => (o.StartMs, o.Rating!.Value))
+                .SequenceEqual(e.GetProperty("Ratings").EnumerateArray().Select(r => (r.GetProperty("StartMs").GetInt64(), r.GetProperty("Rating").GetDouble()))));
+        var outs = Advanced.Outliers(study);
+        var eo = e.GetProperty("Outliers").EnumerateArray().ToList();
+        Check("v2.1 ortak: aykırı değerler (IQR)", () => outs.Count == eo.Count && outs.Zip(eo).All(p =>
+            p.First.Step == p.Second.GetProperty("Step").GetString() && Same(p.First.Q1, p.Second.GetProperty("Q1").GetDouble()) &&
+            Same(p.First.Q3, p.Second.GetProperty("Q3").GetDouble()) && Same(p.First.Low, p.Second.GetProperty("Low").GetDouble()) &&
+            Same(p.First.High, p.Second.GetProperty("High").GetDouble()) &&
+            p.First.Rows.Select(o => o.StartMs).SequenceEqual(p.Second.GetProperty("StartMs").EnumerateArray().Select(x => x.GetInt64()))));
+        var hist = Advanced.Histogram(study, "Toplama");
+        var eh = e.GetProperty("Histogram").EnumerateArray().ToList();
+        Check("v2.1 ortak: histogram", () => hist.Count == eh.Count && hist.Zip(eh).All(p =>
+            Same(p.First.From, p.Second.GetProperty("From").GetDouble()) && Same(p.First.To, p.Second.GetProperty("To").GetDouble()) &&
+            p.First.Count == p.Second.GetProperty("Count").GetInt32()));
+        var b = Advanced.LineBalance(study);
+        var eb = e.GetProperty("Balance");
+        Check("v2.1 ortak: hat dengeleme", () =>
+            Same(b.Total, Num(eb.GetProperty("Total"))) && Same(b.Max, Num(eb.GetProperty("Max"))) && b.Bottleneck == eb.GetProperty("Bottleneck").GetString() &&
+            Same(b.Efficiency, Num(eb.GetProperty("Efficiency"))) && Same(b.Loss, Num(eb.GetProperty("Loss"))) &&
+            b.MinOperators == eb.GetProperty("MinOperators").GetInt32() &&
+            b.Stations.Count == eb.GetProperty("Stations").GetArrayLength() &&
+            b.Stations.Zip(eb.GetProperty("Stations").EnumerateArray()).All(p => p.First.Station == p.Second.GetProperty("Station").GetString() &&
+                Same(p.First.Load, p.Second.GetProperty("Load").GetDouble()) &&
+                p.First.Steps.Select(x => x.Step).SequenceEqual(p.Second.GetProperty("Steps").EnumerateArray().Select(x => x.GetString()!))) &&
+            b.Unassigned.Select(x => x.Step).SequenceEqual(eb.GetProperty("Unassigned").EnumerateArray().Select(x => x.GetString()!)));
+        Check("v2.1 ortak: otomatik dengeleme (takt 10)", () =>
+            Advanced.AutoBalance(study, 10).SequenceEqual(e.GetProperty("AutoBalance").EnumerateObject().Select(p => (p.Name, p.Value.GetString()!))));
+        var w = Advanced.StandardWork(study);
+        var ew = e.GetProperty("StandardWork");
+        Check("v2.1 ortak: standart iş tablosu", () =>
+            Same(w.Operator, ew.GetProperty("Operator").GetDouble()) && Same(w.Total, ew.GetProperty("Total").GetDouble()) &&
+            w.Rows.Count == ew.GetProperty("Rows").GetArrayLength() &&
+            w.Rows.Zip(ew.GetProperty("Rows").EnumerateArray()).All(p => p.First.Step == p.Second.GetProperty("Step").GetString() &&
+                p.First.Type == p.Second.GetProperty("Type").GetString() && Same(p.First.Start, p.Second.GetProperty("Start").GetDouble()) &&
+                Same(p.First.End, p.Second.GetProperty("End").GetDouble())));
+        var imp = Advanced.Improvements(study);
+        Check("v2.1 ortak: iyileştirme listesi", () =>
+            imp.Count == e.GetProperty("Improvements").GetArrayLength() &&
+            imp.Zip(e.GetProperty("Improvements").EnumerateArray()).All(p => p.First.Step == p.Second.GetProperty("Step").GetString() &&
+                p.First.Waste == p.Second.GetProperty("Waste").GetString() && p.First.Idea == p.Second.GetProperty("Idea").GetString() &&
+                Same(p.First.Share, Num(p.Second.GetProperty("Share")))));
+        Check("v2.1 ortak: adım kareleri", () => e.GetProperty("Frames").EnumerateObject().All(p =>
+            Advanced.StepFrame(study, p.Name) == (p.Value.ValueKind == JsonValueKind.Null ? null : p.Value.GetInt64())));
+
+        var sm = root.GetProperty("Sampling");
+        string text = sm.GetProperty("Package").GetString()!;
+        var sampling = StudyTransfer.ImportBytes(System.Text.Encoding.UTF8.GetBytes(text));
+        Check("v2.1 ortak: örnekleme paketi aynı metinle yazılır", () => System.Text.Encoding.UTF8.GetString(StudyTransfer.ExportBytes(sampling)) == text);
+        Check("v2.1 ortak: örnekleme etüdü türü ve hedef hata", () => sampling.IsSampling && sampling.SampleError == 4 && sampling.Samples.Count == 57);
+        var r = Advanced.AnalyzeSampling(sampling);
+        var es = sm.GetProperty("Expected");
+        Check("v2.1 ortak: örnekleme z, n, gereken gözlem", () =>
+            Same(r.Z, es.GetProperty("Z").GetDouble()) && r.N == es.GetProperty("N").GetInt32() && r.Required == es.GetProperty("Required").GetInt32());
+        Check("v2.1 ortak: örnekleme kategorileri (pay, aralık, gereken n)", () =>
+            r.Rows.Count == es.GetProperty("Rows").GetArrayLength() &&
+            r.Rows.Zip(es.GetProperty("Rows").EnumerateArray()).All(p => p.First.Category == p.Second.GetProperty("Category").GetString() &&
+                p.First.Count == p.Second.GetProperty("Count").GetInt32() && Same(p.First.Share, Num(p.Second.GetProperty("Share"))) &&
+                Same(p.First.Low, Num(p.Second.GetProperty("Low"))) && Same(p.First.High, Num(p.Second.GetProperty("High"))) &&
+                p.First.Required == p.Second.GetProperty("Required").GetInt32()));
+        Check("v2.1 ortak: örnekleme sınıf payları", () =>
+            es.GetProperty("ByClass").EnumerateObject().All(p => Same(r.ByClass![p.Name], p.Value.GetDouble())));
     }
 }

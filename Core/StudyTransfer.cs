@@ -66,6 +66,10 @@ public static class StudyTransfer
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public Dictionary<string, double>? StepPace { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? Takt { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public Dictionary<string, double>? AllowanceParts { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? StudyType { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<SampleCategory>? Categories { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<Sample>? Samples { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? SampleError { get; init; }
     }
 
     /// <summary>Etüt → paket baytları (UTF-8 JSON). Tarayıcı sürümüyle aynı alan adları ve sıra.</summary>
@@ -88,7 +92,11 @@ public static class StudyTransfer
             Settings = data.Settings, Observations = data.Observations, Frequency = data.Frequency,
             Steps = steps.Count > 0 ? steps : null, Info = info.Count > 0 ? info : null,
             StepPace = pace.Count > 0 ? pace : null, Takt = StudyRules.CleanTakt(study.Takt),
-            AllowanceParts = parts.Count > 0 ? parts : null
+            AllowanceParts = parts.Count > 0 ? parts : null,
+            StudyType = StudyRules.CleanStudyType(study.StudyType) is { Length: > 0 } type ? type : null,
+            Categories = StudyRules.CleanCategories(study.Categories) is { Count: > 0 } cats ? cats : null,
+            Samples = StudyRules.CleanSamples(study.Samples) is { Count: > 0 } samples ? samples : null,
+            SampleError = StudyRules.CleanSampleError(study.SampleError)
         };
         var bytes = JsonSerializer.SerializeToUtf8Bytes(output, WriteOptions);
         CheckSize(bytes.Length);
@@ -156,7 +164,11 @@ public static class StudyTransfer
             Info = StudyRules.CleanInfo(OptionalStrings(root, "Info")),
             StepPace = StudyRules.CleanStepPace(OptionalNumbers(root, "StepPace")),
             Takt = StudyRules.CleanTakt(root.TryGetProperty("Takt", out var takt) && takt.ValueKind == JsonValueKind.Number && takt.TryGetDouble(out var t) ? t : null),
-            AllowanceParts = StudyRules.MatchingParts(OptionalNumbers(root, "AllowanceParts"), settings.Allowance)
+            AllowanceParts = StudyRules.MatchingParts(OptionalNumbers(root, "AllowanceParts"), settings.Allowance),
+            StudyType = StudyRules.CleanStudyType(root.TryGetProperty("StudyType", out var st) && st.ValueKind == JsonValueKind.String ? st.GetString() : null),
+            Categories = StudyRules.CleanCategories(Optional<List<SampleCategory?>>(root, "Categories")),
+            Samples = StudyRules.CleanSamples(Optional<List<Sample?>>(root, "Samples")),
+            SampleError = StudyRules.CleanSampleError(root.TryGetProperty("SampleError", out var se) && se.ValueKind == JsonValueKind.Number && se.TryGetDouble(out var sev) ? sev : null)
         };
     }
 

@@ -5,8 +5,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   importPackage, exportPackage, analyzeSteps, analyzeCycles, inProcessOrder, cycleSpread, totalStandard,
-  compareStudies, requiredObservations, deriveSteps, stepOrder, matchingParts
+  compareStudies, requiredObservations, deriveSteps, stepOrder, matchingParts, newStudy
 } from "../../Web/js/core.js";
+import { outliers, histogram, lineBalance, autoBalance, standardWork, improvements, analyzeSampling, stepFrame, normalInv } from "../../Web/js/advanced.js";
 
 const root = new URL("../../", import.meta.url);
 const enc = new TextEncoder();
@@ -15,19 +16,24 @@ const demoBytes = () => new Uint8Array(readFileSync(new URL("demo/sentetik-depo-
 export function build() {
   const st = importPackage(demoBytes());
   st.Steps = [
-    { Name: "Hazırlık", Classification: "SVA", Note: "kutu masaya konunca biter" },
-    { Name: "Toplama", Classification: "VA" },
-    { Name: "Tarama", Classification: "SVA" },
-    { Name: "Paketleme", Classification: "VA", Note: "bant kesilince biter" },
-    { Name: "Bekleme", Classification: "NVA" },
-    { Name: "Seyrek kontrol", Classification: "SVA" }
+    { Name: "Hazırlık", Classification: "SVA", Note: "kutu masaya konunca biter", Type: "Manual", Station: "1", FrameMs: 1500 },
+    { Name: "Toplama", Classification: "VA", Type: "Walk", Station: "1", Waste: "Motion", Idea: "rafı tezgâha yaklaştır" },
+    { Name: "Tarama", Classification: "SVA", Type: "Machine", Station: "2" },
+    { Name: "Paketleme", Classification: "VA", Note: "bant kesilince biter", Station: "2" },
+    { Name: "Bekleme", Classification: "NVA", Type: "Wait", Waste: "Waiting" },
+    { Name: "Seyrek kontrol", Classification: "SVA", Station: "3" }
   ];
   st.Info = { Operator: "A. Kaya", Station: "Hat 2", Shift: "Gündüz", Date: "2026-11-15" };
   st.StepPace = new Map([["Toplama", 95], ["Paketleme", 120]]);
   st.Takt = 18.5;
   st.Settings = { ...st.Settings, Allowance: 12.5 };
   st.AllowanceParts = { Personal: 5, Fatigue: 4.5, Delay: 3 };
-  st.Observations = st.Observations.map((o, i) => (i === 4 ? { ...o, Note: "forklift bekledi" } : i === 7 ? { ...o, Note: "barkod okunmadı" } : o));
+  st.Observations = st.Observations.map((o, i) => (i === 4 ? { ...o, Note: "forklift bekledi" } : i === 7 ? { ...o, Note: "barkod okunmadı" } : i === 1 ? { ...o, Rating: 105 } : i === 6 ? { ...o, Rating: 90 } : o));
+  // v1.8: aykırı değer için Toplama'ya üç kayıt daha (biri çok uzun).
+  st.Observations.push(
+    { StartMs: 36000, EndMs: 41000, Step: "Toplama", Classification: "VA", Excluded: false, Cycle: 4 },
+    { StartMs: 41000, EndMs: 46200, Step: "Toplama", Classification: "VA", Excluded: false, Cycle: 5, Rating: 110 },
+    { StartMs: 46200, EndMs: 60200, Step: "Toplama", Classification: "VA", Excluded: false, Cycle: 6 });
   const text = exportPackage(st);
   const study = importPackage(enc.encode(text));
   const rows = inProcessOrder(study, analyzeSteps(study));
@@ -49,9 +55,31 @@ export function build() {
       DerivedSteps: deriveSteps(plain).map((x) => ({ Name: x.Name, Classification: x.Classification })),
       PlainOrder: stepOrder(plain),
       Parts: matchingParts(study.AllowanceParts, study.Settings.Allowance),
-      Notes: study.Observations.filter((o) => o.Note).map((o) => ({ StartMs: o.StartMs, Note: o.Note }))
-    }
+      Notes: study.Observations.filter((o) => o.Note).map((o) => ({ StartMs: o.StartMs, Note: o.Note })),
+      // v1.8
+      Ratings: study.Observations.filter((o) => o.Rating).map((o) => ({ StartMs: o.StartMs, Rating: o.Rating })),
+      Outliers: outliers(study).map((x) => ({ Step: x.Step, Q1: x.Q1, Q3: x.Q3, Low: x.Low, High: x.High, StartMs: x.Rows.map((o) => o.StartMs) })),
+      Histogram: histogram(study, "Toplama"),
+      Balance: (({ Stations, Unassigned, ...rest }) => ({ ...rest, Stations: Stations.map((s) => ({ Station: s.Station, Load: s.Load, Steps: s.Steps.map((x) => x.Step) })), Unassigned: Unassigned.map((x) => x.Step) }))(lineBalance(study)),
+      AutoBalance: Object.fromEntries(autoBalance(study, 10)),
+      StandardWork: standardWork(study),
+      Improvements: improvements(study),
+      Frames: Object.fromEntries(stepOrder(study).map((s) => [s, stepFrame(study, s)]))
+    },
+    Sampling: sampling()
   };
+}
+
+/** İş örneklemesi senaryosu: paket ve beklenen sonuçlar. */
+function sampling() {
+  const st = newStudy({ Name: "Forklift kullanımı", Code: "IO-01", Video: "forklift.mp4", StudyType: "sampling", SampleError: 4,
+    Categories: [{ Name: "Yük taşıyor", Classification: "VA" }, { Name: "Boş gidiyor", Classification: "NVA" }, { Name: "Bekliyor", Classification: "NVA" }] });
+  st.Settings = { ...st.Settings, Confidence: 90 };
+  const cats = ["Yük taşıyor", "Boş gidiyor", "Bekliyor", "Şarjda"];
+  st.Samples = Array.from({ length: 57 }, (_, i) => ({ AtMs: i * 7919 % 600000, Category: cats[(i * i + 3 * i) % 7 % 4], ...(i === 5 ? { Note: "rampa dolu" } : {}) }));
+  const text = exportPackage(st);
+  const study = importPackage(enc.encode(text));
+  return { Package: text, Expected: { Z: normalInv(0.95), ...analyzeSampling(study) } };
 }
 
 export const serialize = (data) => JSON.stringify(data, null, 1) + "\n";

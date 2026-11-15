@@ -18,6 +18,9 @@ public static class StudyRules
     public static readonly string[] InfoFields = { "Operator", "Station", "Shift", "Date", "Observer", "Note" };
     public static readonly string[] AllowancePartNames = { "Personal", "Fatigue", "Delay", "Other" };
     public static readonly string[] Classes = { "", "VA", "SVA", "NVA" };
+    public static readonly string[] WorkTypes = { "Manual", "Machine", "Walk", "Wait" };
+    public static readonly string[] Wastes = { "Transport", "Inventory", "Motion", "Waiting", "Overproduction", "Overprocessing", "Defects" };
+    private const long MaxMs = 922337203685477;
     public const int MaxText = 200;
     public const int MaxSteps = 50;
     public const int MaxStepName = 80;
@@ -38,6 +41,37 @@ public static class StudyRules
         return text.Length == 0 ? null : text;
     }
 
+    private static string? Clip(string? value, int max)
+    {
+        var text = (value ?? "").Trim();
+        if (text.Length > max) text = text[..max];
+        return text.Length == 0 ? null : text;
+    }
+
+    /// <summary>Kayıt temposu (%): 0'dan büyük, en fazla 300; değilse null.</summary>
+    public static double? CleanRating(double? value) => value is double v && double.IsFinite(v) && v > 0 && v <= 300 ? v : null;
+
+    public static string CleanStudyType(string? value) => value == "sampling" ? value : "";
+
+    public static List<SampleCategory> CleanCategories(IEnumerable<SampleCategory?>? list) =>
+        CleanSteps(list?.Select(c => c is null ? null : new StepDef { Name = c.Name ?? "", Classification = c.Classification ?? "" }))
+            .Select(s => new SampleCategory { Name = s.Name, Classification = s.Classification }).ToList();
+
+    public static List<Sample> CleanSamples(IEnumerable<Sample?>? list)
+    {
+        var result = new List<Sample>();
+        if (list is null) return result;
+        foreach (var x in list)
+        {
+            if (x?.AtMs is not long at || at < 0 || at > MaxMs || Clip(x.Category, 80) is not string category) continue;
+            result.Add(new Sample { AtMs = at, Category = category, Note = CleanNote(x.Note) });
+            if (result.Count >= 10000) break;
+        }
+        return result;
+    }
+
+    public static double? CleanSampleError(double? value) => value is double v && double.IsFinite(v) && v > 0 && v < 50 ? v : null;
+
     public static Dictionary<string, string> CleanInfo(IDictionary<string, string>? info)
     {
         var result = new Dictionary<string, string>();
@@ -56,11 +90,17 @@ public static class StudyRules
             var name = (step?.Name ?? "").Trim();
             if (name.Length > MaxStepName) name = name[..MaxStepName];
             if (name.Length == 0 || result.Any(x => x.Name == name)) continue;
+            var station = Clip(step!.Station, 40);
             result.Add(new StepDef
             {
                 Name = name,
-                Classification = Classes.Contains(step!.Classification) ? step.Classification : "",
-                Note = CleanNote(step.Note)
+                Classification = Classes.Contains(step.Classification ?? "") ? step.Classification ?? "" : "",
+                Note = CleanNote(step.Note),
+                Type = WorkTypes.Contains(step.Type) ? step.Type : null,
+                Station = station,
+                Waste = Wastes.Contains(step.Waste) ? step.Waste : null,
+                Idea = CleanNote(step.Idea),
+                FrameMs = step.FrameMs is long f && f >= 0 && f <= MaxMs ? f : null
             });
             if (result.Count >= MaxSteps) break;
         }
