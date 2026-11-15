@@ -31,6 +31,10 @@ public partial class MainWindow
     private readonly StackPanel stepTools = new();
     private readonly ComboBox stepClass = Ui.ClassCombo();
     private readonly TextBox stepNote = Ui.Input(340);
+    private ComboBox stepType = null!, stepWaste = null!;
+    private readonly TextBox stepIdea = Ui.Input(260);
+    private readonly TextBox nowRating = Ui.Input(60);
+    private readonly TextBox rowRating = Ui.Input(60);
     private Button stepLeft = null!, stepRight = null!;
     private readonly TextBox newStep = Ui.Input(220);
     private readonly ComboBox newStepClass = Ui.ClassCombo();
@@ -76,6 +80,9 @@ public partial class MainWindow
         excludedNext.Unchecked += (_, _) => UpdateNow();
         cycleBox.TextChanged += (_, _) => UpdateNow();
         rowExcluded.Content = L.T("check.excluded");
+        stepType = Ui.TagCombo(StudyRules.WorkTypes.Select(t => (t, L.T("type." + t))), 120);
+        stepWaste = Ui.TagCombo(StudyRules.Wastes.Select(w => (w, L.T("waste." + w))), 150);
+        nowRating.ToolTip = L.T("title.rating");
 
         // Video
         video.MediaOpened += (_, _) =>
@@ -83,7 +90,7 @@ public partial class MainWindow
             ready = video.NaturalDuration.HasTimeSpan;
             timeline.IsEnabled = ready;
             if (ready) timeline.Maximum = Math.Max(1, video.NaturalDuration.TimeSpan.TotalMilliseconds);
-            SetStatus(ready ? (StepList.Count > 0 ? L.T("status.ready") : L.T("status.addSteps")) : L.T("status.noDuration"));
+            SetStatus(ready ? (current?.IsSampling == true ? L.T("s.ready") : StepList.Count > 0 ? L.T("status.ready") : L.T("status.addSteps")) : L.T("status.noDuration"));
             if (ready && resumeAt is long at)
             {
                 resumeAt = null;
@@ -124,6 +131,13 @@ public partial class MainWindow
         stepTools.Children.Add(Ui.Row(stepLeft, stepRight, Ui.Field(L.T("field.class"), stepClass),
             Btn("btn.stepRename", RenameStep), Btn("btn.stepRemove", RemoveStep, danger: true)));
         stepTools.Children.Add(Ui.Field(L.T("field.stepNote"), Ui.WithPlaceholder(stepNote, L.T("placeholder.stepNote"))));
+        // v2.1: tür (standart iş), israf türü, iyileştirme fikri, adım karesi
+        stepType.SelectionChanged += (_, _) => { if (!suppressSelection) Guard(() => SetStepField("Type", Ui.TagOf(stepType))); };
+        stepWaste.SelectionChanged += (_, _) => { if (!suppressSelection) Guard(() => SetStepField("Waste", Ui.TagOf(stepWaste))); };
+        stepIdea.LostFocus += (_, _) => Guard(() => SetStepField("Idea", stepIdea.Text));
+        stepTools.Children.Add(Ui.Row(Ui.Field(L.T("field.workType"), stepType), Ui.Field(L.T("field.waste"), stepWaste),
+            Ui.Field(L.T("field.idea"), Ui.WithPlaceholder(stepIdea, L.T("placeholder.idea"))),
+            Btn("btn.stepFrame", SetStepFrame, tipKey: "title.stepFrame")));
         newStep.PreviewKeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; Guard(AddStep); } };
         var stepsHead = new DockPanel();
         var stepsHint = Ui.Hint(L.T("steps.hint"));
@@ -140,12 +154,12 @@ public partial class MainWindow
             Ui.Field(L.T("field.cycle"), Ui.Row(Btn("d.minus", () => SetCycle(CycleValue() - 1), tipKey: "title.cycleDown"), cycleBox,
                 Btn("d.plus", () => SetCycle(CycleValue() + 1), tipKey: "title.cycleUp"))),
             Ui.Field(L.T("now.label"), Ui.Stack(nowStep, nowNote, nowLive)),
-            excludedNext));
+            excludedNext, Ui.Field(L.T("field.rating"), Ui.WithPlaceholder(nowRating, L.T("placeholder.rating")))));
 
         // Kayıtlar
         Ui.Columns(observations, (L.T("th.start"), "Start", true), (L.T("th.end"), "End", true), (L.T("th.duration"), "Duration", true),
             (L.T("th.step"), "Step", false), (L.T("th.class"), "Class", false), (L.T("th.excluded"), "Excluded", false),
-            (L.T("th.cycle"), "Cycle", true), (L.T("th.note"), "Note", false));
+            (L.T("th.cycle"), "Cycle", true), (L.T("th.rating"), "Rating", true), (L.T("th.note"), "Note", false));
         observations.MinHeight = 140;
         observations.SelectionChanged += (_, _) =>
         {
@@ -160,7 +174,7 @@ public partial class MainWindow
 
         rowEditor.Child = Ui.Stack(
             Ui.Text(L.T("h.rowEditor"), 14, true),
-            Ui.Row(Ui.Field(L.T("field.step"), rowStep), Ui.Field(L.T("field.class"), rowClass), Ui.Field(L.T("field.cycle"), rowCycle), rowExcluded,
+            Ui.Row(Ui.Field(L.T("field.step"), rowStep), Ui.Field(L.T("field.class"), rowClass), Ui.Field(L.T("field.cycle"), rowCycle), rowExcluded, Ui.Field(L.T("field.rating"), Ui.WithPlaceholder(rowRating, L.T("placeholder.rating"))),
                 Ui.Field(L.T("field.rowNote"), Ui.WithPlaceholder(rowNote, L.T("placeholder.rowNote")))),
             Ui.Row(Btn("btn.editRow", EditRow, primary: true), Btn("btn.bulk", BulkClassify), Btn("btn.deleteRow", DeleteRow, danger: true),
                 Btn("btn.rowClose", () => { SelectRow(null); RefreshObservations(); })));
@@ -190,13 +204,19 @@ public partial class MainWindow
         side.Children.Add(sideBottom);
         side.Children.Add(observations);
         var sideScroll = new ScrollViewer { Content = side, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        timeSide = sideScroll;
+        samplingSide = BuildSamplingSide();
+        var sideHost = new Grid();
+        sideHost.Children.Add(sideScroll);
+        sideHost.Children.Add(samplingSide);
+        samplingSide.Visibility = Visibility.Collapsed;
 
         var split = new Grid();
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(55, GridUnitType.Star) });
         split.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(45, GridUnitType.Star), MinWidth = 420 });
         split.Children.Add(player);
-        Grid.SetColumn(sideScroll, 1);
-        split.Children.Add(sideScroll);
+        Grid.SetColumn(sideHost, 1);
+        split.Children.Add(sideHost);
         var root = new DockPanel { Margin = new Thickness(12) };
         DockPanel.SetDock(status, Dock.Top);
         root.Children.Add(status);
@@ -306,7 +326,10 @@ public partial class MainWindow
         var modifiers = Keyboard.Modifiers;
         long step = modifiers.HasFlag(ModifierKeys.Shift) ? 1000 : modifiers.HasFlag(ModifierKeys.Control) ? 40 : 100;
         int digit = e.Key is >= Key.D1 and <= Key.D9 ? e.Key - Key.D1 : e.Key is >= Key.NumPad1 and <= Key.NumPad9 ? e.Key - Key.NumPad1 : -1;
-        if (digit >= 0 && modifiers == ModifierKeys.None) { Guard(() => SelectStep(digit)); e.Handled = true; return; }
+        bool sampling = current.IsSampling;
+        if (digit >= 0 && modifiers == ModifierKeys.None) { Guard(() => { if (sampling) RecordSample(digit); else SelectStep(digit); }); e.Handled = true; return; }
+        if (sampling && e.Key == Key.Enter) { Guard(GoRandomMoment); e.Handled = true; return; }
+        if (sampling && e.Key == Key.Z && modifiers == ModifierKeys.Control) { Guard(UndoSample); e.Handled = true; return; }
         switch (e.Key)
         {
             case Key.Space: Guard(() => { if (playing) Pause(); else Play(); }); break;
@@ -343,6 +366,12 @@ public partial class MainWindow
         legend.Children.Clear();
         double total = timeline.Maximum, width = segments.ActualWidth;
         if (current == null || !ready || !(total > 0) || width <= 0) return;
+        foreach (var x in current.IsSampling ? current.Samples : new List<Sample>())
+        {
+            var tick = new Rectangle { Width = 2, Height = 10, Fill = Ui.ClassBrush(CategoryClass(x.Category)), ToolTip = $"{x.Category} · {L.Clock(x.AtMs ?? 0)}" };
+            Canvas.SetLeft(tick, (x.AtMs ?? 0) / total * width - 1);
+            segments.Children.Add(tick);
+        }
         foreach (var o in current.Observations)
         {
             var seg = new Rectangle
@@ -428,8 +457,11 @@ public partial class MainWindow
         {
             suppressSelection = true;
             Ui.SetClass(stepClass, current_.Classification);
+            Ui.SetTag(stepType, current_.Type);
+            Ui.SetTag(stepWaste, current_.Waste);
             suppressSelection = false;
             stepNote.Text = current_.Note ?? "";
+            stepIdea.Text = current_.Idea ?? "";
         }
         stepLeft.IsEnabled = flow.Index > 0;
         stepRight.IsEnabled = flow.Index < list.Count - 1;
@@ -605,7 +637,7 @@ public partial class MainWindow
         if (end <= start) throw Error("msg.endAfterStart");
         var st = CurrentStep!;
         int cycle = CycleValue();
-        var row = new Observation { StartMs = start, EndMs = end, Step = st.Name, Classification = st.Classification, Excluded = excludedNext.IsChecked == true, Cycle = cycle };
+        var row = new Observation { StartMs = start, EndMs = end, Step = st.Name, Classification = st.Classification, Excluded = excludedNext.IsChecked == true, Cycle = cycle, Rating = ReadRating(nowRating.Text) };
         if (current!.Observations.Any(x => x.StartMs == start && x.EndMs == end && x.Cycle == row.Cycle && x.Step == row.Step && x.Excluded == row.Excluded))
             throw Error("msg.duplicate");
         current.Observations.Add(row);
@@ -654,6 +686,7 @@ public partial class MainWindow
         Ui.SetClass(rowClass, row.Classification);
         rowExcluded.IsChecked = row.Excluded;
         rowNote.Text = row.Note ?? "";
+        rowRating.Text = row.Rating is double r ? L.Num(r, 6) : "";
     }
 
     private void EditRow()
@@ -667,6 +700,7 @@ public partial class MainWindow
         row.Classification = Ui.ClassOf(rowClass);
         row.Excluded = rowExcluded.IsChecked == true;
         row.Note = rowNote.Text;
+        row.Rating = ReadRating(rowRating.Text);
         if (!StepList.Any(x => x.Name == name)) { StepList.Add(new StepDef { Name = name, Classification = row.Classification }); RenderSteps(); }
         Save();
         RefreshObservations();
@@ -717,7 +751,7 @@ public partial class MainWindow
         obsCount.Text = all.Count == 0 ? L.T("obs.empty")
             : rows.Count == all.Count ? L.T("filter.countAll", ("total", all.Count)) : L.T("filter.count", ("n", rows.Count), ("total", all.Count));
         var view = rows.Select(o => new ObservationRow(o, L.Clock(o.StartMs), L.Clock(o.EndMs), L.Num3(o.Seconds), o.Step, o.Classification,
-            L.T(o.Excluded ? "yes" : "no"), o.Cycle.ToString(), o.Note ?? "")).ToList();
+            L.T(o.Excluded ? "yes" : "no"), o.Cycle.ToString(), o.Rating is double r ? L.Num(r, 6) : "", o.Note ?? "")).ToList();
         suppressSelection = true;
         observations.ItemsSource = view;
         observations.SelectedItem = view.FirstOrDefault(v => v.Source == selectedRow);

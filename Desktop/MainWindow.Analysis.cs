@@ -57,7 +57,7 @@ public partial class MainWindow
         }
         var info = new Expander { Header = L.T("info.title"), Content = infoRow, Margin = new Thickness(0, 0, 0, 4) };
 
-        foreach (var box in new[] { confidence, target, pace, allowance, groupMs, takt }) box.LostFocus += (_, _) => ApplySettingsInline();
+        foreach (var box in new[] { confidence, target, pace, allowance, groupMs, takt, sampleError }) box.LostFocus += (_, _) => ApplySettingsInline();
         method.SelectionChanged += (_, _) => { if (!loadingSettings) ApplySettingsInline(); };
         stable.Checked += (_, _) => { if (!loadingSettings) ApplySettingsInline(); };
         stable.Unchecked += (_, _) => { if (!loadingSettings) ApplySettingsInline(); };
@@ -133,18 +133,26 @@ public partial class MainWindow
         analysisBody.Children.Add(results);
         analysisBody.Children.Add(lower);
 
+        // Zaman etüdüne özgü alanlar örneklemede gizlenir; örneklemede hedef mutlak hata görünür.
+        FrameworkElement T(FrameworkElement e) { timeOnly.Add(e); return e; }
+        var sampleErrorField = Ui.Field(L.T("field.sampleError"), Ui.WithPlaceholder(sampleError, L.T("placeholder.sampleError")));
+        samplingOnly.Add(sampleErrorField);
+        sampleErrorField.Visibility = Visibility.Collapsed;
+        var tTable = Btn("btn.tTable", ShowStatistics);
+        analysisBody.Children.Add(BuildAdvancedSections());
         var page = Ui.Stack(
             info,
             Ui.Title(L.T("h.settings")),
-            Ui.Row(Ui.Field(L.T("field.confidence"), confidence), Ui.Field(L.T("field.target"), target), Ui.Field(L.T("field.pace"), pace),
-                Ui.Field(L.T("field.allowance"), allowance), Ui.Field(L.T("field.group"), groupMs), Ui.Field(L.T("field.method"), method),
-                Ui.Field(L.T("field.takt"), Ui.WithPlaceholder(takt, L.T("placeholder.takt"))), stable),
-            allowanceBox,
+            Ui.Row(Ui.Field(L.T("field.confidence"), confidence), T(Ui.Field(L.T("field.target"), target)), T(Ui.Field(L.T("field.pace"), pace)),
+                T(Ui.Field(L.T("field.allowance"), allowance)), T(Ui.Field(L.T("field.group"), groupMs)), T(Ui.Field(L.T("field.method"), method)),
+                T(Ui.Field(L.T("field.takt"), Ui.WithPlaceholder(takt, L.T("placeholder.takt")))), T(stable), sampleErrorField),
+            T(allowanceBox),
             settingsError,
-            Ui.Row(Btn("btn.excel", Export, primary: true), Btn("btn.print", Print), Btn("btn.tTable", ShowStatistics)),
+            Ui.Row(Btn("btn.excel", Export, primary: true), Btn("btn.print", Print), T(tTable)),
             analysisStatus,
             emptyState,
-            analysisBody);
+            analysisBody,
+            BuildSamplingBody());
         page.Margin = new Thickness(12);
         return new ScrollViewer { Content = page, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     }
@@ -181,6 +189,7 @@ public partial class MainWindow
         method.SelectedIndex = s.RepeatedLow ? 1 : 0;
         stable.IsChecked = s.Stable;
         takt.Text = current.Takt is double t ? L.Num(t, 6) : "";
+        sampleError.Text = current.SampleError is double se ? L.Num(se, 6) : "";
         var parts = StudyRules.MatchingParts(current.AllowanceParts, s.Allowance);
         foreach (var (name, box) in allowanceParts) box.Text = parts.TryGetValue(name, out var v) ? L.Num(v, 6) : "";
         allowanceBox.IsExpanded = parts.Count > 0;
@@ -214,8 +223,12 @@ public partial class MainWindow
         string taktText = takt.Text.Trim();
         double? taktValue = taktText.Length == 0 ? null : StudyRules.CleanTakt(Number(taktText, "name.takt"));
         if (taktText.Length > 0 && taktValue is null) throw Error("msg.taktInvalid");
+        string errText = sampleError.Text.Trim();
+        double? errValue = errText.Length == 0 ? null : StudyRules.CleanSampleError(Number(errText, "field.sampleError"));
+        if (errText.Length > 0 && errValue is null) throw Error("msg.sampleErrorInvalid");
         current.Settings = settings;
         current.Takt = taktValue;
+        current.SampleError = errValue;
         current.AllowanceParts = StudyRules.CleanAllowanceParts(parts);
         allowance.Text = L.Num(settings.Allowance, 6);
         SyncAllowanceField();
@@ -273,6 +286,14 @@ public partial class MainWindow
     {
         var study = current;
         if (study == null) return;
+        samplingBody.Visibility = study.IsSampling ? Visibility.Visible : Visibility.Collapsed;
+        if (study.IsSampling)
+        {
+            emptyState.Visibility = Visibility.Collapsed;
+            analysisBody.Visibility = Visibility.Collapsed;
+            RefreshSampling();
+            return;
+        }
         var previous = selectedResult;
         var rows = StudyRules.InProcessOrder(study, Analysis.Steps(study));
         var selected = rows.FirstOrDefault(r => r.Step == previous) ?? rows.FirstOrDefault();
@@ -296,6 +317,7 @@ public partial class MainWindow
         cycles.ItemsSource = spread.Rows.Select(c => new CycleRow(c.Cycle.ToString(), L.Num3(c.Elapsed), L.Num3(c.Workload), (c.Outlier ? "⚠ " : "") + L.Pct(c.DiffPercent, 0, true))).ToList();
         RenderSummary(study, rows);
         RenderCharts();
+        RenderAdvanced(study, rows, selected);
         var notes = new List<string> { L.T(study.Settings.Stable ? "guide.stable" : "guide.general") + " " + L.T("guide.tail") };
         if (study.Settings.Allowance == 0 && rows.Count > 0) notes.Add(L.T("guide.noAllowance"));
         analysisStatus.Text = string.Join(" ", notes);
@@ -339,6 +361,8 @@ public partial class MainWindow
             byClass[k] = byClass.GetValueOrDefault(k) + (o.EndMs - o.StartMs);
             all += o.EndMs - o.StartMs;
         }
+        int outs = Advanced.Outliers(study).Sum(g => g.Rows.Count);
+        if (outs > 0) cards.Add((L.T("summary.outliersLabel"), L.T("summary.outliers", ("n", outs)), new[] { L.T("summary.outliersDetail") }));
         if (all > 0)
             cards.Add((L.T("summary.classes"), string.Join(" · ", byClass.OrderByDescending(x => x.Value).Select(x => x.Key + " " + L.Pct((double)x.Value / all * 100))), Array.Empty<string>()));
         return cards;
@@ -434,6 +458,14 @@ public partial class MainWindow
         if (current == null) return;
         ApplySettings();
         SaveInfo();
+        if (current.IsSampling)
+        {
+            var r = Advanced.AnalyzeSampling(current);
+            PrintReport.Print(this, current, SamplingCards(current), width => r.N > 0
+                ? new List<UIElement> { Ui.Stack(Ui.Text(L.T("s.chart"), 12, true), Charts.SamplingChart(SamplingBars(r), Math.Min(width, 640))) }
+                : new List<UIElement>());
+            return;
+        }
         var rows = StudyRules.InProcessOrder(current, Analysis.Steps(current));
         PrintReport.Print(this, current, SummaryCards(current, rows), width => ChartElements(Math.Min(width, 640), framed: false));
     }
@@ -465,11 +497,70 @@ public partial class MainWindow
                 ? L.T("compare.result", ("before", L.Seconds(c.Before)), ("after", L.Seconds(c.After)), ("d", L.Pct(c.DiffPercent, 1, true)), ("rb", Rate(c.Before)), ("ra", Rate(c.After)))
                 : L.T("compare.incomplete");
         }
-        before.SelectionChanged += (_, _) => Guard(Render);
-        after.SelectionChanged += (_, _) => Guard(Render);
+        // Yan yana video: iki etüdün videosu; adım seçilince ikisi de o adımın ilk kaydının başına gider.
+        MediaElement Media() => new() { LoadedBehavior = MediaState.Manual, UnloadedBehavior = MediaState.Manual, Stretch = Stretch.Uniform, IsMuted = true, Height = 220 };
+        var mediaBefore = Media();
+        var mediaAfter = Media();
+        var capBefore = Ui.Hint("");
+        var capAfter = Ui.Hint("");
+        var stepCombo = new ComboBox { MinWidth = 200, MinHeight = 28 };
+        var picked = new Dictionary<MediaElement, string>();
+        Study? Side(MediaElement m) => m == mediaBefore ? (before.SelectedIndex >= 0 ? studyList[before.SelectedIndex] : null) : (after.SelectedIndex >= 0 ? studyList[after.SelectedIndex] : null);
+        void LoadSide(MediaElement m, TextBlock cap)
+        {
+            var s = Side(m);
+            string? path = picked.TryGetValue(m, out var p) ? p : s != null && System.IO.File.Exists(s.Video) ? s.Video : null;
+            m.Close();
+            m.Source = path is null ? null : new Uri(path);
+            if (path != null) m.Pause();
+            cap.Text = s is null ? "" : $"{s.Code} · {s.Name}" + (path is null ? " · " + L.T("cmp.noVideo") : "");
+        }
+        void FillSteps()
+        {
+            if (before.SelectedIndex < 0 || after.SelectedIndex < 0) return;
+            var keep = stepCombo.SelectedItem as string;
+            stepCombo.Items.Clear();
+            foreach (var n in StudyRules.StepOrder(studyList[before.SelectedIndex]).Concat(StudyRules.StepOrder(studyList[after.SelectedIndex])).Distinct()) stepCombo.Items.Add(n);
+            if (keep != null && stepCombo.Items.Contains(keep)) stepCombo.SelectedItem = keep;
+            LoadSide(mediaBefore, capBefore);
+            LoadSide(mediaAfter, capAfter);
+        }
+        stepCombo.SelectionChanged += (_, _) => Guard(() =>
+        {
+            if (stepCombo.SelectedItem is not string step) return;
+            foreach (var (m, cap) in new[] { (mediaBefore, capBefore), (mediaAfter, capAfter) })
+            {
+                var s = Side(m);
+                var first = s?.Observations.Where(o => o.Step == step && !o.Excluded && o.EndMs > o.StartMs).OrderBy(o => o.StartMs).FirstOrDefault();
+                cap.Text = s is null ? "" : $"{s.Code} · {s.Name} · {step} · " + (first is null ? L.T("cmp.missing") : L.Clock(first.StartMs));
+                if (first != null && m.Source != null) { m.Pause(); m.Position = TimeSpan.FromMilliseconds(first.StartMs); }
+            }
+        });
+        Button Pick(string key, MediaElement m, TextBlock cap)
+        {
+            var button = Btn(key, () =>
+            {
+                if (PickVideo() is not string path) return;
+                picked[m] = path;
+                LoadSide(m, cap);
+            });
+            return button;
+        }
+        var sideBySide = new Expander
+        {
+            Header = L.T("cmp.video.title"), Margin = new Thickness(0, 6, 0, 0),
+            Content = Ui.Stack(Ui.Hint(L.T("cmp.video.hint")),
+                Ui.Row(Pick("cmp.pickBefore", mediaBefore, capBefore), Pick("cmp.pickAfter", mediaAfter, capAfter), Ui.Field(L.T("th.r.step"), stepCombo),
+                    Btn("cmp.play", () => { foreach (var m in new[] { mediaBefore, mediaAfter }) if (m.Source != null) m.Play(); }),
+                    Btn("cmp.pause", () => { mediaBefore.Pause(); mediaAfter.Pause(); })),
+                new UniformGrid2(Ui.Stack(capBefore, new Border { Background = Brushes.Black, Child = mediaBefore, Margin = new Thickness(0, 0, 6, 0) }),
+                    Ui.Stack(capAfter, new Border { Background = Brushes.Black, Child = mediaAfter })))
+        };
+        before.SelectionChanged += (_, _) => Guard(() => { Render(); FillSteps(); });
+        after.SelectionChanged += (_, _) => Guard(() => { Render(); FillSteps(); });
         var close = new Button { Content = L.T("dialog.close"), IsCancel = true, MinWidth = 90, HorizontalAlignment = HorizontalAlignment.Right };
         var body = new DockPanel { Margin = new Thickness(16) };
-        var head = Ui.Stack(Ui.Row(Ui.Field(L.T("compare.before"), before), Ui.Field(L.T("compare.after"), after)), summaryText);
+        var head = Ui.Stack(Ui.Row(Ui.Field(L.T("compare.before"), before), Ui.Field(L.T("compare.after"), after)), summaryText, sideBySide);
         var foot = Ui.Stack(Ui.Hint(L.T("compare.hint")), close);
         DockPanel.SetDock(head, Dock.Top);
         DockPanel.SetDock(foot, Dock.Bottom);
@@ -482,7 +573,23 @@ public partial class MainWindow
             Background = Ui.Brush("#F0F4F8"), WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
         close.Click += (_, _) => window.Close();
+        window.Closed += (_, _) => { mediaBefore.Close(); mediaAfter.Close(); };
+        window.Height = 820;
         Guard(Render);
+        Guard(FillSteps);
         window.ShowDialog();
+    }
+}
+
+/// <summary>İki eşit sütunlu basit ızgara (yan yana video).</summary>
+internal sealed class UniformGrid2 : Grid
+{
+    public UniformGrid2(UIElement left, UIElement right)
+    {
+        ColumnDefinitions.Add(new ColumnDefinition());
+        ColumnDefinitions.Add(new ColumnDefinition());
+        Children.Add(left);
+        SetColumn(right, 1);
+        Children.Add(right);
     }
 }

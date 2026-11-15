@@ -51,4 +51,29 @@ public partial class MainWindow
 
     internal List<(string Label, string Value, IReadOnlyList<string> Details)> TestCards() =>
         current == null ? new() : SummaryCards(current, StudyRules.InProcessOrder(current, Analysis.Steps(current)));
+
+    // v2.1
+    internal void TestStepField(int index, string field, string value) => Guard(() => { SelectStep(index); SetStepField(field, value); });
+    internal void TestAutoBalance() => Guard(AutoBalanceStations);
+    internal int TestYamazumi => yamazumiBox.Children.Count;
+    internal int TestWork => workBox.Children.OfType<Border>().Count();
+    internal int TestIdeas => (ideasGrid.ItemsSource as ICollection)?.Count ?? 0;
+    internal int TestOutliers => (outlierGrid.ItemsSource as ICollection)?.Count ?? 0;
+    internal string TestBalanceSummary => balanceSummary.Text;
+    internal void TestLoadStory() => Guard(LoadStory);
+    internal void TestRateRow(int index, double rating)
+    {
+        if (current == null || index >= current.Observations.Count) return;
+        current.Observations.OrderBy(o => o.StartMs).ElementAt(index).Rating = rating;
+        Save();
+        RefreshObservations();
+    }
+    internal void TestOpenStudy(Study study) { store.Save(study); ReloadStudies(); OpenStudy(studyList.First(s => s.Id == study.Id)); }
+    internal void TestRecordSample(int index) => Guard(() => RecordSample(index));
+    internal void TestRandomMoment() => Guard(GoRandomMoment);
+    internal void TestNextMoment(int seconds) { sampleStep.Text = seconds.ToString(); Guard(NextMoment); }
+    internal void TestUndoSample() => Guard(UndoSample);
+    internal int TestSamplingRows => (samplingGrid.ItemsSource as ICollection)?.Count ?? 0;
+    internal int TestSamplingCards => samplingSummary.Children.Count;
+    internal bool TestSamplingVisible => samplingSide.Visibility == Visibility.Visible && timeSide.Visibility != Visibility.Visible;
 }

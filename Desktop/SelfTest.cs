@@ -134,12 +134,34 @@ internal static class SelfTest
         Check("standart süre kartında tolerans dökümü", cards.Count > 0 && cards[0].Details.Any(d => d.Contains(PrintReport.PartName("Personal") + " 5")), string.Join(" | ", cards.FirstOrDefault().Details ?? Array.Empty<string>()));
         Shot(Full(window.TestTab(2)), Path.Combine(outDirectory, $"{lang}-2-analiz.png"));
 
+        // v2.1: kayıt temposu, tür/israf/fikir, otomatik dengeleme, standart iş, adım kartları
+        window.TestRateRow(1, 105);
+        window.TestStepField(1, "Type", "Walk");
+        window.TestStepField(1, "Waste", "Motion");
+        window.TestStepField(1, "Idea", lang == "tr" ? "rafı yaklaştır" : "move the shelf closer");
+        window.TestStepField(2, "Type", "Machine");
+        Check("v2.1 tür, israf, fikir kaydedilir", study.Steps[1] is { Type: "Walk", Waste: "Motion", Idea: not null } && study.Steps[2].Type == "Machine");
+        window.TestSelectTab(2);
+        Pump(300);
+        window.TestAutoBalance();
+        Pump(300);
+        Check("v2.1 otomatik dengeleme: istasyonlar ve Yamazumi", study.Steps.Count(x => x.Station != null) >= 4 && window.TestYamazumi == 1, window.TestBalanceSummary);
+        Check("v2.1 standart iş tablosu çizilir", window.TestWork == 1);
+        Check("v2.1 iyileştirme listesi (fikir + NVA)", window.TestIdeas == 2, window.TestIdeas.ToString());
+        Check("v2.1 kayıt temposu tabloya yansır", Analysis.Steps(study).First(r => r.Step == study.Steps[1].Name).Rated == 1);
+        window.TestLoadStory();
+        Pump(500);
+        Check("v2.1 adım kartlarında video kareleri", window.TestStoryImages >= 5, window.TestStoryImages.ToString());
+        Pump(300);
+        Shot(Full(window.TestTab(2)), Path.Combine(outDirectory, $"{lang}-4-ileri.png"));
+
         string xlsx = Path.Combine(outDirectory, $"{lang}-analiz.xlsx");
         StudyExport.Write(study, xlsx, lang);
         using (var book = new XLWorkbook(xlsx))
         {
             var names = book.Worksheets.Select(s => s.Name).ToList();
-            Check("Excel: 6 sayfa, ilki Özet", names.Count == 6 && names[0] == L.TIn(lang, "x.sheet.summary"), string.Join(", ", names));
+            Check("Excel: ilk sayfa Özet, v2.1 sayfaları sonda", names.Count == 9 && names[0] == L.TIn(lang, "x.sheet.summary") && names.Contains(L.TIn(lang, "x.sheet.balance")), string.Join(", ", names));
+            Check("Excel ham sayfada tempo sütunu", book.Worksheet(2).Row(1).CellsUsed().Any(c => c.GetString() == L.TIn(lang, "x.rating")));
             var sheet = book.Worksheet(1);
             var labels = sheet.Column(1).CellsUsed().Select(c => c.GetString()).ToList();
             Check("Excel özetinde tolerans kalemi ve takt", labels.Any(l => l.StartsWith(L.TIn(lang, "x.o.al"))) && labels.Contains(L.TIn(lang, "x.o.takt")), labels.Count.ToString());
@@ -154,6 +176,35 @@ internal static class SelfTest
         var plain = StudyTransfer.Import(Path.Combine(MainWindow.TestDemoDirectory!, lang == "tr" ? "sentetik-depo-etudu.vzetud" : "synthetic-warehouse-study.vzetud"));
         var cmp = StudyRules.Compare(plain, study);
         Check("önce/sonra: tolerans ve takt değişince fark hesaplanır", cmp.Diff is double d && d != 0, L.Num3(cmp.Diff));
+
+        // v2.1 iş örneklemesi
+        var sampling = new Study
+        {
+            Name = lang == "tr" ? "Forklift kullanımı" : "Forklift use", Code = "IO-01", StudyType = "sampling",
+            Video = Path.Combine(MainWindow.TestDemoDirectory!, lang == "tr" ? "sentetik-depo-etudu.mp4" : "synthetic-warehouse-study.mp4"),
+            Categories = StudyRules.CleanCategories(new[] { new SampleCategory { Name = lang == "tr" ? "Yük taşıyor" : "Carrying", Classification = "VA" },
+                new SampleCategory { Name = lang == "tr" ? "Boş gidiyor" : "Empty travel", Classification = "NVA" }, new SampleCategory { Name = lang == "tr" ? "Bekliyor" : "Waiting", Classification = "NVA" } })
+        };
+        window.TestOpenStudy(sampling);
+        for (int i = 0; i < 40 && !window.TestReady; i++) Pump(150);
+        Check("örnekleme paneli açılır", window.TestSamplingVisible && window.TestStatus == L.T("s.ready"), window.TestStatus);
+        window.TestNextMoment(2); window.TestRecordSample(0);
+        window.TestNextMoment(5); window.TestRecordSample(2);
+        window.TestNextMoment(5); window.TestRecordSample(0);
+        window.TestNextMoment(5); window.TestRecordSample(1);
+        window.TestUndoSample();
+        window.TestRandomMoment();
+        Check("örnekleme: 3 gözlem (biri geri alındı)", window.TestCurrent?.Samples.Count == 3, window.TestCurrent?.Samples.Count.ToString() ?? "");
+        Pump(300);
+        Shot((FrameworkElement)window.Content, Path.Combine(outDirectory, $"{lang}-5-ornekleme.png"));
+        window.TestSelectTab(2);
+        Pump(400);
+        Check("örnekleme analizi: 3 kategori, kartlar", window.TestSamplingRows == 3 && window.TestSamplingCards == 3, $"{window.TestSamplingRows}/{window.TestSamplingCards}");
+        Shot(Full(window.TestTab(2)), Path.Combine(outDirectory, $"{lang}-6-ornekleme-analiz.png"));
+        string sx = Path.Combine(outDirectory, $"{lang}-ornekleme.xlsx");
+        StudyExport.Write(window.TestCurrent!, sx, lang);
+        using (var book = new XLWorkbook(sx))
+            Check("örnekleme Excel’i: 4 sayfa", book.Worksheets.Count == 4 && book.Worksheet(2).Name == L.TIn(lang, "x.sheet.sampling"));
 
         window.TestSelectTab(0);
         Pump(300);

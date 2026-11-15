@@ -51,6 +51,16 @@ internal static class PrintReport
         doc.Blocks.Add(cardTable);
         foreach (var chart in charts(content)) doc.Blocks.Add(new BlockUIContainer(chart) { Margin = new Thickness(0, 6, 0, 6) });
 
+        if (study.IsSampling)
+        {
+            var r = Advanced.AnalyzeSampling(study);
+            doc.Blocks.Add(Heading(L.T("s.results")));
+            doc.Blocks.Add(TableOf(content, new[] { L.T("s.thCategory"), L.T("th.class"), L.T("s.thCount"), L.T("th.share"), L.T("s.thRange"), L.T("s.thRequired") },
+                r.Rows.Select(x => new[] { x.Category, x.Classification, x.Count.ToString(), L.Pct(x.Share, 1), x.Low is null ? "" : $"{L.Pct(x.Low, 1)} – {L.Pct(x.High, 1)}", x.Required?.ToString() ?? "" }).ToList(), firstWide: true));
+            Foot(doc, study);
+            dialog.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"{study.Code} · {L.T("app.title")}");
+            return;
+        }
         var rows = StudyRules.InProcessOrder(study, Analysis.Steps(study));
         doc.Blocks.Add(Heading(L.T("h.stepTable")));
         doc.Blocks.Add(TableOf(content,
@@ -65,15 +75,55 @@ internal static class PrintReport
         doc.Blocks.Add(TableOf(content * 0.7, new[] { L.T("th.c.cycle"), L.T("th.c.elapsed"), L.T("th.c.workload"), L.T("th.c.diff") },
             spread.Rows.Select(c => new[] { c.Cycle.ToString(), L.Num3(c.Elapsed), L.Num3(c.Workload), (c.Outlier ? "⚠ " : "") + L.Pct(c.DiffPercent, 0, true) }).ToList()));
 
+        Foot(doc, study);
+        dialog.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"{study.Code} · {L.T("app.title")}");
+    }
+
+    private static void Foot(FlowDocument doc, Study study)
+    {
         string version = typeof(PrintReport).Assembly.GetName().Version?.ToString(3) ?? "";
         doc.Blocks.Add(new Paragraph(new Run(L.T("print.foot", ("code", study.Code), ("name", study.Name), ("date", L.Date(DateTime.Now))) + $" · {L.T("app.title")} {version}"))
         { Foreground = Ui.Soft, Margin = new Thickness(0, 12, 0, 0) });
+    }
 
-        dialog.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"{study.Code} · {L.T("app.title")}");
+    /// <summary>Adım kartları (görsel iş talimatı): sayfa başına iki sütun.</summary>
+    public static void PrintStory(Window owner, Study study, Func<double, IReadOnlyList<Border>> cards)
+    {
+        var dialog = new PrintDialog();
+        if (dialog.ShowDialog() != true) return;
+        double width = dialog.PrintableAreaWidth, height = dialog.PrintableAreaHeight;
+        var doc = new FlowDocument
+        {
+            PageWidth = width, PageHeight = height, ColumnWidth = width, PagePadding = new Thickness(40),
+            FontFamily = new FontFamily("Segoe UI"), FontSize = 10.5, Foreground = Ui.Ink
+        };
+        doc.Blocks.Add(new Paragraph(new Bold(new Run(L.T("story.title", ("code", study.Code), ("name", study.Name))))) { FontSize = 16 });
+        double content = width - 80, cardWidth = content / 2 - 12;
+        var table = new Table { CellSpacing = 8 };
+        table.Columns.Add(new TableColumn { Width = new GridLength(content / 2) });
+        table.Columns.Add(new TableColumn { Width = new GridLength(content / 2) });
+        var group = new TableRowGroup();
+        table.RowGroups.Add(group);
+        var list = cards(cardWidth);
+        for (int i = 0; i < list.Count; i += 2)
+        {
+            var row = new TableRow();
+            foreach (var card in list.Skip(i).Take(2))
+            {
+                card.Margin = new Thickness(0);
+                row.Cells.Add(new TableCell(new BlockUIContainer(card)));
+            }
+            group.Rows.Add(row);
+        }
+        doc.Blocks.Add(table);
+        Foot(doc, study);
+        dialog.PrintDocument(((IDocumentPaginatorSource)doc).DocumentPaginator, $"{study.Code} · {L.T("h.story")}");
     }
 
     public static string SettingsLine(Study study)
     {
+        if (study.IsSampling)
+            return $"{L.T("field.confidence")} {L.Num(study.Settings.Confidence)} · {L.T("field.sampleError")} {L.Num(study.SampleError ?? 5)}";
         var s = study.Settings;
         var parts = StudyRules.MatchingParts(study.AllowanceParts, s.Allowance);
         string line = L.T("print.settings", ("conf", L.Num(s.Confidence)), ("target", L.Num(s.TargetError)), ("pace", L.Num(s.Pace)),

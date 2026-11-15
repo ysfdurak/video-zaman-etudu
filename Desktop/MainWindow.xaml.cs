@@ -10,7 +10,11 @@ namespace VideoZamanEtudu;
 
 // Tablo satırları: değerler geçerli dilde biçimlenmiş metindir (WPF bağlaması için türler public).
 public sealed record StudyRow(Study Source, string Code, string Name, string Where, string Count, string Cycles, string State, string Video, string Updated);
-public sealed record ObservationRow(Observation Source, string Start, string End, string Duration, string Step, string Class, string Excluded, string Cycle, string Note);
+public sealed record ObservationRow(Observation Source, string Start, string End, string Duration, string Step, string Class, string Excluded, string Cycle, string Rating, string Note);
+public sealed record SampleRow(Sample Source, string At, string Category, string Class, string Note);
+public sealed record OutlierRow(Observation Source, string Step, string Cycle, string Start, string Duration, string Range);
+public sealed record IdeaRow(string Step, string Class, string Waste, string Idea, string Contribution, string Share);
+public sealed record SamplingViewRow(string Category, string Class, string Count, string Share, string Range, string Required);
 public sealed record ResultRow(StepResult Source, string Step, string Count, string Excluded, string Mean, string Median, string Min, string Max,
     string Deviation, string CriticalT, string ErrorPercent, string Sufficiency, string Base, string Pace, string Normal, string Standard,
     string Every, string Contribution, string Method);
@@ -42,6 +46,8 @@ public partial class MainWindow : Window
     private readonly TextBox newName = Ui.Input(260);
     private readonly TextBox newCode = Ui.Input(140);
     private readonly TextBox newVideo = Ui.Input(460);
+    private readonly ComboBox newType = new() { Width = 170, MinHeight = 28 };
+    private readonly TextBlock newStepsLabel = new() { Foreground = Ui.Soft, FontSize = 12.5, Margin = new Thickness(0, 2, 0, 3) };
     private readonly TextBox newSteps = new() { Width = 460, Height = 96, AcceptsReturn = true, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, TextWrapping = TextWrapping.NoWrap };
     private readonly Dictionary<string, TextBox> newInfo = new();
     private readonly TextBlock studiesStatus = Ui.Text("", 13.5, true, Ui.Accent);
@@ -180,10 +186,23 @@ public partial class MainWindow : Window
             newInfo[field] = box;
             infoRow.Children.Add(Ui.Field(L.T("info." + field), box));
         }
+        newType.Items.Add(new ComboBoxItem { Content = L.T("studyType.time"), Tag = "" });
+        newType.Items.Add(new ComboBoxItem { Content = L.T("studyType.sampling"), Tag = "sampling" });
+        newType.SelectedIndex = 0;
+        var stepsBox = Ui.WithPlaceholder(newSteps, L.T("placeholder.newSteps"));
+        var stepsHint = (TextBlock)stepsBox.Children[1];
+        void SyncType()
+        {
+            bool sampling = (newType.SelectedItem as ComboBoxItem)?.Tag as string == "sampling";
+            newStepsLabel.Text = L.T(sampling ? "field.newCategories" : "field.newSteps");
+            stepsHint.Text = L.T(sampling ? "placeholder.newCategories" : "placeholder.newSteps");
+        }
+        newType.SelectionChanged += (_, _) => SyncType();
+        SyncType();
         var more = new Expander
         {
             Header = L.T("new.more"), Margin = new Thickness(0, 2, 0, 6),
-            Content = Ui.Stack(Ui.Field(L.T("field.newSteps"), Ui.WithPlaceholder(newSteps, L.T("placeholder.newSteps"))), infoRow)
+            Content = Ui.Stack(newStepsLabel, stepsBox, infoRow)
         };
 
         openButton = Btn("btn.open", OpenSelected);
@@ -208,7 +227,7 @@ public partial class MainWindow : Window
 
         var form = Ui.Stack(
             Ui.Text(L.T("home.lead")), how, note, demoRow,
-            Ui.Row(Ui.Field(L.T("field.name"), newName), Ui.Field(L.T("field.code"), newCode)),
+            Ui.Row(Ui.Field(L.T("field.studyType"), newType), Ui.Field(L.T("field.name"), newName), Ui.Field(L.T("field.code"), newCode)),
             Ui.Row(Ui.Field(L.T("field.video"), Ui.WithPlaceholder(newVideo, L.T("placeholder.video"))),
                 Btn("btn.pickFile", () => { if (PickVideo() is string p) newVideo.Text = p; })),
             more,
@@ -267,14 +286,19 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(newName.Text) || string.IsNullOrWhiteSpace(newCode.Text) || !File.Exists(newVideo.Text))
             throw Error("msg.createMissing");
+        bool sampling = (newType.SelectedItem as ComboBoxItem)?.Tag as string == "sampling";
+        var lines = newSteps.Text.Split('\n').Select(x => new StepDef { Name = x.Trim() }).ToList();
         var study = new Study
         {
             Name = newName.Text.Trim(), Code = newCode.Text.Trim(), Video = newVideo.Text,
-            Steps = StudyRules.CleanSteps(newSteps.Text.Split('\n').Select(x => new StepDef { Name = x })),
+            StudyType = sampling ? "sampling" : "",
+            Steps = sampling ? new() : StudyRules.CleanSteps(lines),
+            Categories = sampling ? StudyRules.CleanCategories(lines.Select(x => new SampleCategory { Name = x.Name })) : new(),
             Info = StudyRules.CleanInfo(newInfo.ToDictionary(p => p.Key, p => p.Value.Text))
         };
         store.Save(study);
         newName.Text = newCode.Text = newVideo.Text = newSteps.Text = "";
+        newType.SelectedIndex = 0;
         foreach (var box in newInfo.Values) box.Text = "";
         OpenStudy(study);
     }
@@ -406,7 +430,10 @@ public partial class MainWindow : Window
         foreach (TabItem tab in tabs.Items) tab.IsEnabled = true;
         filterStep.SelectedIndex = -1;
         filterCycle.SelectedIndex = -1;
+        ApplyStudyType();
+        storyFrames = null;
         RenderSteps();
+        RenderSampling();
         RefreshObservations();
         LoadSettings();
         LoadInfo();

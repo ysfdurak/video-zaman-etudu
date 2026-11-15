@@ -150,6 +150,23 @@ internal static class Ui
     public static void SetClass(ComboBox combo, string? cls) =>
         combo.SelectedIndex = Math.Max(0, Array.IndexOf(StudyRules.Classes, cls ?? ""));
 
+    /// <summary>Değer–etiket seçimi (Tag değeri tutar); ilk öğe "—" boş değerdir.</summary>
+    public static ComboBox TagCombo(IEnumerable<(string Value, string Label)> items, double width = 130)
+    {
+        var combo = new ComboBox { Width = width, MinHeight = 28, VerticalContentAlignment = VerticalAlignment.Center };
+        combo.Items.Add(new ComboBoxItem { Content = "—", Tag = "" });
+        foreach (var (value, label) in items) combo.Items.Add(new ComboBoxItem { Content = label, Tag = value });
+        combo.SelectedIndex = 0;
+        return combo;
+    }
+    public static string TagOf(ComboBox combo) => (combo.SelectedItem as ComboBoxItem)?.Tag as string ?? "";
+    public static void SetTag(ComboBox combo, string? value)
+    {
+        for (int i = 0; i < combo.Items.Count; i++)
+            if ((combo.Items[i] as ComboBoxItem)?.Tag as string == (value ?? "")) { combo.SelectedIndex = i; return; }
+        combo.SelectedIndex = 0;
+    }
+
     public static DataGrid Table() => new()
     {
         AutoGenerateColumns = false, IsReadOnly = true, CanUserAddRows = false, CanUserSortColumns = false,
