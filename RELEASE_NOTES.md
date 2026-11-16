@@ -1,3 +1,27 @@
+# v2.2.2 (Windows) · v1.9.1 (tarayıcı) · Video Zaman Etüdü — kullanım kolaylıkları
+
+Son gözden geçirmede bulunan sorunlar düzeltildi ve ölçümü hızlandıran küçük eklemeler yapıldı. Hepsi tarayıcıda ve Windows'ta, Türkçe ve İngilizce.
+
+**Düzeltmeler**
+- **Yeterlilik kartı:** Hiçbir adımın yeterliliği hesaplanamıyorken (adım başına tek ölçüm) özet kartı "Tüm adımlar yeterli" diyordu. Artık "Henüz karar verilemiyor" diyor.
+- **Grafik ölçeği (tarayıcı):** Az adımlı grafikler sayfa genişliğine büyütülüyor, yazılar şişiyordu. Grafik artık çizildiği boyuttan büyümüyor; yazdırmada da öyle.
+- **Boş kutuda Enter:** "Yeni adım" kutusu boşken Enter'a basınca hata penceresi çıkıyordu. Artık sessizce yok sayılıyor.
+- **Adım ekleme sırası:** Henüz ölçüm yokken arka arkaya adım eklenince sıradaki kayıt son eklenen adıma atlıyordu. Artık ilk adımda kalıyor. Ölçüm başladıktan sonra eklenen adım yine seçilir; araya giren kayıt için davranış aynı.
+- **Telefonda düğme çubuğu (tarayıcı):** Alta sabitlenen Ölç / Durdur / Geri al tek satırda ve gölgeli. İçeriğin üstüne binmesi azaldı.
+
+**Eklemeler**
+- **Adım düğmesinde yeterlilik göstergesi:** Ölçüm sekmesinde her adım düğmesinde geçerli ölçüm ve gereken ölçüm sayısı görünür (ör. "3/21"); yeterliyse "✓". Ölçmeyi ne zaman bırakacağına Analiz'e gitmeden karar verilir.
+- **X kısayolu:** "Sonraki kayıt kapsam dışı" işaretini açar ya da kapatır.
+- **Adım tablosundan kayda gitme:** Analiz → Adım tablosunda bir adıma çift tıklayınca o adımın kayıtları Ölçüm sekmesinde süzülmüş açılır.
+- **Kaldığın etüde dön:** Program ya da sayfa yeniden açılınca Çalışmalar'da son açılan etüt seçili gelir. Üstte "Kaldığın etüde dön" düğmesi çıkar.
+
+**Uyumluluk:** Paket biçimi ve hesaplar değişmedi.
+
+**Testler**
+- Node: 199/199.
+- Chrome uçtan uca: 93/93.
+- Windows öz-denemesi: iki dilde, yeni denetimler dahil.
+
 # v2.2.1 (Windows) · Video Zaman Etüdü — metin düzeltmeleri
 
 v2.2.0'daki sade düzen aynen geçerli. Bu sürümde yalnız metinler düzeltildi; hesaplar ve paket biçimi değişmedi. Tarayıcı sürümünde aynı düzeltmeler zaten yayında.

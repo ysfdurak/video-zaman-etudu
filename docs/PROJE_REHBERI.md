@@ -140,6 +140,12 @@ Hesaplar `Web/js/advanced.js` ve `Core/Advanced.cs` içindedir. `Shared/ek-alanl
 - Windows'ta `%LOCALAPPDATA%\VideoZamanEtudu\tur-goruldu` dosyasıyla bir kez gösterilir.
 - Öz-denemede tur açılmaz. Tarayıcı testleri turu ilk adımda kapatır.
 
+**v1.9.1 / v2.2.2 kolaylıkları:**
+- Adım düğmesindeki "3/21": geçerli ölçüm / gereken ölçüm. Gereken sayı Analiz'deki yeterlilik formülünün aynısıdır (`requiredObservations` / `StudyRules.RequiredObservations`). Yeterliyse "✓", tek ölçümde yalnız sayı görünür.
+- Özet kartı: hesaplanamayan adım varken "Tüm adımlar yeterli" yerine "Henüz karar verilemiyor" yazar.
+- Son açılan etüt: tarayıcıda `localStorage` (`vze-last-study`), Windows'ta `%LOCALAPPDATA%\VideoZamanEtudu\son-etut` dosyası.
+- Kısayol X: "Sonraki kayıt kapsam dışı".
+
 - **Sık sorulabilecek: Neden araçlar varsayılan kapalı?** Çoğu etüt yalnız standart süre içindir. Yeni kullanıcı önce sade ekranı görür; ihtiyaç olunca araç tek tıkla açılır.
 - **Neden Hazırlık ayrı sekme?** Adım tanımları ölçümden önce ve bir kez yapılır. Ölçüm sırasında araçlar dikkati dağıtıyor ve yanlışlıkla değiştiriliyordu. Ölçerken beklenmeyen bir adım için hızlı "Adım ekle" kutusu Ölçüm'de kaldı.
 

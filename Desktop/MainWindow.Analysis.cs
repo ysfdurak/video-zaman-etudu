@@ -98,6 +98,14 @@ public partial class MainWindow
             selStep.Text = row.Source.Step;
             applyStep.IsEnabled = true;
         };
+        // Çift tıklama: adımın kayıtları Ölçüm sekmesinde süzülmüş açılır.
+        results.MouseDoubleClick += (_, _) => Guard(() =>
+        {
+            if (results.SelectedItem is not ResultRow row) return;
+            tabs.SelectedIndex = TabMeasure;
+            RefreshObservations();
+            filterStep.SelectedItem = row.Source.Step;
+        });
         applyStep = Btn("btn.applyStep", ApplyStep);
         var stepSettings = Ui.Box(Ui.Stack(
             Ui.Row(Ui.Field(L.T("sel.label"), selStep), Ui.Field(L.T("field.every"), every),
@@ -344,7 +352,8 @@ public partial class MainWindow
         int na = rows.Count(r => r.Sufficiency == "Hesaplanamıyor" && r.Count > 0);
         var details = bad.Select(r => L.T("summary.needDetail", ("step", r.Step), ("c", r.Count), ("n", StudyRules.RequiredObservations(r, s)))).ToList();
         if (na > 0) details.Add(L.T("summary.na", ("k", na)));
-        cards.Add((L.T("summary.sufficiency"), bad.Count > 0 ? L.T("summary.need", ("k", bad.Count)) : L.T("summary.allOk"), details));
+        // Hesaplanamayan adım varken "Tüm adımlar yeterli" denmez.
+        cards.Add((L.T("summary.sufficiency"), bad.Count > 0 ? L.T("summary.need", ("k", bad.Count)) : na > 0 ? L.T("summary.undecided") : L.T("summary.allOk"), details));
         var spread = StudyRules.CycleSpread(Analysis.Cycles(study));
         if (spread.Rows.Count > 1)
             cards.Add((L.T("summary.cycles"), L.T("summary.cyclesValue", ("n", spread.Rows.Count), ("cv", L.Pct(spread.Variation, 1))),

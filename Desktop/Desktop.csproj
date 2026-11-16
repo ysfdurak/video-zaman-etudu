@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net8.0-windows</TargetFramework><OutputType>WinExe</OutputType><UseWPF>true</UseWPF><EnableWindowsTargeting>true</EnableWindowsTargeting><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><Version>2.2.0</Version><RootNamespace>VideoZamanEtudu</RootNamespace></PropertyGroup>
+  <PropertyGroup><TargetFramework>net8.0-windows</TargetFramework><OutputType>WinExe</OutputType><UseWPF>true</UseWPF><EnableWindowsTargeting>true</EnableWindowsTargeting><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><Version>2.2.2</Version><RootNamespace>VideoZamanEtudu</RootNamespace></PropertyGroup>
   <ItemGroup><EmbeddedResource Include="Metinler.json" LogicalName="VideoZamanEtudu.Metinler.json"/></ItemGroup>
   <ItemGroup><ProjectReference Include="../Core/Core.csproj"/><PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.22"/><PackageReference Include="ClosedXML" Version="0.104.2"/></ItemGroup>
 </Project>

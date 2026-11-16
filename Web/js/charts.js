@@ -19,6 +19,7 @@ export function stepChart(data, { classLabel = (c) => c, width = 640 } = {}) {
   const height = top + data.length * row + 34;
   const max = Math.max(...data.map((d) => d.value), 1e-9);
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
+  svg.style.maxWidth = `${width}px`; // çizildiği boyuttan büyütülmez (az adımda yazılar şişmesin); CSP satır içi stil özniteliğine izin vermez, CSSOM izinli
   const plot = width - left - right;
   svg.append(el("line", { x1: left, x2: left, y1: top, y2: top + data.length * row, stroke: GRID }));
   data.forEach((d, i) => {
@@ -53,6 +54,7 @@ export function cycleChart(data, { mean, meanLabel, axis, width = 640, format = 
   const max = Math.ceil((peak * 1.08) / step) * step;
   const plotW = width - left - right, plotH = height - top - bottom;
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
+  svg.style.maxWidth = `${width}px`; // çizildiği boyuttan büyütülmez (az adımda yazılar şişmesin); CSP satır içi stil özniteliğine izin vermez, CSSOM izinli
   const yOf = (v) => top + plotH - (v / max) * plotH;
   // Y ekseni: yuvarlak değerlerde ince ızgara ve etiket.
   for (let v = 0; v <= max + 1e-9; v += step) {
@@ -102,6 +104,7 @@ export function histogramChart(data, { width = 640, axis = "", format = (v) => S
   const max = Math.max(...data.map((d) => d.Count), 1);
   const plotW = width - left - right, plotH = height - top - bottom;
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
+  svg.style.maxWidth = `${width}px`; // çizildiği boyuttan büyütülmez (az adımda yazılar şişmesin); CSP satır içi stil özniteliğine izin vermez, CSSOM izinli
   const yOf = (v) => top + plotH - (v / max) * plotH;
   for (let v = 0; v <= max; v += Math.max(1, Math.ceil(max / 4))) {
     svg.append(el("line", { x1: left, x2: width - right, y1: yOf(v), y2: yOf(v), stroke: GRID, "stroke-width": v === 0 ? 1 : 0.6 }));
@@ -137,6 +140,7 @@ export function yamazumiChart(stations, { width = 640, takt = null, taktLabel = 
   const plotW = width - left - right, plotH = height - top - bottom;
   const yOf = (v) => top + plotH - (v / max) * plotH;
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
+  svg.style.maxWidth = `${width}px`; // çizildiği boyuttan büyütülmez (az adımda yazılar şişmesin); CSP satır içi stil özniteliğine izin vermez, CSSOM izinli
   for (let v = 0; v <= max + 1e-9; v += step) {
     svg.append(el("line", { x1: left, x2: width - right, y1: yOf(v), y2: yOf(v), stroke: GRID, "stroke-width": v === 0 ? 1 : 0.6 }));
     svg.append(el("text", { x: left - 6, y: yOf(v) + 4, "text-anchor": "end", fill: SOFT, "font-size": 10.5 }, format(v)));
@@ -178,6 +182,7 @@ export function workChart(rows, { width = 760, takt = null, taktLabel = "", tota
   const plotW = width - left - right;
   const xOf = (v) => left + (v / max) * plotW;
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
+  svg.style.maxWidth = `${width}px`; // çizildiği boyuttan büyütülmez (az adımda yazılar şişmesin); CSP satır içi stil özniteliğine izin vermez, CSSOM izinli
   for (let v = 0; v <= max + 1e-9; v += step) {
     svg.append(el("line", { x1: xOf(v), x2: xOf(v), y1: top - 4, y2: top + rows.length * row, stroke: GRID, "stroke-width": 0.6 }));
     svg.append(el("text", { x: xOf(v), y: top + rows.length * row + 14, "text-anchor": "middle", fill: SOFT, "font-size": 10.5 }, format(v)));
@@ -211,6 +216,7 @@ export function samplingChart(rows, { width = 640, classLabel = (c) => c } = {})
   const plotW = width - left - right;
   const xOf = (v) => left + (v / 100) * plotW;
   const svg = el("svg", { viewBox: `0 0 ${width} ${height}`, role: "img", class: "chart-svg" });
+  svg.style.maxWidth = `${width}px`; // çizildiği boyuttan büyütülmez (az adımda yazılar şişmesin); CSP satır içi stil özniteliğine izin vermez, CSSOM izinli
   for (const v of [0, 25, 50, 75, 100]) {
     svg.append(el("line", { x1: xOf(v), x2: xOf(v), y1: top, y2: top + rows.length * row, stroke: GRID, "stroke-width": 0.6 }));
     svg.append(el("text", { x: xOf(v), y: top + rows.length * row + 14, "text-anchor": "middle", fill: SOFT, "font-size": 10.5 }, String(v)));

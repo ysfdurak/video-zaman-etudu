@@ -116,7 +116,7 @@ public partial class MainWindow
         player.Children.Add(frame);
 
         // Adımlar: yalnız seçim ve hızlı ekleme; tanımlar Hazırlık sekmesindeki tablodan (v2.2).
-        newStep.PreviewKeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; Guard(AddStep); } };
+        newStep.PreviewKeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; if (newStep.Text.Trim().Length > 0) Guard(AddStep); } };
         var editSteps = Btn("btn.editSteps", () => tabs.SelectedIndex = TabSetup);
         editSteps.Margin = new Thickness(10, 0, 0, 4);
         var stepsHead = new DockPanel();
@@ -336,6 +336,7 @@ public partial class MainWindow
                 break;
             case Key.Left: Guard(() => Nudge(-step)); break;
             case Key.Right: Guard(() => Nudge(step)); break;
+            case Key.X when modifiers == ModifierKeys.None: excludedNext.IsChecked = excludedNext.IsChecked != true; break;
             case Key.Add or Key.OemPlus: Guard(() => SetCycle(CycleValue() + 1)); break;
             case Key.Subtract or Key.OemMinus: Guard(() => SetCycle(CycleValue() - 1)); break;
             case Key.Z when modifiers == ModifierKeys.Control: Guard(UndoLast); break;
@@ -420,6 +421,10 @@ public partial class MainWindow
         var list = StepList;
         flow.Clamp(list.Count);
         if (list.Count == 0) stepsPanel.Children.Add(Ui.Hint(L.T("steps.empty")));
+        // v2.2.1: adım düğmesinde yeterlilik göstergesi (geçerli ölçüm / gereken; yeterliyse ✓)
+        Dictionary<string, StepResult> progress;
+        try { progress = current is { IsSampling: false } ? Analysis.Steps(current).ToDictionary(r => r.Step) : new(); }
+        catch (ArgumentException) { progress = new(); }
         for (int i = 0; i < list.Count; i++)
         {
             var st = list[i];
@@ -438,10 +443,24 @@ public partial class MainWindow
                     Child = new TextBlock { Text = st.Classification, FontSize = 11.5, FontWeight = FontWeights.SemiBold, Foreground = on ? Brushes.White : Ui.Ink }
                 });
             // Düz düğme: seçili adım koyu zeminde (ToggleButton'ın sistem vurgusu açık mavide beyaz yazıyı okunmaz yapıyordu).
+            string? tip = null;
+            if (progress.TryGetValue(st.Name, out var pr) && pr.Count > 0)
+            {
+                string text;
+                if (pr.Sufficiency == "Yeterli") { text = "✓ " + pr.Count; tip = L.T("steps.progressOk", ("n", pr.Count)); }
+                else if (pr.Sufficiency == "Yetersiz") { int req = StudyRules.RequiredObservations(pr, current!.Settings); text = $"{pr.Count}/{req}"; tip = L.T("steps.progress", ("n", pr.Count), ("req", req)); }
+                else { text = pr.Count.ToString(); tip = L.T("steps.progressNa", ("n", pr.Count)); }
+                content.Children.Add(new Border
+                {
+                    Background = on ? Ui.Brush("#2E5168") : Ui.Brush("#EEF3F6"), CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(6, 0, 0, 0),
+                    Child = new TextBlock { Text = text, FontSize = 11.5, Foreground = on ? Brushes.White : pr.Sufficiency == "Yeterli" ? Ui.Brush("#12784A") : Ui.Soft }
+                });
+            }
             var chip = new Button
             {
                 Content = content, Padding = new Thickness(10, 5, 10, 5), Margin = new Thickness(0, 0, 6, 6),
-                Background = on ? Ui.Accent : Ui.Paper, BorderBrush = on ? Ui.Accent : Ui.Line, ToolTip = st.Note
+                Background = on ? Ui.Accent : Ui.Paper, BorderBrush = on ? Ui.Accent : Ui.Line,
+                ToolTip = string.Join("\n", new[] { st.Note, tip }.Where(x => !string.IsNullOrEmpty(x))) is { Length: > 0 } t ? t : null
             };
             int index = i;
             chip.Click += (_, _) => Guard(() => SelectStep(index));
@@ -656,6 +675,7 @@ public partial class MainWindow
         bulkSelection.IntersectWith(rows);
         suppressSelection = true;
         observations.ItemsSource = view;
+        RenderSteps();
         if (bulkSelection.Count > 1)
             foreach (var v in view.Where(v => bulkSelection.Contains(v.Source))) observations.SelectedItems.Add(v);
         else
