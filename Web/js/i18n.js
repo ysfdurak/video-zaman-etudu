@@ -4,6 +4,8 @@
 const DICT = {
   tr: {
     "app.title": "Video Zaman Etüdü",
+    "app.docTitle": "Video Zaman Etüdü · Videodan standart süre hesaplama",
+    "app.docDesc": "Videodan zaman etüdü: iş adımlarını ölçün, gözlem yeterliliğini, normal ve standart süreyi hesaplayın, Excel'e aktarın. Ücretsiz, kurulumsuz; video cihazınızdan çıkmaz.",
     "header.brand": "VIDEO ZAMAN ETÜDÜ",
     "header.studies": "Çalışmalar",
     "edition": "Tarayıcı sürümü · Video bilgisayarınızdan çıkmaz",
@@ -592,6 +594,8 @@ const DICT = {
   },
   en: {
     "app.title": "Video Time Study",
+    "app.docTitle": "Video Time Study · Standard time from video",
+    "app.docDesc": "Time study from video: measure work steps, check sample sufficiency, calculate normal and standard time and export to Excel. Free, no install; your video never leaves your device.",
     "header.brand": "VIDEO TIME STUDY",
     "header.studies": "Studies",
     "edition": "Browser version · Your video never leaves your computer",
