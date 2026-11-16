@@ -219,7 +219,8 @@ function updateHeader() {
   sep.className = "sep";
   sep.textContent = "/";
   h.append(sep, state.current ? `${state.current.Code} · ${state.current.Name}` : t("header.studies"));
-  document.title = state.current ? `${state.current.Code} · ${t("app.title")}` : t("app.title");
+  document.title = state.current ? `${state.current.Code} · ${t("app.title")}` : t("app.docTitle");
+  document.querySelector('meta[name="description"]')?.setAttribute("content", t("app.docDesc"));
 }
 
 // ------------------------------------------------------------ çalışmalar
