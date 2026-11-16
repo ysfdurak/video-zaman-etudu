@@ -70,6 +70,10 @@ public static class StudyTransfer
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<SampleCategory>? Categories { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<Sample>? Samples { get; init; }
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? SampleError { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<string>? Modules { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Status { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ApprovedBy { get; init; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? ApprovedAt { get; init; }
     }
 
     /// <summary>Etüt → paket baytları (UTF-8 JSON). Tarayıcı sürümüyle aynı alan adları ve sıra.</summary>
@@ -96,7 +100,11 @@ public static class StudyTransfer
             StudyType = StudyRules.CleanStudyType(study.StudyType) is { Length: > 0 } type ? type : null,
             Categories = StudyRules.CleanCategories(study.Categories) is { Count: > 0 } cats ? cats : null,
             Samples = StudyRules.CleanSamples(study.Samples) is { Count: > 0 } samples ? samples : null,
-            SampleError = StudyRules.CleanSampleError(study.SampleError)
+            SampleError = StudyRules.CleanSampleError(study.SampleError),
+            Modules = StudyRules.CleanModules(study.Modules),
+            Status = StudyRules.CleanStatus(study.Status) is { Length: > 0 } status ? status : null,
+            ApprovedBy = StudyRules.CleanStatus(study.Status) == "approved" && (study.ApprovedBy ?? "").Trim() is { Length: > 0 } by ? (by.Length > 80 ? by[..80] : by) : null,
+            ApprovedAt = StudyRules.CleanStatus(study.Status) == "approved" && StudyRules.CleanIsoDate(study.ApprovedAt) is { Length: > 0 } at ? at : null
         };
         var bytes = JsonSerializer.SerializeToUtf8Bytes(output, WriteOptions);
         CheckSize(bytes.Length);
@@ -155,7 +163,7 @@ public static class StudyTransfer
         }
         Validate(data);
         var settings = data.Settings;
-        return new Study
+        var imported = new Study
         {
             Name = data.Name, Code = data.Code, ExpectedVideoName = FileName(data.VideoName),
             Settings = settings, Observations = data.Observations, Frequency = data.Frequency,
@@ -168,9 +176,17 @@ public static class StudyTransfer
             StudyType = StudyRules.CleanStudyType(root.TryGetProperty("StudyType", out var st) && st.ValueKind == JsonValueKind.String ? st.GetString() : null),
             Categories = StudyRules.CleanCategories(Optional<List<SampleCategory?>>(root, "Categories")),
             Samples = StudyRules.CleanSamples(Optional<List<Sample?>>(root, "Samples")),
-            SampleError = StudyRules.CleanSampleError(root.TryGetProperty("SampleError", out var se) && se.ValueKind == JsonValueKind.Number && se.TryGetDouble(out var sev) ? sev : null)
+            SampleError = StudyRules.CleanSampleError(root.TryGetProperty("SampleError", out var se) && se.ValueKind == JsonValueKind.Number && se.TryGetDouble(out var sev) ? sev : null),
+            Modules = root.TryGetProperty("Modules", out var mods) && mods.ValueKind == JsonValueKind.Array
+                ? StudyRules.CleanModules(mods.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString())) : null,
+            Status = OptionalString(root, "Status"), ApprovedBy = OptionalString(root, "ApprovedBy"), ApprovedAt = OptionalString(root, "ApprovedAt")
         };
+        StudyRules.CleanApproval(imported);
+        return imported;
     }
+
+    private static string OptionalString(JsonElement root, string name) =>
+        root.TryGetProperty(name, out var node) && node.ValueKind == JsonValueKind.String ? node.GetString() ?? "" : "";
 
     private static T? Optional<T>(JsonElement root, string name) where T : class
     {

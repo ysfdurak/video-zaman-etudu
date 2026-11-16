@@ -286,6 +286,20 @@ internal static class V2Checks
             imp.Zip(e.GetProperty("Improvements").EnumerateArray()).All(p => p.First.Step == p.Second.GetProperty("Step").GetString() &&
                 p.First.Waste == p.Second.GetProperty("Waste").GetString() && p.First.Idea == p.Second.GetProperty("Idea").GetString() &&
                 Same(p.First.Share, Num(p.Second.GetProperty("Share")))));
+        Check("v2.2 ortak: modüller, durum ve onay", () =>
+            study.Modules!.SequenceEqual(e.GetProperty("Modules").EnumerateArray().Select(x => x.GetString()!)) &&
+            study.Status == e.GetProperty("Status").GetString() && study.ApprovedBy == e.GetProperty("ApprovedBy").GetString() &&
+            study.ApprovedAt == e.GetProperty("ApprovedAt").GetString());
+        Check("v2.2 ortak: adımları başka etütten alma (kare gelmez)", () =>
+            JsonSerializer.Serialize(StudyRules.CopySteps(study), new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping })
+                == e.GetProperty("CopiedSteps").GetRawText().Replace("\n", "").Replace(" ", "") ||
+            StudyRules.CopySteps(study).Select(x => (x.Name, x.Classification, x.Type, x.Station, x.Waste, x.Idea, x.FrameMs))
+                .SequenceEqual(e.GetProperty("CopiedSteps").EnumerateArray().Select(x => (x.GetProperty("Name").GetString()!, x.GetProperty("Classification").GetString()!,
+                    x.TryGetProperty("Type", out var t) ? t.GetString() : null, x.TryGetProperty("Station", out var st) ? st.GetString() : null,
+                    x.TryGetProperty("Waste", out var w) ? w.GetString() : null, x.TryGetProperty("Idea", out var i) ? i.GetString() : null, (long?)null))));
+        Check("v2.2: eski etütte modül alanı yok (hepsi açık), boş liste korunur", () =>
+            new Study().HasModule("Cards") && !new Study { Modules = new() }.HasModule("Cards") &&
+            StudyRules.CleanModules(new[] { "Cards", "Bogus", "Balance" })!.SequenceEqual(new[] { "Balance", "Cards" }));
         Check("v2.1 ortak: adım kareleri", () => e.GetProperty("Frames").EnumerateObject().All(p =>
             Advanced.StepFrame(study, p.Name) == (p.Value.ValueKind == JsonValueKind.Null ? null : p.Value.GetInt64())));
 
