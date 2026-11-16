@@ -164,6 +164,7 @@ function selectTab(index) {
   }
   if (index !== TAB.measure) pause();
   if (index === TAB.setup && state.current) renderStepTable();
+  if (index === TAB.measure && state.current) renderSteps();
   if ((index === TAB.analysis || index === TAB.improve) && state.current) guard(refreshAnalysis);
 }
 for (let i = 0; i < TABS; i++) $(`tab-${i}`).addEventListener("click", () => selectTab(i));
@@ -238,7 +239,22 @@ async function reloadStudies() {
   for (const id of ["open", "export", "delete"]) $(id).disabled = none;
   $("compare").disabled = state.studies.length < 2;
   fillStepSources($("new-steps-from"), null);
+  // Son açılan etüde dönüş bağlantısı (etüt açık değilken).
+  let lastId = null;
+  try { lastId = localStorage.getItem(LAST_KEY); } catch { /* gizli pencere */ }
+  const last = state.studies.find((s) => s.Id === lastId);
+  $("resume-last").hidden = !last || !!state.current;
+  if (last) {
+    $("resume-last-btn").textContent = t("resume.last", { code: last.Code, name: last.Name });
+    if (!state.selectedStudyId) { state.selectedStudyId = last.Id; for (const id of ["open", "export", "delete"]) $(id).disabled = false; }
+  }
 }
+on("resume-last-btn", async () => {
+  let lastId = null;
+  try { lastId = localStorage.getItem(LAST_KEY); } catch { /* gizli pencere */ }
+  const last = state.studies.find((s) => s.Id === lastId);
+  if (last) await openStudy(last);
+});
 /** Durum: Taslak / Tamamlandı / Onaylandı (onaylayan ve tarih ile). */
 function statusLabel(study) {
   const label = t("status." + (study.Status || "draft"));
@@ -427,7 +443,9 @@ function requestPersistence() {
 
 // ------------------------------------------------------------ etüt açma / kapama
 
+const LAST_KEY = "vze-last-study";
 async function openStudy(study) {
+  try { localStorage.setItem(LAST_KEY, study.Id); } catch { /* gizli pencere */ }
   state.current = study;
   state.selectedStudyId = study.Id;
   updateHeader();
@@ -676,6 +694,8 @@ function renderSteps() {
     p.textContent = t("steps.empty");
     box.append(p);
   }
+  // v1.9.1: adım düğmesinde yeterlilik göstergesi (geçerli ölçüm / gereken; yeterliyse ✓)
+  const progress = new Map(state.current && !isSampling() ? analyzeSteps(state.current).map((r) => [r.Step, r]) : []);
   list.forEach((st, i) => {
     const b = document.createElement("button");
     b.type = "button";
@@ -690,7 +710,17 @@ function renderSteps() {
       c.style.setProperty("--cls", CLASS_COLORS[st.Classification]);
       b.append(c);
     }
-    if (st.Note) b.title = st.Note;
+    const r = progress.get(st.Name);
+    let tip = "";
+    if (r && r.Count > 0) {
+      const g = document.createElement("span");
+      g.className = "prog";
+      if (r.Sufficiency === "Yeterli") { g.textContent = "✓ " + r.Count; g.classList.add("ok"); tip = t("steps.progressOk", { n: r.Count }); }
+      else if (r.Sufficiency === "Yetersiz") { const req = requiredObservations(r, state.current.Settings); g.textContent = `${r.Count}/${req}`; tip = t("steps.progress", { n: r.Count, req }); }
+      else { g.textContent = String(r.Count); tip = t("steps.progressNa", { n: r.Count }); }
+      b.append(g);
+    }
+    b.title = [st.Note, tip].filter(Boolean).join("\n");
     b.addEventListener("click", () => guard(() => selectStep(i)));
     box.append(b);
   });
@@ -730,24 +760,28 @@ async function saveSteps({ table = true } = {}) {
   await save();
 }
 
-async function addStep(inputId, classId) {
+async function addStep(inputId, classId, { quiet = false } = {}) {
   if (!state.current) return;
   const name = $(inputId).value.trim();
-  if (!name) throw new Error(t("msg.stepEmpty"));
+  // Boş kutuda Enter sessizce yok sayılır (ölçerken Enter alışkanlığı).
+  if (!name) { if (quiet) return; throw new Error(t("msg.stepEmpty")); }
   if (steps().some((x) => x.Name === name)) throw new Error(t("msg.stepExists", { step: name }));
   steps().push({ Name: name, Classification: $(classId).value });
   $(inputId).value = "";
-  // Yeni adım seçilir; araya giren bir kayıtsa (kapsam dışı) sonra önceki adıma dönülür.
-  if (steps().length > 1) state.resume = state.stepIndex;
-  state.stepIndex = steps().length - 1;
+  // Ölçüm başladıysa yeni adım seçilir; araya giren bir kayıtsa (kapsam dışı) sonra önceki adıma dönülür.
+  // Henüz ölçüm yokken (liste kuruluyor) seçim ilk adımda kalır.
+  if (state.current.Observations.length > 0) {
+    if (steps().length > 1) state.resume = state.stepIndex;
+    state.stepIndex = steps().length - 1;
+  }
   await saveSteps();
   if (state.ready && state.anchor === null) setStatus(t("status.ready"));
 }
 on("add-step", () => addStep("new-step", "new-step-class"));
 on("setup-add-step", async () => { await addStep("setup-new-step", "setup-new-step-class"); $("setup-new-step").focus(); });
 // Yeni adım kutusunda Enter adımı ekler (kısayollar metin kutusunda çalışmaz).
-$("new-step").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("add-step").click(); } });
-$("setup-new-step").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("setup-add-step").click(); } });
+$("new-step").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); guard(() => addStep("new-step", "new-step-class", { quiet: true })); } });
+$("setup-new-step").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); guard(() => addStep("setup-new-step", "setup-new-step-class", { quiet: true })); } });
 on("edit-steps", () => selectTab(TAB.setup));
 on("go-measure-setup", () => selectTab(TAB.measure));
 
@@ -1155,6 +1189,7 @@ function refreshObservations() {
     });
   updateBulk();
   renderSegments();
+  renderSteps();
 }
 
 // ---- zaman çizgisindeki ölçülen aralıklar
@@ -1241,6 +1276,7 @@ window.addEventListener("keydown", (e) => {
     case "Escape":
       action = () => { if (state.anchor !== null) { stopMeasure(); setStatus(t("status.stopped")); } };
       break;
+    case "x": case "X": action = () => { $("excluded").checked = !$("excluded").checked; updateNow(); }; break;
     case "+": action = () => setCycle(cycleValue() + 1); break;
     case "-": action = () => setCycle(cycleValue() - 1); break;
     case "ArrowLeft": action = () => nudge(-step); break;
@@ -1364,6 +1400,8 @@ function refreshAnalysis() {
     {
       isSelected: (r) => r.Step === state.selectedResult,
       onSelect: (r) => { state.selectedResult = r.Step; fillStepSettings(r); refreshAnalysis(); },
+      // Çift tıklama: adımın kayıtları Ölçüm sekmesinde süzülmüş açılır.
+      onOpen: (r) => { selectTab(TAB.measure); refreshObservations(); $("filter-step").value = r.Step; state.checked.clear(); refreshObservations(); },
       empty: t("analysis.empty")
     });
   if (selected && previous !== selected.Step) fillStepSettings(selected);
@@ -1418,7 +1456,8 @@ function renderSummary(study, rows) {
     n: requiredObservations(r, settings)
   }));
   if (na.length) details.push(t("summary.na", { k: na.length }));
-  card(t("summary.sufficiency"), bad.length ? t("summary.need", { k: bad.length }) : t("summary.allOk"), details);
+  // Hesaplanamayan adım varken "Tüm adımlar yeterli" denmez.
+  card(t("summary.sufficiency"), bad.length ? t("summary.need", { k: bad.length }) : na.length ? t("summary.undecided") : t("summary.allOk"), details);
   const spread = cycleSpread(analyzeCycles(study));
   if (spread.Rows.length > 1)
     card(t("summary.cycles"), t("summary.cyclesValue", { n: spread.Rows.length, cv: pct(spread.Variation, 1).replace(/^[+]/, "") }),

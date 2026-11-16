@@ -318,3 +318,14 @@ body.no-mod-Balance .mod-Balance, body.no-mod-Work .mod-Work, body.no-mod-Ideas 
 #tour h2 { font-size: 17px; margin: 2px 0 8px; }
 #tour-count { margin: 0; }
 #panel-4 .table-wrap.short { max-height: none; }
+/* v1.9.1 */
+.step-chip .prog { font-size: 11.5px; font-variant-numeric: tabular-nums; color: var(--ink-soft); background: #eef3f6; border-radius: 3px; padding: 0 5px; margin-left: 2px; }
+.step-chip[aria-pressed="true"] .prog { background: rgba(255,255,255,.18); color: #fff; }
+.step-chip .prog.ok { color: #12784a; }
+.step-chip[aria-pressed="true"] .prog.ok { color: #c9f2dc; }
+.resume { margin: 0 0 12px; }
+@media (max-width: 900px) {
+  .row.big { flex-wrap: nowrap; gap: 6px; box-shadow: 0 -8px 12px -8px rgba(23, 54, 74, .35); padding: 8px 0; }
+  .row.big button { padding: 6px 10px; white-space: nowrap; }
+  .row.big #measure { flex: 1 1 auto; }
+}
