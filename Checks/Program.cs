@@ -95,3 +95,6 @@ if (args.Length >= 1)
 
 ExtraChecks.Run(args.Length >= 1 ? args[0] : null);
 if (args.Length >= 2) ParityChecks.Run(args[1]);
+// v2: ortak ek alan dosyası eşdeğerlik dosyasının yanında durur.
+string? shared = args.Length >= 2 ? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(args[1]))!, "ek-alanlar.json") : null;
+V2Checks.Run(args.Length >= 1 ? args[0] : null, shared != null && File.Exists(shared) ? shared : null);

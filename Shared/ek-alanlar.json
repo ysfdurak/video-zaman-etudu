@@ -1,0 +1,380 @@
+{
+ "Note": "Tools/EkAlanlar/uret.mjs üretir. Kaynak: Web/js/core.js. C#: Checks/V2Checks.cs.",
+ "Package": "{\"Kind\":\"video-zaman-etudu\",\"Version\":1,\"Name\":\"Sentetik depo etüdü\",\"Code\":\"DEMO-01\",\"VideoName\":\"sentetik-depo-etudu.mp4\",\"Settings\":{\"Confidence\":95,\"TargetError\":5,\"Pace\":110,\"Allowance\":12.5,\"RepeatedLow\":false,\"GroupMs\":100,\"Stable\":false},\"Observations\":[{\"StartMs\":0,\"EndMs\":2000,\"Seconds\":2,\"Step\":\"Hazırlık\",\"Classification\":\"SVA\",\"Excluded\":false,\"Cycle\":1},{\"StartMs\":2000,\"EndMs\":7000,\"Seconds\":5,\"Step\":\"Toplama\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":1,\"Rating\":105},{\"StartMs\":5000,\"EndMs\":7000,\"Seconds\":2,\"Step\":\"Tarama\",\"Classification\":\"SVA\",\"Excluded\":false,\"Cycle\":1},{\"StartMs\":7000,\"EndMs\":10000,\"Seconds\":3,\"Step\":\"Paketleme\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":1},{\"StartMs\":10000,\"EndMs\":12000,\"Seconds\":2,\"Step\":\"Bekleme\",\"Classification\":\"NVA\",\"Excluded\":true,\"Cycle\":1,\"Note\":\"forklift bekledi\"},{\"StartMs\":12000,\"EndMs\":14000,\"Seconds\":2,\"Step\":\"Hazırlık\",\"Classification\":\"SVA\",\"Excluded\":false,\"Cycle\":2},{\"StartMs\":14000,\"EndMs\":20000,\"Seconds\":6,\"Step\":\"Toplama\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":2,\"Rating\":90},{\"StartMs\":18000,\"EndMs\":20000,\"Seconds\":2,\"Step\":\"Tarama\",\"Classification\":\"SVA\",\"Excluded\":false,\"Cycle\":2,\"Note\":\"barkod okunmadı\"},{\"StartMs\":20000,\"EndMs\":23000,\"Seconds\":3,\"Step\":\"Paketleme\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":2},{\"StartMs\":23000,\"EndMs\":25000,\"Seconds\":2,\"Step\":\"Hazırlık\",\"Classification\":\"SVA\",\"Excluded\":false,\"Cycle\":3},{\"StartMs\":25000,\"EndMs\":30000,\"Seconds\":5,\"Step\":\"Toplama\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":3},{\"StartMs\":28000,\"EndMs\":30000,\"Seconds\":2,\"Step\":\"Tarama\",\"Classification\":\"SVA\",\"Excluded\":false,\"Cycle\":3},{\"StartMs\":30000,\"EndMs\":33000,\"Seconds\":3,\"Step\":\"Paketleme\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":3},{\"StartMs\":33000,\"EndMs\":35000,\"Seconds\":2,\"Step\":\"Seyrek kontrol\",\"Classification\":\"SVA\",\"Excluded\":false,\"Cycle\":3},{\"StartMs\":36000,\"EndMs\":41000,\"Seconds\":5,\"Step\":\"Toplama\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":4},{\"StartMs\":41000,\"EndMs\":46200,\"Seconds\":5.2,\"Step\":\"Toplama\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":5,\"Rating\":110},{\"StartMs\":46200,\"EndMs\":60200,\"Seconds\":14,\"Step\":\"Toplama\",\"Classification\":\"VA\",\"Excluded\":false,\"Cycle\":6}],\"Frequency\":{\"Seyrek kontrol\":3},\"Steps\":[{\"Name\":\"Hazırlık\",\"Classification\":\"SVA\",\"Note\":\"kutu masaya konunca biter\",\"Type\":\"Manual\",\"Station\":\"1\",\"FrameMs\":1500},{\"Name\":\"Toplama\",\"Classification\":\"VA\",\"Type\":\"Walk\",\"Station\":\"1\",\"Waste\":\"Motion\",\"Idea\":\"rafı tezgâha yaklaştır\"},{\"Name\":\"Tarama\",\"Classification\":\"SVA\",\"Type\":\"Machine\",\"Station\":\"2\"},{\"Name\":\"Paketleme\",\"Classification\":\"VA\",\"Note\":\"bant kesilince biter\",\"Station\":\"2\"},{\"Name\":\"Bekleme\",\"Classification\":\"NVA\",\"Type\":\"Wait\",\"Waste\":\"Waiting\"},{\"Name\":\"Seyrek kontrol\",\"Classification\":\"SVA\",\"Station\":\"3\"}],\"Info\":{\"Operator\":\"A. Kaya\",\"Station\":\"Hat 2\",\"Shift\":\"Gündüz\",\"Date\":\"2026-11-15\"},\"StepPace\":{\"Toplama\":95,\"Paketleme\":120},\"Takt\":18.5,\"AllowanceParts\":{\"Personal\":5,\"Fatigue\":4.5,\"Delay\":3}}",
+ "Expected": {
+  "ProcessOrder": [
+   "Hazırlık",
+   "Toplama",
+   "Tarama",
+   "Paketleme",
+   "Bekleme",
+   "Seyrek kontrol"
+  ],
+  "Steps": [
+   {
+    "Step": "Hazırlık",
+    "Pace": 110,
+    "Normal": 2.2,
+    "Standard": 2.5142857142857147,
+    "Contribution": 2.5142857142857147,
+    "Sufficiency": "Yeterli",
+    "Required": null
+   },
+   {
+    "Step": "Toplama",
+    "Pace": 97.43781094527363,
+    "Normal": 6.528333333333332,
+    "Standard": 7.46095238095238,
+    "Contribution": 7.46095238095238,
+    "Sufficiency": "Yetersiz",
+    "Required": 446
+   },
+   {
+    "Step": "Tarama",
+    "Pace": 110,
+    "Normal": 2.2,
+    "Standard": 2.5142857142857147,
+    "Contribution": 2.5142857142857147,
+    "Sufficiency": "Yeterli",
+    "Required": null
+   },
+   {
+    "Step": "Paketleme",
+    "Pace": 120,
+    "Normal": 3.6,
+    "Standard": 4.114285714285715,
+    "Contribution": 4.114285714285715,
+    "Sufficiency": "Yeterli",
+    "Required": null
+   },
+   {
+    "Step": "Bekleme",
+    "Pace": 110,
+    "Normal": null,
+    "Standard": null,
+    "Contribution": null,
+    "Sufficiency": "Hesaplanamıyor",
+    "Required": null
+   },
+   {
+    "Step": "Seyrek kontrol",
+    "Pace": 110,
+    "Normal": 2.2,
+    "Standard": 2.5142857142857147,
+    "Contribution": 0.8380952380952382,
+    "Sufficiency": "Hesaplanamıyor",
+    "Required": null
+   }
+  ],
+  "Total": 17.441904761904762,
+  "Incomplete": false,
+  "Spread": {
+   "Mean": 9.533333333333333,
+   "Deviation": 3.680579664491269,
+   "Variation": 38.60747899816017,
+   "Outliers": [
+    3,
+    4,
+    5,
+    6
+   ]
+  },
+  "Compare": {
+   "Before": 16.823529411764707,
+   "After": 17.441904761904762,
+   "Diff": 0.618375350140056,
+   "DiffPercent": 3.6756576756576753,
+   "Rows": [
+    {
+     "Step": "Hazırlık",
+     "Before": 2.588235294117647,
+     "After": 2.5142857142857147
+    },
+    {
+     "Step": "Toplama",
+     "Before": 6.901960784313725,
+     "After": 7.46095238095238
+    },
+    {
+     "Step": "Tarama",
+     "Before": 2.588235294117647,
+     "After": 2.5142857142857147
+    },
+    {
+     "Step": "Paketleme",
+     "Before": 3.8823529411764706,
+     "After": 4.114285714285715
+    },
+    {
+     "Step": "Bekleme",
+     "Before": null,
+     "After": null
+    },
+    {
+     "Step": "Seyrek kontrol",
+     "Before": 0.8627450980392157,
+     "After": 0.8380952380952382
+    }
+   ]
+  },
+  "DerivedSteps": [
+   {
+    "Name": "Hazırlık",
+    "Classification": "SVA"
+   },
+   {
+    "Name": "Toplama",
+    "Classification": "VA"
+   },
+   {
+    "Name": "Tarama",
+    "Classification": "SVA"
+   },
+   {
+    "Name": "Paketleme",
+    "Classification": "VA"
+   },
+   {
+    "Name": "Bekleme",
+    "Classification": "NVA"
+   },
+   {
+    "Name": "Seyrek kontrol",
+    "Classification": "SVA"
+   }
+  ],
+  "PlainOrder": [
+   "Hazırlık",
+   "Toplama",
+   "Tarama",
+   "Paketleme",
+   "Bekleme",
+   "Seyrek kontrol"
+  ],
+  "Parts": {
+   "Personal": 5,
+   "Fatigue": 4.5,
+   "Delay": 3
+  },
+  "Notes": [
+   {
+    "StartMs": 10000,
+    "Note": "forklift bekledi"
+   },
+   {
+    "StartMs": 18000,
+    "Note": "barkod okunmadı"
+   }
+  ],
+  "Ratings": [
+   {
+    "StartMs": 2000,
+    "Rating": 105
+   },
+   {
+    "StartMs": 14000,
+    "Rating": 90
+   },
+   {
+    "StartMs": 41000,
+    "Rating": 110
+   }
+  ],
+  "Outliers": [
+   {
+    "Step": "Toplama",
+    "Q1": 5,
+    "Q3": 5.8,
+    "Low": 3.8,
+    "High": 7,
+    "StartMs": [
+     46200
+    ]
+   }
+  ],
+  "Histogram": [
+   {
+    "From": 5,
+    "To": 8,
+    "Count": 5
+   },
+   {
+    "From": 8,
+    "To": 11,
+    "Count": 0
+   },
+   {
+    "From": 11,
+    "To": 14,
+    "Count": 1
+   }
+  ],
+  "Balance": {
+   "Total": 17.441904761904762,
+   "Max": 9.975238095238094,
+   "Bottleneck": "1",
+   "Efficiency": 58.28400483737509,
+   "Loss": 41.71599516262491,
+   "MinOperators": 1,
+   "OverTakt": [],
+   "Stations": [
+    {
+     "Station": "1",
+     "Load": 9.975238095238094,
+     "Steps": [
+      "Hazırlık",
+      "Toplama"
+     ]
+    },
+    {
+     "Station": "2",
+     "Load": 6.62857142857143,
+     "Steps": [
+      "Tarama",
+      "Paketleme"
+     ]
+    },
+    {
+     "Station": "3",
+     "Load": 0.8380952380952382,
+     "Steps": [
+      "Seyrek kontrol"
+     ]
+    }
+   ],
+   "Unassigned": []
+  },
+  "AutoBalance": {
+   "Hazırlık": "1",
+   "Toplama": "1",
+   "Tarama": "2",
+   "Paketleme": "2",
+   "Bekleme": "2",
+   "Seyrek kontrol": "2"
+  },
+  "StandardWork": {
+   "Rows": [
+    {
+     "Step": "Hazırlık",
+     "Type": "Manual",
+     "Start": 0,
+     "End": 2.5142857142857147,
+     "Seconds": 2.5142857142857147
+    },
+    {
+     "Step": "Toplama",
+     "Type": "Walk",
+     "Start": 2.5142857142857147,
+     "End": 9.975238095238094,
+     "Seconds": 7.46095238095238
+    },
+    {
+     "Step": "Tarama",
+     "Type": "Machine",
+     "Start": 9.975238095238094,
+     "End": 12.489523809523808,
+     "Seconds": 2.5142857142857147
+    },
+    {
+     "Step": "Paketleme",
+     "Type": "Manual",
+     "Start": 9.975238095238094,
+     "End": 14.089523809523808,
+     "Seconds": 4.114285714285715
+    },
+    {
+     "Step": "Seyrek kontrol",
+     "Type": "Manual",
+     "Start": 14.089523809523808,
+     "End": 14.927619047619046,
+     "Seconds": 0.8380952380952382
+    }
+   ],
+   "Operator": 14.927619047619046,
+   "Total": 14.927619047619046
+  },
+  "Improvements": [
+   {
+    "Step": "Toplama",
+    "Classification": "VA",
+    "Waste": "Motion",
+    "Idea": "rafı tezgâha yaklaştır",
+    "Contribution": 7.46095238095238,
+    "Share": 42.77601834662006
+   },
+   {
+    "Step": "Bekleme",
+    "Classification": "NVA",
+    "Waste": "Waiting",
+    "Idea": "",
+    "Contribution": null,
+    "Share": null
+   }
+  ],
+  "Frames": {
+   "Hazırlık": 1500,
+   "Toplama": 4500,
+   "Tarama": 6000,
+   "Paketleme": 8500,
+   "Bekleme": null,
+   "Seyrek kontrol": 34000
+  }
+ },
+ "Sampling": {
+  "Package": "{\"Kind\":\"video-zaman-etudu\",\"Version\":1,\"Name\":\"Forklift kullanımı\",\"Code\":\"IO-01\",\"VideoName\":\"forklift.mp4\",\"Settings\":{\"Confidence\":90,\"TargetError\":5,\"Pace\":100,\"Allowance\":0,\"RepeatedLow\":false,\"GroupMs\":100,\"Stable\":false},\"Observations\":[],\"Frequency\":{},\"StudyType\":\"sampling\",\"Categories\":[{\"Name\":\"Yük taşıyor\",\"Classification\":\"VA\"},{\"Name\":\"Boş gidiyor\",\"Classification\":\"NVA\"},{\"Name\":\"Bekliyor\",\"Classification\":\"NVA\"}],\"Samples\":[{\"AtMs\":0,\"Category\":\"Yük taşıyor\"},{\"AtMs\":7919,\"Category\":\"Yük taşıyor\"},{\"AtMs\":15838,\"Category\":\"Şarjda\"},{\"AtMs\":23757,\"Category\":\"Yük taşıyor\"},{\"AtMs\":31676,\"Category\":\"Yük taşıyor\"},{\"AtMs\":39595,\"Category\":\"Boş gidiyor\",\"Note\":\"rampa dolu\"},{\"AtMs\":47514,\"Category\":\"Boş gidiyor\"},{\"AtMs\":55433,\"Category\":\"Yük taşıyor\"},{\"AtMs\":63352,\"Category\":\"Yük taşıyor\"},{\"AtMs\":71271,\"Category\":\"Şarjda\"},{\"AtMs\":79190,\"Category\":\"Yük taşıyor\"},{\"AtMs\":87109,\"Category\":\"Yük taşıyor\"},{\"AtMs\":95028,\"Category\":\"Boş gidiyor\"},{\"AtMs\":102947,\"Category\":\"Boş gidiyor\"},{\"AtMs\":110866,\"Category\":\"Yük taşıyor\"},{\"AtMs\":118785,\"Category\":\"Yük taşıyor\"},{\"AtMs\":126704,\"Category\":\"Şarjda\"},{\"AtMs\":134623,\"Category\":\"Yük taşıyor\"},{\"AtMs\":142542,\"Category\":\"Yük taşıyor\"},{\"AtMs\":150461,\"Category\":\"Boş gidiyor\"},{\"AtMs\":158380,\"Category\":\"Boş gidiyor\"},{\"AtMs\":166299,\"Category\":\"Yük taşıyor\"},{\"AtMs\":174218,\"Category\":\"Yük taşıyor\"},{\"AtMs\":182137,\"Category\":\"Şarjda\"},{\"AtMs\":190056,\"Category\":\"Yük taşıyor\"},{\"AtMs\":197975,\"Category\":\"Yük taşıyor\"},{\"AtMs\":205894,\"Category\":\"Boş gidiyor\"},{\"AtMs\":213813,\"Category\":\"Boş gidiyor\"},{\"AtMs\":221732,\"Category\":\"Yük taşıyor\"},{\"AtMs\":229651,\"Category\":\"Yük taşıyor\"},{\"AtMs\":237570,\"Category\":\"Şarjda\"},{\"AtMs\":245489,\"Category\":\"Yük taşıyor\"},{\"AtMs\":253408,\"Category\":\"Yük taşıyor\"},{\"AtMs\":261327,\"Category\":\"Boş gidiyor\"},{\"AtMs\":269246,\"Category\":\"Boş gidiyor\"},{\"AtMs\":277165,\"Category\":\"Yük taşıyor\"},{\"AtMs\":285084,\"Category\":\"Yük taşıyor\"},{\"AtMs\":293003,\"Category\":\"Şarjda\"},{\"AtMs\":300922,\"Category\":\"Yük taşıyor\"},{\"AtMs\":308841,\"Category\":\"Yük taşıyor\"},{\"AtMs\":316760,\"Category\":\"Boş gidiyor\"},{\"AtMs\":324679,\"Category\":\"Boş gidiyor\"},{\"AtMs\":332598,\"Category\":\"Yük taşıyor\"},{\"AtMs\":340517,\"Category\":\"Yük taşıyor\"},{\"AtMs\":348436,\"Category\":\"Şarjda\"},{\"AtMs\":356355,\"Category\":\"Yük taşıyor\"},{\"AtMs\":364274,\"Category\":\"Yük taşıyor\"},{\"AtMs\":372193,\"Category\":\"Boş gidiyor\"},{\"AtMs\":380112,\"Category\":\"Boş gidiyor\"},{\"AtMs\":388031,\"Category\":\"Yük taşıyor\"},{\"AtMs\":395950,\"Category\":\"Yük taşıyor\"},{\"AtMs\":403869,\"Category\":\"Şarjda\"},{\"AtMs\":411788,\"Category\":\"Yük taşıyor\"},{\"AtMs\":419707,\"Category\":\"Yük taşıyor\"},{\"AtMs\":427626,\"Category\":\"Boş gidiyor\"},{\"AtMs\":435545,\"Category\":\"Boş gidiyor\"},{\"AtMs\":443464,\"Category\":\"Yük taşıyor\"}],\"SampleError\":4}",
+  "Expected": {
+   "Z": 1.6448536269516594,
+   "N": 57,
+   "Error": 4,
+   "Rows": [
+    {
+     "Category": "Yük taşıyor",
+     "Classification": "VA",
+     "Count": 33,
+     "Share": 57.89473684210527,
+     "Half": 10.756663035534455,
+     "Low": 47.138073806570816,
+     "High": 68.65139987763972,
+     "Required": 413
+    },
+    {
+     "Category": "Boş gidiyor",
+     "Classification": "NVA",
+     "Count": 16,
+     "Share": 28.07017543859649,
+     "Half": 9.789643864367013,
+     "Low": 18.280531574229475,
+     "High": 37.8598193029635,
+     "Required": 342
+    },
+    {
+     "Category": "Bekliyor",
+     "Classification": "NVA",
+     "Count": 0,
+     "Share": 0,
+     "Half": 0,
+     "Low": 0,
+     "High": 0,
+     "Required": 0
+    },
+    {
+     "Category": "Şarjda",
+     "Classification": "",
+     "Count": 8,
+     "Share": 14.035087719298245,
+     "Half": 7.56759718169915,
+     "Low": 6.467490537599095,
+     "High": 21.602684900997392,
+     "Required": 205
+    }
+   ],
+   "Required": 413,
+   "ByClass": {
+    "VA": 57.89473684210527,
+    "SVA": 0,
+    "NVA": 28.07017543859649,
+    "": 14.035087719298245
+   }
+  }
+ }
+}

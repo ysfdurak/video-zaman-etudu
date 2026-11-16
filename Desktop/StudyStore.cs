@@ -8,9 +8,10 @@ internal sealed class StudyStore
 {
     private readonly string connectionString;
 
-    public StudyStore()
+    /// <summary>directory boşsa %LOCALAPPDATA%\VideoZamanEtudu (öz-deneme ayrı bir klasör verir).</summary>
+    public StudyStore(string? directory = null)
     {
-        var directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoZamanEtudu");
+        directory ??= Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoZamanEtudu");
         Directory.CreateDirectory(directory);
         connectionString = new SqliteConnectionStringBuilder { DataSource = Path.Combine(directory, "studies.sqlite") }.ToString();
         using var db = Open();

@@ -8,9 +8,15 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | Kurulum | ZIP'i çıkar, `Desktop.exe` | Adresi aç; sunucu gerekmez |
 | Etütlerin yeri | `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite` | Tarayıcının yerel deposu (IndexedDB) |
 | Video | Bilgisayarda kalır, yolu hatırlanır | Bilgisayarda kalır, tarayıcıya yüklenmez; Chrome/Edge'de izinle hatırlanır, diğerlerinde her oturumda yeniden seçilir |
-| Excel / `.vzetud` | Var | Var (aynı sayfalar ve biçim) |
+| Arayüz dili | Türkçe ve İngilizce (sağ üstteki düğme; seçim hatırlanır) | Türkçe ve İngilizce |
+| Excel / `.vzetud` | Var (ilk sayfa **Özet**) | Var (aynı sayfalar ve biçim) |
+| Ölçüm akışı | Adım listesi, 1–9 tuşları, otomatik çevrim, geri al; gezinmek ölçümü kesmez (v2.0) | Aynısı (v1.5) |
+| Analiz ekleri | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra, adım açıklaması, kayıt notu, adım temposu, takt, yazdır/PDF, tolerans kalemleri, toplu yedek, kaldığı yerden devam, kayıt süzgeci (v2.0) | Aynısı (v1.5–v1.7) |
+| İleri analiz (v2.1 / v1.8) | Kayıt başına tempo, dağılım ve aykırı değer, hat dengeleme (Yamazumi), standart iş kombinasyon tablosu, iyileştirme fikirleri (7 israf), adım kartları (storyboard), iş örneklemesi, yan yana önce/sonra video | Aynısı |
 
-Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır.
+Windows **v2.1.0** ile tarayıcı **v1.8.0** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
+
+Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır. v2 alanları (adım listesi, notlar, adım temposu, takt, tolerans kalemleri, karşılaştırma) için `Shared/ek-alanlar.json` aynı işi görür: tarayıcı çekirdeği üretir, C# aynı paketi bayt bayt aynı metinle yazmak ve aynı sonuçları bulmak zorundadır.
 
 Masaüstü program, ilk derlemede NuGet bağımlılıkları yüklendikten sonra internet bağlantısı gerektirmez.
 
@@ -42,9 +48,9 @@ python -m http.server 8080   # sonra http://localhost:8080
 ```
 
 - Videolar ve ölçümler hiçbir sunucuya gönderilmez; sayfa yalnızca kendi dosyalarını yükler (içerik güvenliği politikası dış bağlantıyı engeller).
-- **Dil:** Arayüz Türkçe ve İngilizce. Adresteki `?lang=tr` / `?lang=en` önceliklidir; yoksa son seçim, o da yoksa tarayıcı dili kullanılır. Metinler `Web/js/i18n.js` sözlüğündedir; yeni metin eklerken iki dile de ekle (test anahtarların eşit olduğunu denetler). Windows sürümü şimdilik yalnız Türkçedir.
+- **Dil:** Arayüz Türkçe ve İngilizce. Adresteki `?lang=tr` / `?lang=en` önceliklidir; yoksa son seçim, o da yoksa tarayıcı dili kullanılır. Metinler `Web/js/i18n.js` sözlüğündedir; yeni metin eklerken iki dile de ekle (test anahtarların eşit olduğunu denetler). Windows sürümü aynı sözlükten üretilen `Desktop/Metinler.json` dosyasını kullanır: sözlüğü değiştirince `node Tools/Metinler/uret.mjs` çalıştır (test dosyanın güncel olduğunu denetler). Windows'ta dil seçimi `%LOCALAPPDATA%\VideoZamanEtudu\dil.txt` dosyasında saklanır.
 - **Demo etüdü aç** bağlantısı örnek etüdü ve videoyu sitenin kendi `Web/demo/` kopyasından tek tıkla açar; İngilizce arayüzde İngilizce demo (`synthetic-warehouse-study`) açılır. Demo videoları `Tools/DemoVideo/demo_video.py` ile üretilir. Kökteki `demo/` değişirse bu kopyayı da güncelle; test ikisinin aynı olduğunu denetler.
-- Etütler o tarayıcıya ve o bilgisayara özeldir. Tarayıcı verilerini temizlemek etütleri siler; **dışa aktararak** yedekle veya başka bilgisayara taşı.
+- Etütler o tarayıcıya ve o bilgisayara özeldir. Tarayıcı verilerini temizlemek etütleri siler; **Tümünü yedekle (.zip)** ile düzenli yedek al, tek etüdü **dışa aktararak** başka bilgisayara taşı. Yedek, **Etüdü içe al…** ile geri yüklenir; aynı etüt ikinci kez eklenmez.
 - Video, açık oturumda bellekte tutulur. Chrome ve Edge dosya iznini hatırlayabilir; diğer tarayıcılarda etüdü yeniden açınca **Videoyu yeniden seç** gerekir.
 - Önerilen video biçimi H.264 MP4. Arayüz, kısayollar, ölçüm ve analiz masaüstüyle aynıdır.
 - Testler: `cd Web` → `npm test` (Node 22). Siteye konacak dosyalar: `index.html`, `app.css`, `js/`. GitHub Actions bunları **VideoZamanEtudu_Web** paketi olarak da üretir.
@@ -53,22 +59,35 @@ python -m http.server 8080   # sonra http://localhost:8080
 ## Yayın
 
 - **Tarayıcı:** https://zaman-etudu.ysfdurak.com — Cloudflare Workers, depo köküne bağlı. `wrangler.jsonc` yalnız `Web/` klasörünü statik site olarak yayınlar; `Web/.assetsignore` testleri ve `package.json`'ı dışarıda bırakır, `Web/_headers` güvenlik başlıklarını ekler. `main`'e her gönderim siteyi günceller. Yerelde Cloudflare'in aynısıyla denemek için: `npx wrangler dev`.
-- **Windows:** `v1.2.0` gibi bir etiket gönderildiğinde Actions Windows ZIP'ini üretir ve `RELEASE_NOTES.md`'deki ilk bölümle GitHub sürümünü (Release) oluşturur:
+- **Windows:** `v2.1.0` gibi bir etiket gönderildiğinde Actions Windows ZIP'ini üretir ve `RELEASE_NOTES.md`'deki ilk bölümle GitHub sürümünü (Release) oluşturur:
 
 ```powershell
-git tag v1.2.0
-git push origin v1.2.0
+git tag v2.1.0
+git push origin v2.1.0
 ```
 
-Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workflow** ile `surum` alanına `v1.2.0` yazarak da aynı sürümü çıkarabilirsin.
+Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workflow** ile `surum` alanına `v2.1.0` yazarak da aynı sürümü çıkarabilirsin.
 
 ## İlk etüt
 
-1. Çalışmalar ekranında ad ve kod yaz. MP4 video seç ve yeni çalışmayı başlat. Video oynatma Windows codec desteğine bağlıdır.
-2. Videoda başlangıç konumuna git ve **Başla**’ya bas. Adım adı ve çevrim numarasını seç. Adım sonunda **Ölç**’e bas. Her Ölç işlemi sonraki adımın başlangıcını belirler. **Durdur** yeni kayıt eklemeden ölçüm modunu kapatır. Hızlı adımlarda **Hız** listesinden 0,5× veya 0,25× seçebilirsin; ölçüm video zamanından alındığı için süreler değişmez.
-3. Bir kayda tıklayınca video o adımın başına gider. Sınıfı, çevrim numarasını, adım adını veya kapsam dışı durumunu düzenleyip **Seçili satırı güncelle**’ye bas. Aynı ada sahip satırlara toplu sınıf verebilirsin.
-4. Bağımsız veya çakışan bir aralık için önce **Aralık başlangıcı al**, bitişe gittikten sonra **Aralığı ekle**. Paralel işleri aynı çevrim numarasıyla kaydet. Ölçümlerin dışındaki boşluklar, ölçülen geçen süreye eklenmez.
-5. Analizde ayarları uygula. Seyrek bir adım için satırını seçip her kaç çevrimde bir gerçekleştiğini gir. **Excel’e aktar** ile ham ve işlenmiş veriyi kaydet.
+### Tarayıcı sürümü (v1.5)
+
+1. **Çalışmalar** ekranında ad ve kod yaz, videoyu seç. İstersen **Adımlar ve etüt bilgileri** bölümüne süreç adımlarını (her satıra bir) ve operatör, istasyon, vardiya gibi bilgileri gir. **Yeni çalışma başlat**.
+2. **Video ve ölçüm** ekranında adım listesi sağdadır. Eksik adımı **Yeni adım** kutusuna yazıp Enter'a bas. Seçili adımın sınıfını (VA/SVA/NVA) ve **bitiş anını** (Ölç'e ne zaman basılacağı) tanımla; kayıtlar sınıfı adımdan alır.
+3. Videoyu adımın başına getir ve **Başla**'ya bas. Adım bitince **Ölç**: kayıt eklenir, sıradaki adım seçilir. Son adımdan sonra çevrim kendiliğinden 1 artar. Adım sınırını bulmak için zaman çizgisinde gezinebilirsin; ölçüm kesilmez.
+4. Araya giren bir bekleme için o adımı seç (ya da ekle), **Sonraki kayıt kapsam dışı**'yı işaretle ve Ölç'e bas. İşaret kalkar, sıra önceki adıma döner.
+5. Yanlış kaydı **Son kaydı geri al** ya da Ctrl+Z ile geri al. Eski bir kaydı düzeltmek için tabloda satıra tıkla; **Seçili kayıt** kutusunda değiştir.
+6. **Analiz ve rapor** ekranında tempo ve toleransı gir; değerler alan değişince uygulanır. Takt süresi girersen özette takt doluluğu ve gereken operatör sayısı çıkar. Bir adımın temposu farklıysa tabloda adımı seçip **Bu adımın temposu**'nu gir. Grafikleri ve yeterliliği incele; **Excel'e aktar** ya da **Yazdır / PDF** ile paylaş.
+7. İyileştirmeden sonra aynı işi yeniden ölç. **Çalışmalar → Önce / sonra karşılaştır…** iki etüdün adım ve toplam farkını gösterir.
+
+### Windows sürümü (v2.0)
+
+Akış tarayıcı sürümüyle aynıdır (yukarıdaki adımlar). Farklar:
+- Etütler bu bilgisayarda, Windows kullanıcısına ait yerel kayıtta tutulur; video yolu hatırlanır.
+- **Demo etüdü aç** uygulama klasöründeki `demo` klasörünü kullanır (ZIP'te hazır gelir).
+- **Yazdır / PDF** Windows yazdırma penceresini açar; PDF için "Microsoft Print to PDF" yazıcısını seç.
+- Dil düğmesi (sağ üst) pencereyi seçilen dilde yeniden kurar; açık etüt ve bölüm korunur.
+- Video oynatma Windows codec desteğine bağlıdır (H.264 MP4 önerilir).
 
 ### Klavye kısayolları (Video ve ölçüm ekranı)
 
@@ -76,12 +95,15 @@ Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workf
 |---|---|
 | Boşluk | Oynat / duraklat |
 | Enter | Başla, ardından Ölç |
+| 1–9 | Adım seç |
+| + / − | Çevrimi artır / azalt |
+| Ctrl + Z | Son kaydı geri al |
 | Esc | Durdur (kayıt eklemez) |
 | ← / → | 0,1 sn geri / ileri |
 | Shift + ← / → | 1 sn geri / ileri |
 | Ctrl + ← / → | 0,04 sn (25 fps videoda yaklaşık 1 kare) |
 
-Kısayollar imleç bir metin kutusunda veya açılır listedeyken çalışmaz; önce video alanına ya da ölçüm tablosuna tıkla. Ok tuşlarıyla ince konumlama (en fazla 1 sn) videoyu duraklatır ama ardışık ölçümü kesmez; böylece adım sınırını kare kare bulup Ölç'e basabilirsin. Zaman çizgisinde atlamak veya satır seçmek ise ölçümü keser.
+Kısayollar imleç bir metin kutusundayken çalışmaz; önce videoya ya da tabloya tıkla. İki sürümde de konum değiştirmek ölçümü kesmez: adımın bittiği kareyi bulup Ölç'e basabilirsin. Ölç başlangıcın gerisindeyse kayıt eklenmez ve uyarı çıkar.
 
 ### Etüt silme
 
@@ -122,7 +144,7 @@ Hesap veya paket kuralı değişirse ortak örnek dosyasını yeniden üret ve i
 dotnet run --project .\Tools\EsdegerUretici -c Release -- .\Shared\esdeger-ornekler.json .\demo\sentetik-depo-etudu.vzetud
 ```
 
-GitHub Actions, Windows üzerinde WPF projesini derler ve bu kontrolleri çalıştırır; ayrı bir Linux işinde tarayıcı sürümünün testlerini yürütür. Video oynatma, arayüz ve Excel çıktısı için örnek etütle manuel kabul kontrolünü uygulayın.
+GitHub Actions, Windows üzerinde WPF projesini derler, bu kontrolleri çalıştırır ve ardından **arayüz öz-denemesini** yürütür: `Desktop.exe --self-test demo <klasör>` pencereyi Türkçe ve İngilizce kurar, demo etüdünü açar; süzgeç, adım ekleme, tolerans kalemleri, takt, adım temposu, Excel, yedek ve karşılaştırma yollarını dener ve her bölümün ekran görüntüsünü kaydeder (yapıt: **VideoZamanEtudu_OzDeneme**). Ayrı bir Linux işinde tarayıcı sürümünün testleri yürür. Yazdırma ve gerçek kullanım için örnek etütle elle kabul kontrolünü de uygulayın.
 
 ## Windows yayın paketi
 

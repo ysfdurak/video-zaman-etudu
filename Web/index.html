@@ -32,9 +32,10 @@
     <section id="panel-0" role="tabpanel" aria-labelledby="tab-0">
       <p data-i18n="home.lead">Yeni etüt oluştur veya kayıtlı bir etüdü aç.</p>
       <ol class="how" aria-label="Nasıl çalışır" data-i18n-attr="aria-label:how.label"><li data-i18n-html="how.1"></li><li data-i18n-html="how.2"></li><li data-i18n-html="how.3"></li></ol>
-      <p class="note" data-i18n-html="home.note">Etütler yalnızca bu tarayıcıda saklanır. Tarayıcı verilerini temizlemek etütleri de siler; önemli etütleri <b>dışa aktararak</b> yedekleyin.</p>
+      <p class="note" data-i18n-html="home.note">Etütler yalnızca bu tarayıcıda saklanır. Tarayıcı verilerini temizlemek etütleri de siler; düzenli olarak <b>Tümünü yedekle</b> ile .zip yedeği alın.</p>
       <p class="hint"><span data-i18n="demo.before">İlk kez mi deniyorsunuz?</span> <button id="demo" class="link" data-i18n="demo.button">Demo etüdü aç</button> <span data-i18n="demo.after">— sentetik depo videosu ve hazır ölçümlerle analiz ekranını hemen görün.</span></p>
       <div class="row">
+        <label class="field"><span data-i18n="field.studyType">Etüt türü</span><select id="new-type"><option value="" data-i18n="studyType.time">Zaman etüdü</option><option value="sampling" data-i18n="studyType.sampling">İş örneklemesi</option></select></label>
         <label class="field"><span data-i18n="field.name">Etüt adı</span><input id="new-name" type="text" size="28" autocomplete="off"></label>
         <label class="field"><span data-i18n="field.code">Etüt kodu</span><input id="new-code" type="text" size="14" autocomplete="off"></label>
       </div>
@@ -42,16 +43,27 @@
         <label class="field grow"><span data-i18n="field.video">Video dosyası</span><input id="new-video" type="text" readonly placeholder="Video seçilmedi" data-i18n-attr="placeholder:placeholder.video"></label>
         <button id="pick-new-video" data-i18n="btn.pickFile">Dosya seç…</button>
       </div>
+      <details class="more" id="new-more">
+        <summary data-i18n="new.more">Adımlar ve etüt bilgileri (isteğe bağlı, sonra da girilebilir)</summary>
+        <div class="row">
+          <label class="field grow"><span id="new-steps-label" data-i18n="field.newSteps">İş adımları (her satıra bir adım, süreç sırasıyla)</span><textarea id="new-steps" rows="4" data-i18n-attr="placeholder:placeholder.newSteps"></textarea></label>
+        </div>
+        <div class="row info-row" id="new-info"></div>
+      </details>
       <div class="row">
         <button id="create" class="primary" data-i18n="btn.create">Yeni çalışma başlat</button>
         <button id="open" data-i18n="btn.open">Seçili çalışmayı aç</button>
-        <button id="import" data-i18n="btn.import">Etüdü içe al…</button>
+        <button id="import" class="gap-left" data-i18n="btn.import">Etüdü içe al…</button>
         <button id="export" data-i18n="btn.export">Seçili etüdü dışa aktar…</button>
-        <button id="delete" class="danger" data-i18n="btn.delete">Seçili etüdü sil…</button>
+        <button id="backup" data-i18n="btn.backup">Tümünü yedekle (.zip)</button>
+        <button id="compare" class="gap-left" data-i18n="btn.compare">Önce / sonra karşılaştır…</button>
+        <button id="delete" class="danger gap-left" data-i18n="btn.delete">Seçili etüdü sil…</button>
       </div>
+      <p id="studies-status" class="status" role="status" aria-live="polite" hidden></p>
+      <p class="hint" data-i18n="studies.hint">Satıra tıklayarak seçin, çift tıklayarak açın. Dışa aktarma, karşılaştırma ve silme seçili etüt üzerinde çalışır.</p>
       <div tabindex="0" class="table-wrap tall">
         <table id="studies" class="grid" aria-label="Kayıtlı etütler" data-i18n-attr="aria-label:studies.label">
-          <thead><tr><th data-i18n="th.code">Kod</th><th data-i18n="th.name">Etüt adı</th><th data-i18n="th.video">Video</th><th data-i18n="th.updated">Son düzenleme</th></tr></thead>
+          <thead><tr><th data-i18n="th.code">Kod</th><th data-i18n="th.name">Etüt adı</th><th data-i18n="th.where">İstasyon · operatör</th><th data-i18n="th.count">Ölçüm</th><th data-i18n="th.cycles">Çevrim</th><th data-i18n="th.state">Durum</th><th data-i18n="th.video">Video</th><th data-i18n="th.updated">Son düzenleme</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -60,33 +72,13 @@
     <!-- 2 Video ve ölçüm -->
     <section id="panel-1" role="tabpanel" aria-labelledby="tab-1" hidden>
       <p id="status" class="status" role="status" aria-live="polite"></p>
-      <div class="row">
-        <label class="field"><span data-i18n="field.step">İş adımı</span><input id="step" type="text" size="18" value="Adım" autocomplete="off"></label>
-        <label class="field"><span data-i18n="field.cycle">Çevrim</span><input id="cycle" type="text" size="4" value="1" inputmode="numeric" autocomplete="off"></label>
-        <label class="field"><span data-i18n="field.class">Sınıf</span><select id="classification"><option value=""></option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
-        <label class="check"><input id="excluded" type="checkbox"> <span data-i18n="check.excluded">Kapsam dışı</span></label>
-        <button id="measure" class="primary measure">Başla</button>
-        <button id="stop" data-i18n="btn.stop">Durdur</button>
-        <button id="mark-start" data-i18n="btn.markStart">Aralık başlangıcı al</button>
-        <button id="add-marked" data-i18n="btn.addMarked">Aralığı ekle</button>
-      </div>
-      <div class="row">
-        <button id="edit-row" data-i18n="btn.editRow">Seçili satırı güncelle</button>
-        <button id="bulk-class" data-i18n="btn.bulk">Sınıfı aynı adı taşıyanlara uygula</button>
-        <button id="delete-row" class="danger" data-i18n="btn.deleteRow">Seçili satırı sil</button>
-      </div>
-      <details class="help"><summary data-i18n="help.measure.title">Sınıf, çevrim ve kapsam dışı ne demek?</summary><dl data-i18n-html="help.measure.body"></dl></details>
-      <p class="hint" data-i18n="measure.hint">Ölç son aralığı kaydeder. Durdur ölçüm modunu kapatır. Çakışan veya bağımsız aralık için başlangıcı alıp bitiş konumunda aralığı ekleyin.</p>
       <div class="split">
-        <div tabindex="0" class="table-wrap">
-          <table id="observations" class="grid" aria-label="Ölçümler" data-i18n-attr="aria-label:observations.label">
-            <thead><tr><th data-i18n="th.start">Başlangıç (ms)</th><th data-i18n="th.end">Bitiş (ms)</th><th data-i18n="th.duration">Süre (sn)</th><th data-i18n="th.step">İş adımı</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.excluded">Kapsam dışı</th><th data-i18n="th.cycle">Çevrim</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
         <div class="player">
           <div class="frame"><video id="video" preload="auto" playsinline disablepictureinpicture></video></div>
-          <input id="timeline" type="range" min="0" max="10" step="1" value="0" disabled aria-label="Zaman çizgisi" data-i18n-attr="aria-label:timeline.label">
+          <div class="timeline-wrap">
+            <div id="segments" class="segments" aria-hidden="true"></div>
+            <input id="timeline" type="range" min="0" max="10" step="1" value="0" disabled aria-label="Zaman çizgisi" data-i18n-attr="aria-label:timeline.label">
+          </div>
           <div class="row controls">
             <output id="position" class="position">00:00:00.000</output>
             <button id="play" data-i18n="btn.play">Oynat</button>
@@ -96,57 +88,249 @@
             <label class="field inline"><span data-i18n="field.speed">Hız</span><select id="speed"><option value="0.25" data-i18n="speed.0.25">0,25×</option><option value="0.5" data-i18n="speed.0.5">0,5×</option><option value="1" selected data-i18n="speed.1">1×</option><option value="1.5" data-i18n="speed.1.5">1,5×</option><option value="2" data-i18n="speed.2">2×</option></select></label>
             <button id="relink" data-i18n="btn.relink">Videoyu yeniden seç</button>
           </div>
-          <p class="hint" data-i18n="shortcuts">Kısayollar: Boşluk oynat/duraklat · Enter Başla/Ölç · Esc Durdur · ←/→ 0,1 sn · Shift+←/→ 1 sn · Ctrl+←/→ 0,04 sn (≈1 kare). Kısayollar metin kutusu veya açılır liste seçiliyken çalışmaz. İnce konumlama (en fazla 1 sn) ölçümü kesmez; zaman çizgisinde atlama keser.</p>
+          <div class="legend" id="segment-legend" aria-hidden="true"></div>
+          <p class="hint" data-i18n="shortcuts">Kısayollar</p>
+        </div>
+        <div class="measure-side">
+          <div id="sampling-side" hidden>
+            <div class="box">
+              <div class="box-head"><h2 data-i18n="s.title">İş örneklemesi</h2><span class="hint" data-i18n="s.keys">1–9: o andaki kategoriyi kaydet</span></div>
+              <p class="hint" data-i18n="s.how">Videoyu rastgele bir ana götürün, o anda ne yapıldığına bakın ve kategoriyi seçin. Gözlem sayısı arttıkça paylar kesinleşir.</p>
+              <div id="categories" class="steps" role="group" aria-label="Kategoriler" data-i18n-attr="aria-label:s.categories"></div>
+              <div class="row add-step">
+                <label class="field grow"><span data-i18n="s.newCategory">Yeni kategori</span><input id="new-category" type="text" autocomplete="off" data-i18n-attr="placeholder:s.newCategoryPh"></label>
+                <label class="field"><span data-i18n="field.class">Sınıf</span><select id="new-category-class"><option value="" data-i18n="class.none">—</option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+                <button id="add-category" data-i18n="s.addCategory">Kategori ekle</button>
+              </div>
+            </div>
+            <div class="row big">
+              <button id="random-moment" class="primary" data-i18n="s.random">Rastgele ana git</button>
+              <label class="field inline"><span data-i18n="s.every">Her</span><input id="sample-step" type="text" size="3" value="30" inputmode="numeric"><span data-i18n="s.seconds">sn</span></label>
+              <button id="next-moment" data-i18n="s.next">Sonraki ana git</button>
+              <button id="undo-sample" data-i18n="s.undo">Son gözlemi geri al</button>
+            </div>
+            <p id="sample-count" class="now-note" aria-live="polite"></p>
+            <div tabindex="0" class="table-wrap">
+              <table id="samples" class="grid" aria-label="Gözlemler" data-i18n-attr="aria-label:s.samples">
+                <thead><tr><th data-i18n="s.thAt">An</th><th data-i18n="s.thCategory">Kategori</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.note">Not</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div id="sample-editor" class="row" hidden>
+              <label class="field grow"><span data-i18n="field.rowNote">Not</span><input id="sample-note" type="text" maxlength="200" autocomplete="off"></label>
+              <button id="sample-save" data-i18n="btn.editRow">Kaydı güncelle</button>
+              <button id="sample-delete" class="danger" data-i18n="btn.deleteRow">Kaydı sil</button>
+            </div>
+          </div>
+          <div id="time-side">
+          <div class="box">
+            <div class="box-head"><h2 data-i18n="h.steps">Adımlar</h2><span class="hint" data-i18n="steps.hint">Tıklayarak ya da 1–9 tuşlarıyla seçin</span></div>
+            <div id="steps" class="steps" role="group" aria-label="Adımlar" data-i18n-attr="aria-label:h.steps"></div>
+            <div id="step-tools" class="row step-tools" hidden>
+              <button id="step-left" data-i18n="btn.stepLeft" data-i18n-attr="title:title.stepLeft">◀ Öne al</button>
+              <button id="step-right" data-i18n="btn.stepRight" data-i18n-attr="title:title.stepRight">Sona al ▶</button>
+              <label class="field inline"><span data-i18n="field.class">Sınıf</span><select id="step-class"><option value="" data-i18n="class.none">—</option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+              <button id="step-rename" data-i18n="btn.stepRename">Yeniden adlandır…</button>
+              <button id="step-remove" class="danger" data-i18n="btn.stepRemove">Listeden çıkar</button>
+              <label class="field grow"><span data-i18n="field.stepNote">Bitiş anı / açıklama</span><input id="step-note" type="text" maxlength="200" autocomplete="off" data-i18n-attr="placeholder:placeholder.stepNote"></label>
+              <label class="field inline"><span data-i18n="field.workType">Tür</span><select id="step-type"><option value="" data-i18n="class.none">—</option><option value="Manual" data-i18n="type.Manual">El işi</option><option value="Machine" data-i18n="type.Machine">Makine</option><option value="Walk" data-i18n="type.Walk">Yürüme</option><option value="Wait" data-i18n="type.Wait">Bekleme</option></select></label>
+              <label class="field inline"><span data-i18n="field.waste">İsraf</span><select id="step-waste"><option value="" data-i18n="class.none">—</option><option value="Transport" data-i18n="waste.Transport">Transport</option><option value="Inventory" data-i18n="waste.Inventory">Inventory</option><option value="Motion" data-i18n="waste.Motion">Motion</option><option value="Waiting" data-i18n="waste.Waiting">Waiting</option><option value="Overproduction" data-i18n="waste.Overproduction">Overproduction</option><option value="Overprocessing" data-i18n="waste.Overprocessing">Overprocessing</option><option value="Defects" data-i18n="waste.Defects">Defects</option></select></label>
+              <label class="field grow"><span data-i18n="field.idea">İyileştirme fikri</span><input id="step-idea" type="text" maxlength="200" autocomplete="off" data-i18n-attr="placeholder:placeholder.idea"></label>
+              <button id="step-frame" data-i18n="btn.stepFrame" data-i18n-attr="title:title.stepFrame">Bu kareyi adım görseli yap</button>
+            </div>
+            <div class="row add-step">
+              <label class="field grow"><span data-i18n="field.newStep">Yeni adım</span><input id="new-step" type="text" autocomplete="off" data-i18n-attr="placeholder:placeholder.newStep"></label>
+              <label class="field"><span data-i18n="field.class">Sınıf</span><select id="new-step-class"><option value="" data-i18n="class.none">—</option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+              <button id="add-step" data-i18n="btn.addStep">Adım ekle</button>
+            </div>
+            <label class="check"><input id="auto-advance" type="checkbox" checked> <span data-i18n="check.autoAdvance">Ölç’ten sonra sıradaki adıma geç; son adımdan sonra çevrimi 1 artır</span></label>
+          </div>
+          <div class="measure-bar">
+            <div class="cycle-box">
+              <span class="field-label" id="cycle-label" data-i18n="field.cycle">Çevrim</span>
+              <button id="cycle-down" aria-label="Çevrimi azalt" data-i18n-attr="aria-label:title.cycleDown">−</button>
+              <input id="cycle" type="text" size="3" value="1" inputmode="numeric" autocomplete="off" aria-labelledby="cycle-label">
+              <button id="cycle-up" aria-label="Çevrimi artır" data-i18n-attr="aria-label:title.cycleUp">+</button>
+            </div>
+            <div class="now"><span class="field-label" data-i18n="now.label">Sıradaki kayıt</span><strong id="now-step">—</strong><small id="now-note" class="now-note" hidden></small><small id="now-live" class="now-live" aria-live="off" hidden></small></div>
+            <label class="check"><input id="excluded" type="checkbox"> <span data-i18n="check.excludedNext">Sonraki kayıt kapsam dışı</span></label>
+            <label class="field inline"><span data-i18n="field.rating">Tempo puanı %</span><input id="now-rating" type="text" size="4" inputmode="decimal" autocomplete="off" data-i18n-attr="placeholder:placeholder.rating;title:title.rating"></label>
+          </div>
+          <div class="row big">
+            <button id="measure" class="primary measure">Başla</button>
+            <button id="stop" data-i18n="btn.stop">Durdur</button>
+            <button id="undo" data-i18n="btn.undo" data-i18n-attr="title:title.undo">Son kaydı geri al</button>
+          </div>
+          <details class="help"><summary data-i18n="help.measure.title">Sınıf, çevrim ve kapsam dışı ne demek?</summary><dl data-i18n-html="help.measure.body"></dl></details>
+          <div class="row obs-filter">
+            <label class="field"><span data-i18n="filter.step">Göster: adım</span><select id="filter-step"></select></label>
+            <label class="field"><span data-i18n="filter.cycle">çevrim</span><select id="filter-cycle"></select></label>
+            <span id="obs-count" class="hint"></span>
+          </div>
+          <div tabindex="0" class="table-wrap">
+            <table id="observations" class="grid" aria-label="Ölçümler" data-i18n-attr="aria-label:observations.label">
+              <thead><tr><th data-i18n="th.start">Başlangıç</th><th data-i18n="th.end">Bitiş</th><th data-i18n="th.duration">Süre (sn)</th><th data-i18n="th.step">İş adımı</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.excluded">Kapsam dışı</th><th data-i18n="th.cycle">Çevrim</th><th data-i18n="th.rating">Tempo</th><th data-i18n="th.note">Not</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="row-editor" class="box row-editor" hidden>
+            <h2 data-i18n="h.rowEditor">Seçili kayıt</h2>
+            <div class="row">
+              <label class="field"><span data-i18n="field.step">İş adımı</span><input id="row-step" type="text" size="16" list="step-names" autocomplete="off"></label>
+              <label class="field"><span data-i18n="field.cycle">Çevrim</span><input id="row-cycle" type="text" size="3" inputmode="numeric" autocomplete="off"></label>
+              <label class="field"><span data-i18n="field.class">Sınıf</span><select id="row-class"><option value="" data-i18n="class.none">—</option><option>VA</option><option>SVA</option><option>NVA</option></select></label>
+              <label class="check"><input id="row-excluded" type="checkbox"> <span data-i18n="check.excluded">Kapsam dışı</span></label>
+              <label class="field"><span data-i18n="field.rating">Tempo puanı %</span><input id="row-rating" type="text" size="4" inputmode="decimal" autocomplete="off" data-i18n-attr="placeholder:placeholder.rating"></label>
+              <label class="field grow"><span data-i18n="field.rowNote">Not</span><input id="row-note" type="text" maxlength="200" autocomplete="off" data-i18n-attr="placeholder:placeholder.rowNote"></label>
+            </div>
+            <div class="row">
+              <button id="edit-row" class="primary" data-i18n="btn.editRow">Kaydı güncelle</button>
+              <button id="bulk-class" data-i18n="btn.bulk">Sınıfı aynı adı taşıyanlara uygula</button>
+              <button id="delete-row" class="danger" data-i18n="btn.deleteRow">Kaydı sil</button>
+              <button id="row-close" class="link" data-i18n="btn.rowClose">Seçimi kaldır</button>
+            </div>
+          </div>
+          <datalist id="step-names"></datalist>
+          <details class="more">
+            <summary data-i18n="more.interval">Bağımsız veya çakışan aralık ekle</summary>
+            <p class="hint" data-i18n="measure.hint">Paralel bir iş için: başlangıçta “Aralık başlangıcı al”, bitişte “Aralığı ekle”. Kayıt seçili adım ve çevrimle eklenir; ardışık ölçümü etkilemez.</p>
+            <div class="row">
+              <button id="mark-start" data-i18n="btn.markStart">Aralık başlangıcı al</button>
+              <button id="add-marked" data-i18n="btn.addMarked">Aralığı ekle</button>
+            </div>
+          </details>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- 3 Analiz ve rapor -->
     <section id="panel-2" role="tabpanel" aria-labelledby="tab-2" hidden>
+      <details class="more" id="info-box">
+        <summary data-i18n="info.title">Etüt bilgileri</summary>
+        <div class="row info-row" id="info-fields"></div>
+      </details>
+      <div class="print-only print-head" id="print-head"></div>
+      <h2 class="section-title no-print" data-i18n="h.settings">Analiz ayarları</h2>
       <div class="row">
         <label class="field"><span data-i18n="field.confidence">Güven %</span><input id="confidence" type="text" size="5" inputmode="decimal"></label>
-        <label class="field"><span data-i18n="field.target">Hedef hata %</span><input id="target" type="text" size="5" inputmode="decimal"></label>
-        <label class="field"><span data-i18n="field.pace">Tempo %</span><input id="pace" type="text" size="5" inputmode="decimal"></label>
-        <label class="field"><span data-i18n="field.allowance">Tolerans %</span><input id="allowance" type="text" size="5" inputmode="decimal"></label>
-        <label class="field"><span data-i18n="field.group">Grup (ms)</span><input id="group-ms" type="text" size="5" inputmode="numeric"></label>
-        <label class="field"><span data-i18n="field.method">Baz süre yöntemi</span><select id="method"><option value="0" data-i18n="method.mean">Aritmetik ortalama</option><option value="1" data-i18n="method.repeated">En çok tekrar eden en küçük süre</option></select></label>
-        <label class="check"><input id="stable" type="checkbox"> <span data-i18n="check.stable">Süreç kararlı</span></label>
+        <label class="field time-only"><span data-i18n="field.target">Hedef hata %</span><input id="target" type="text" size="5" inputmode="decimal"></label>
+        <label class="field time-only"><span data-i18n="field.pace">Tempo %</span><input id="pace" type="text" size="5" inputmode="decimal"></label>
+        <label class="field time-only"><span data-i18n="field.allowance">Tolerans %</span><input id="allowance" type="text" size="5" inputmode="decimal"></label>
+        <label class="field time-only"><span data-i18n="field.group">Grup (ms)</span><input id="group-ms" type="text" size="5" inputmode="numeric"></label>
+        <label class="field time-only"><span data-i18n="field.method">Baz süre yöntemi</span><select id="method"><option value="0" data-i18n="method.mean">Aritmetik ortalama</option><option value="1" data-i18n="method.repeated">En çok tekrar eden en küçük süre</option></select></label>
+        <label class="field time-only"><span data-i18n="field.takt">Takt süresi (sn)</span><input id="takt" type="text" size="6" inputmode="decimal" data-i18n-attr="placeholder:placeholder.takt"></label>
+        <label class="check time-only"><input id="stable" type="checkbox"> <span data-i18n="check.stable">Süreç kararlı</span></label>
+        <label class="field sampling-only"><span data-i18n="field.sampleError">Hedef mutlak hata (puan)</span><input id="sample-error" type="text" size="5" inputmode="decimal" data-i18n-attr="placeholder:placeholder.sampleError"></label>
       </div>
+      <details class="more no-print time-only" id="allowance-parts">
+        <summary><span data-i18n="al.title">Toleransı kalemlere ayır</span> · <span id="al-sum"></span></summary>
+        <p class="hint" data-i18n="al.hint">Kalem girerseniz Tolerans % alanı bunların toplamı olur. Boş bırakılan kalem 0 sayılır.</p>
+        <div class="row">
+          <label class="field"><span data-i18n="al.Personal">Kişisel ihtiyaç %</span><input id="al-Personal" type="text" size="5" inputmode="decimal"></label>
+          <label class="field"><span data-i18n="al.Fatigue">Yorgunluk %</span><input id="al-Fatigue" type="text" size="5" inputmode="decimal"></label>
+          <label class="field"><span data-i18n="al.Delay">Kaçınılmaz gecikme %</span><input id="al-Delay" type="text" size="5" inputmode="decimal"></label>
+          <label class="field"><span data-i18n="al.Other">Diğer %</span><input id="al-Other" type="text" size="5" inputmode="decimal"></label>
+        </div>
+      </details>
+      <p id="settings-error" class="error" role="alert" hidden></p>
       <div class="row">
-        <button id="apply-settings" class="primary" data-i18n="btn.applySettings">Ayarları uygula</button>
-        <label class="field"><span data-i18n="field.every">Her N çevrimde</span><input id="every" type="text" size="4" value="1" inputmode="numeric"></label>
-        <button id="apply-frequency" data-i18n="btn.applyFrequency">Seçili adıma sıklık uygula</button>
-        <button id="t-table" data-i18n="btn.tTable">t tablosu ve formül</button>
-        <button id="excel" data-i18n="btn.excel">Excel’e aktar…</button>
+        <button id="excel" class="primary" data-i18n="btn.excel">Excel’e aktar…</button>
+        <button id="print" data-i18n="btn.print">Yazdır / PDF</button>
+        <button id="t-table" class="time-only" data-i18n="btn.tTable">t tablosu ve formül</button>
+        <button id="print-story" class="time-only" data-i18n="btn.printStory">Adım kartlarını yazdır</button>
       </div>
       <p id="analysis-status" class="hint"></p>
-      <div id="summary" class="summary" aria-live="polite"></div>
-      <details class="help"><summary data-i18n="help.analysis.title">Ayarlar ve sütunlar ne anlatıyor?</summary><dl data-i18n-html="help.analysis.body"></dl></details>
-      <div tabindex="0" class="table-wrap">
-        <table id="results" class="grid" aria-label="Adım analizi" data-i18n-attr="aria-label:results.label">
-          <thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="th.r.n">n</th><th data-i18n="th.r.excluded">Dışarıda</th><th data-i18n="th.r.mean">Ort.</th><th data-i18n="th.r.median">Medyan</th><th data-i18n="th.r.min">Min</th><th data-i18n="th.r.max">Maks</th><th data-i18n="th.r.sd">Std sapma</th><th data-i18n="th.r.t">t</th><th data-i18n="th.r.error">Hata %</th><th data-i18n="th.r.sufficiency">Yeterlilik</th><th data-i18n="th.r.base">Baz</th><th data-i18n="th.r.normal">Normal</th><th data-i18n="th.r.standard">Standart</th><th data-i18n="th.r.every">Her N çevrim</th><th data-i18n="th.r.contribution">Katkı</th><th data-i18n="th.r.method">Yöntem</th></tr></thead>
-          <tbody></tbody>
-        </table>
+      <div id="analysis-empty" class="empty-state" hidden>
+        <p data-i18n="analysis.emptyLead">Bu etütte henüz ölçüm yok. Önce videoda adımları ölçün; sonuçlar burada görünür.</p>
+        <button id="go-measure" class="primary" data-i18n="btn.goMeasure">Video ve ölçüme git</button>
       </div>
-      <div class="lower">
-        <div>
-          <h2 data-i18n="h.cycles">Çevrimler</h2>
-          <div tabindex="0" class="table-wrap short">
-            <table id="cycles" class="grid" aria-label="Çevrimler" data-i18n-attr="aria-label:h.cycles"><thead><tr><th data-i18n="th.c.cycle">Çevrim</th><th data-i18n="th.c.elapsed">Ölçülen geçen süre (sn)</th><th data-i18n="th.c.workload">İş yükü (sn)</th></tr></thead><tbody></tbody></table>
+      <div id="analysis-body">
+        <h2 class="section-title" data-i18n="h.results">Sonuç</h2>
+        <div id="summary" class="summary" aria-live="polite"></div>
+        <div id="charts" class="charts"></div>
+        <details class="help"><summary data-i18n="help.analysis.title">Ayarlar ve sütunlar ne anlatıyor?</summary><dl data-i18n-html="help.analysis.body"></dl></details>
+        <h2 class="section-title" data-i18n="h.stepTable">Adım analizi</h2>
+        <div class="box step-settings">
+          <div class="row">
+            <span class="sel-step"><span class="field-label" data-i18n="sel.label">Seçili adım</span> <strong id="sel-step">—</strong></span>
+            <label class="field"><span data-i18n="field.every">Her N çevrimde</span><input id="every" type="text" size="4" value="1" inputmode="numeric"></label>
+            <label class="field"><span data-i18n="field.stepPace">Bu adımın temposu %</span><input id="step-pace" type="text" size="5" inputmode="decimal" data-i18n-attr="placeholder:placeholder.stepPace"></label>
+            <button id="apply-step" data-i18n="btn.applyStep">Seçili adıma uygula</button>
+          </div>
+          <p class="hint" data-i18n="sel.hint">Tablodan bir adım seçin. Seyrek adım (ör. 3 siparişte bir kontrol) için N girin. Adım temposu boşsa genel tempo kullanılır.</p>
+        </div>
+        <div tabindex="0" class="table-wrap">
+          <table id="results" class="grid" aria-label="Adım analizi" data-i18n-attr="aria-label:results.label">
+            <thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="th.r.n">n</th><th data-i18n="th.r.excluded">Dışarıda</th><th data-i18n="th.r.mean">Ort.</th><th data-i18n="th.r.median">Medyan</th><th data-i18n="th.r.min">Min</th><th data-i18n="th.r.max">Maks</th><th data-i18n="th.r.sd">Std sapma</th><th data-i18n="th.r.t">t</th><th data-i18n="th.r.error">Hata %</th><th data-i18n="th.r.sufficiency">Yeterlilik</th><th data-i18n="th.r.base">Baz</th><th data-i18n="th.r.pace">Tempo %</th><th data-i18n="th.r.normal">Normal</th><th data-i18n="th.r.standard">Standart</th><th data-i18n="th.r.every">Her N çevrim</th><th data-i18n="th.r.contribution">Katkı</th><th data-i18n="th.r.method">Yöntem</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="lower">
+          <div>
+            <h2 data-i18n="h.cycles">Çevrimler</h2>
+            <div tabindex="0" class="table-wrap short">
+              <table id="cycles" class="grid" aria-label="Çevrimler" data-i18n-attr="aria-label:h.cycles"><thead><tr><th data-i18n="th.c.cycle">Çevrim</th><th data-i18n="th.c.elapsed">Ölçülen geçen süre (sn)</th><th data-i18n="th.c.workload">İş yükü (sn)</th><th data-i18n="th.c.diff">Ortalamadan fark</th></tr></thead><tbody></tbody></table>
+            </div>
+          </div>
+          <div>
+            <h2 data-i18n="h.groups">Seçili adımın süre grupları</h2>
+            <div tabindex="0" class="table-wrap short">
+              <table id="groups" class="grid" aria-label="Süre grupları" data-i18n-attr="aria-label:h.groups"><thead><tr><th data-i18n="th.g.mean">Grup ortalaması (sn)</th><th data-i18n="th.g.count">Tekrar</th></tr></thead><tbody></tbody></table>
+            </div>
           </div>
         </div>
-        <div>
-          <h2 data-i18n="h.groups">Seçili adımın süre grupları</h2>
-          <div tabindex="0" class="table-wrap short">
-            <table id="groups" class="grid" aria-label="Süre grupları" data-i18n-attr="aria-label:h.groups"><thead><tr><th data-i18n="th.g.mean">Grup ortalaması (sn)</th><th data-i18n="th.g.count">Tekrar</th></tr></thead><tbody></tbody></table>
-          </div>
+        <h2 class="section-title" data-i18n="h.dist">Dağılım ve aykırı değerler</h2>
+        <p class="hint" data-i18n="dist.hint">Seçili adımın sürelerinin dağılımı. Aykırı kayıt: çeyrekler arası açıklığın 1,5 katından uzak süre (en az 4 kayıtlı adımlarda). Kayıtlar silinmez; isterseniz kapsam dışı bırakırsınız.</p>
+        <div class="charts"><figure class="chart" id="hist-box"></figure></div>
+        <div tabindex="0" class="table-wrap short">
+          <table id="outliers" class="grid" aria-label="Aykırı kayıtlar" data-i18n-attr="aria-label:h.outliers"><thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="th.c.cycle">Çevrim</th><th data-i18n="th.start">Başlangıç</th><th data-i18n="th.duration">Süre (sn)</th><th data-i18n="th.o.range">Olağan aralık (sn)</th></tr></thead><tbody></tbody></table>
         </div>
+        <div class="row"><button id="exclude-outliers" data-i18n="btn.excludeOutliers">Aykırıları kapsam dışı bırak</button></div>
+
+        <h2 class="section-title" data-i18n="h.balance">Hat dengeleme (Yamazumi)</h2>
+        <p class="hint" data-i18n="balance.hint">Adımları istasyonlara ya da operatörlere atayın. Çubuk = istasyon yükü (çevrim başına standart süre); kesikli çizgi takt. Takt girildiyse otomatik dağıtım süreç sırasını koruyarak doldurur.</p>
+        <div class="row">
+          <button id="auto-balance" data-i18n="btn.autoBalance">Takta göre otomatik dağıt</button>
+          <button id="clear-balance" class="link" data-i18n="btn.clearBalance">İstasyonları temizle</button>
+        </div>
+        <p id="balance-summary" class="compare-summary"></p>
+        <div class="charts"><figure class="chart" id="yamazumi-box"></figure></div>
+        <div tabindex="0" class="table-wrap short">
+          <table id="balance" class="grid" aria-label="İstasyon ataması" data-i18n-attr="aria-label:h.balance"><thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="th.class">Sınıf</th><th data-i18n="th.r.contribution">Katkı</th><th data-i18n="th.station">İstasyon</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <h2 class="section-title" data-i18n="h.work">Standart iş kombinasyon tablosu</h2>
+        <p class="hint" data-i18n="work.hint">El işi, yürüme ve bekleme arka arkaya; makine işi başladığı andan itibaren paralel ilerler. Adım türünü ölçüm ekranındaki adım araçlarından seçin (boşsa el işi).</p>
+        <div class="charts"><figure class="chart wide-chart" id="work-box"></figure></div>
+
+        <h2 class="section-title" data-i18n="h.ideas">İyileştirme fikirleri</h2>
+        <p class="hint" data-i18n="ideas.hint">İsraf türü ya da fikri girilmiş adımlar ve NVA adımlar. Ölçüm ekranındaki adım araçlarından girilir.</p>
+        <div tabindex="0" class="table-wrap short">
+          <table id="ideas" class="grid" aria-label="İyileştirme fikirleri" data-i18n-attr="aria-label:h.ideas"><thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="th.class">Sınıf</th><th data-i18n="field.waste">İsraf</th><th data-i18n="field.idea">İyileştirme fikri</th><th data-i18n="th.r.contribution">Katkı</th><th data-i18n="th.share">Pay</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <h2 class="section-title" data-i18n="h.story">Adım kartları</h2>
+        <p class="hint" data-i18n="story.hint">Her adımın bir karesi, sınıfı, türü, bitiş anı ve standart süresi: görsel iş talimatı. Kare, ölçüm ekranında “Bu kareyi adım görseli yap” ile seçilir; seçilmediyse adımın ilk kaydının ortası alınır. Kareler için video bağlı olmalı.</p>
+        <div class="row"><button id="load-story" data-i18n="btn.loadStory">Kareleri göster</button></div>
+        <div id="story" class="story"></div>
+        <p class="print-only print-foot" id="print-foot"></p>
+      </div>
+      <div id="sampling-body" hidden>
+        <h2 class="section-title" data-i18n="h.results">Sonuç</h2>
+        <div id="s-summary" class="summary" aria-live="polite"></div>
+        <div class="charts"><figure class="chart wide-chart" id="s-chart"></figure></div>
+        <div tabindex="0" class="table-wrap">
+          <table id="s-results" class="grid" aria-label="Örnekleme sonuçları" data-i18n-attr="aria-label:s.results"><thead><tr><th data-i18n="s.thCategory">Kategori</th><th data-i18n="th.class">Sınıf</th><th data-i18n="s.thCount">Gözlem</th><th data-i18n="th.share">Pay</th><th data-i18n="s.thRange">Güven aralığı</th><th data-i18n="s.thRequired">Gereken gözlem</th></tr></thead><tbody></tbody></table>
+        </div>
+        <details class="help"><summary data-i18n="s.help.title">İş örneklemesi nasıl hesaplanır?</summary><dl data-i18n-html="s.help.body"></dl></details>
+        <p class="print-only print-foot" id="s-print-foot"></p>
       </div>
     </section>
   </main>
 
   <input id="video-file" type="file" accept="video/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.wmv,.mpg,.mpeg" hidden>
-  <input id="package-file" type="file" accept=".vzetud,application/json" hidden>
+  <input id="package-file" type="file" accept=".vzetud,.zip,application/json,application/zip" hidden>
 
   <dialog id="dialog" aria-labelledby="dialog-title">
     <form method="dialog">
@@ -157,6 +341,39 @@
         <button id="dialog-no" value="no" hidden data-i18n="dialog.no">Hayır</button>
         <button id="dialog-yes" value="yes" class="primary">Tamam</button>
       </div>
+    </form>
+  </dialog>
+  <dialog id="compare-dialog" class="wide" aria-labelledby="compare-title">
+    <form method="dialog">
+      <h2 id="compare-title" data-i18n="compare.title">Önce / sonra karşılaştırması</h2>
+      <div class="row">
+        <label class="field"><span data-i18n="compare.before">Önce</span><select id="compare-before"></select></label>
+        <label class="field"><span data-i18n="compare.after">Sonra</span><select id="compare-after"></select></label>
+      </div>
+      <p id="compare-summary" class="compare-summary"></p>
+      <div tabindex="0" class="table-wrap">
+        <table id="compare-table" class="grid" aria-label="Karşılaştırma" data-i18n-attr="aria-label:compare.title">
+          <thead><tr><th data-i18n="th.r.step">Adım</th><th data-i18n="compare.thBefore">Önce (sn/çevrim)</th><th data-i18n="compare.thAfter">Sonra (sn/çevrim)</th><th data-i18n="compare.thDiff">Fark (sn)</th><th data-i18n="compare.thDiffPct">Fark %</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <details class="more" id="side-by-side">
+        <summary data-i18n="cmp.video.title">Videoları yan yana izle</summary>
+        <p class="hint" data-i18n="cmp.video.hint">İki etüdün videosunu bağlayın; adımı seçince iki video da o adımın ilk kaydının başına gider. Oynat ve duraklat ikisine birden uygulanır.</p>
+        <div class="row">
+          <button id="cmp-pick-before" data-i18n="cmp.pickBefore">Önce videosunu seç…</button>
+          <button id="cmp-pick-after" data-i18n="cmp.pickAfter">Sonra videosunu seç…</button>
+          <label class="field inline"><span data-i18n="th.r.step">Adım</span><select id="cmp-step"></select></label>
+          <button id="cmp-play" data-i18n="cmp.play">İkisini oynat</button>
+          <button id="cmp-pause" data-i18n="cmp.pause">İkisini duraklat</button>
+        </div>
+        <div class="side-by-side">
+          <figure><figcaption id="cmp-cap-before"></figcaption><video id="cmp-video-before" playsinline muted preload="auto"></video></figure>
+          <figure><figcaption id="cmp-cap-after"></figcaption><video id="cmp-video-after" playsinline muted preload="auto"></video></figure>
+        </div>
+      </details>
+      <p class="hint" data-i18n="compare.hint">Adımlar ada göre eşleşir. Değerler çevrim başına standart katkıdır (sıklık dahil); iki etüdün tempo ve tolerans ayarları farklıysa fark bunu da içerir.</p>
+      <div class="row end"><button value="close" class="primary" data-i18n="dialog.close">Kapat</button></div>
     </form>
   </dialog>
   <noscript><p class="note">Bu uygulama JavaScript gerektirir. · This app requires JavaScript.</p></noscript>
