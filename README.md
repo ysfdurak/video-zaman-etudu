@@ -60,14 +60,14 @@ python -m http.server 8080   # sonra http://localhost:8080
 ## Yayın
 
 - **Tarayıcı:** https://zaman-etudu.ysfdurak.com — Cloudflare Workers, depo köküne bağlı. `wrangler.jsonc` yalnız `Web/` klasörünü statik site olarak yayınlar; `Web/.assetsignore` testleri ve `package.json`'ı dışarıda bırakır, `Web/_headers` güvenlik başlıklarını ekler. `main`'e her gönderim siteyi günceller. Yerelde Cloudflare'in aynısıyla denemek için: `npx wrangler dev`.
-- **Windows:** `v2.1.0` gibi bir etiket gönderildiğinde Actions Windows ZIP'ini üretir ve `RELEASE_NOTES.md`'deki ilk bölümle GitHub sürümünü (Release) oluşturur:
+- **Windows:** `v2.2.0` gibi bir etiket gönderildiğinde Actions Windows ZIP'ini üretir ve `RELEASE_NOTES.md`'deki ilk bölümle GitHub sürümünü (Release) oluşturur:
 
 ```powershell
-git tag v2.1.0
-git push origin v2.1.0
+git tag v2.2.0
+git push origin v2.2.0
 ```
 
-Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workflow** ile `surum` alanına `v2.1.0` yazarak da aynı sürümü çıkarabilirsin.
+Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workflow** ile `surum` alanına `v2.2.0` yazarak da aynı sürümü çıkarabilirsin.
 
 ## İlk etüt
 
