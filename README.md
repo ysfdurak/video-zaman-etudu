@@ -21,6 +21,19 @@ Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 17
 
 Masaüstü program, ilk derlemede NuGet bağımlılıkları yüklendikten sonra internet bağlantısı gerektirmez.
 
+## English
+
+**Video Time Study** (Video Zaman Etüdü) measures work steps from video, calculates standard time and exports the results to Excel. It comes in two versions that share the same calculation rules and the same `.vzetud` study package: a serverless browser version and a Windows desktop app (C# / WPF, .NET 8). Both are available in English and Turkish.
+
+- **Try it:** https://zaman-etudu.ysfdurak.com/?lang=en (click “Open demo study” for a three-cycle synthetic warehouse video with ready measurements). Windows: download the ZIP from [Releases](https://github.com/ysfdurak/video-zaman-etudu/releases/latest) and run `Desktop.exe`.
+- **Measuring:** times come from the video position (Start → Measure → Measure); a step list moves to the next step and cycle automatically, out-of-scope interruptions do not break the sequence, Ctrl+Z undoes the last record.
+- **Analysis:** VA / SVA / NVA classes, per-step sample sufficiency with Student-t, pace rating and allowances, normal and standard time, takt, outliers (IQR) and cycle variation.
+- **Lean tools:** line balancing (Yamazumi), standard work combination sheet, improvement ideas by the 7 wastes, step cards with video frames, work sampling, before/after comparison with side-by-side video.
+- **Privacy:** videos and measurements never leave the computer; studies live in the browser (IndexedDB) or in a local SQLite file on Windows. Back up all studies to one `.zip`.
+- **Equivalence tests:** 61 calculation cases, 175 t values and 86 package scenarios must give the same result in C# and JavaScript on every push.
+
+The rest of this README (running, release, first study, keyboard shortcuts) is in Turkish; the code guide is in [docs/PROJE_REHBERI.md](docs/PROJE_REHBERI.md).
+
 ## Windows’ta çalıştırma
 
 1. Windows’a **.NET 8 SDK** kur. ZIP dosyasını çıkar.
