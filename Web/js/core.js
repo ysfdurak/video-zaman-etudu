@@ -5,7 +5,7 @@ import {
   parseStrict, JsonError, JsonObject, RawNumber, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
 } from "./strict-json.js";
 
-export const VERSION = "1.8.0";
+export const VERSION = "1.9.0";
 export const EXTENSION = ".vzetud";
 export const CLASSES = ["", "VA", "SVA", "NVA"];
 const FORMAT = "video-zaman-etudu";
@@ -37,7 +37,8 @@ export function newStudy(fields = {}) {
     Id: crypto.randomUUID(), Name: "", Code: "", Video: "", ExpectedVideoName: "",
     Updated: new Date().toISOString(), Observations: [], Settings: newSettings(), Frequency: new Map(),
     Steps: [], Info: {}, StepPace: new Map(), Takt: null, AllowanceParts: {},
-    StudyType: "", Categories: [], Samples: [], SampleError: null, ...fields
+    StudyType: "", Categories: [], Samples: [], SampleError: null,
+    Modules: null, Status: "", ApprovedBy: "", ApprovedAt: "", ...fields
   };
 }
 
@@ -64,6 +65,16 @@ export function cleanInfo(info) {
 export const WORK_TYPES = ["Manual", "Machine", "Walk", "Wait"];
 export const WASTES = ["Transport", "Inventory", "Motion", "Waiting", "Overproduction", "Overprocessing", "Defects"];
 const text = (v, max) => (typeof v === "string" ? v.trim().slice(0, max) : "");
+
+/** Modül, durum ve onay alanları (onaylayan/tarih yalnız onaylı etütte). */
+function approval(data) {
+  const status = cleanStatus(data.Status);
+  return {
+    Modules: cleanModules(data.Modules), Status: status,
+    ApprovedBy: status === "approved" ? text(data.ApprovedBy, 80) : "",
+    ApprovedAt: status === "approved" ? isoDate(data.ApprovedAt) : ""
+  };
+}
 
 export function cleanSteps(steps) {
   const out = [];
@@ -110,6 +121,24 @@ export function cleanSamples(list) {
   }
   return out;
 }
+/** v1.9: etüdün amacına göre açık modüller (İyileştirme sekmesi). Alan yoksa (eski etüt) hepsi açık sayılır. */
+export const MODULES = ["Balance", "Work", "Ideas", "Cards"];
+export const cleanModules = (v) => (Array.isArray(v) ? MODULES.filter((m) => v.includes(m)) : null);
+export const hasModule = (study, m) => study.Modules === null || study.Modules === undefined || study.Modules.includes(m);
+
+/** v1.9: etüt durumu: "" taslak, "done" tamamlandı, "approved" onaylandı (onaylayan ve tarih ile). */
+export const STATUSES = ["done", "approved"];
+export const cleanStatus = (v) => (STATUSES.includes(v) ? v : "");
+const isoDate = (v) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2})?)?$/.test(v.trim()) ? v.trim() : "");
+
+/**
+ * Başka etütten adım listesi: ad, sınıf, tür, bitiş anı, israf, fikir ve istasyon gelir;
+ * adım karesi (FrameMs) öteki videoya ait olduğu için gelmez. Ölçümler kopyalanmaz.
+ */
+export function copySteps(source) {
+  return cleanSteps(deriveSteps(source).map(({ FrameMs, ...rest }) => rest));
+}
+
 export const cleanSampleError = (v) => (v !== null && v !== undefined && v !== "" && Number.isFinite(Number(v)) && Number(v) > 0 && Number(v) < 50 ? Number(v) : null);
 
 /** Adıma özel tempo (%): pozitif ve en fazla 300; geçersizler atılır. */
@@ -453,7 +482,12 @@ export function exportPackage(study) {
     ...(cleanStudyType(study.StudyType) ? { StudyType: cleanStudyType(study.StudyType) } : {}),
     ...(cleanCategories(study.Categories).length ? { Categories: cleanCategories(study.Categories) } : {}),
     ...(cleanSamples(study.Samples).length ? { Samples: cleanSamples(study.Samples) } : {}),
-    ...(cleanSampleError(study.SampleError) !== null ? { SampleError: cleanSampleError(study.SampleError) } : {})
+    ...(cleanSampleError(study.SampleError) !== null ? { SampleError: cleanSampleError(study.SampleError) } : {}),
+    // v1.9: modüller (boş dizi de yazılır: "yalın araç yok" seçimi korunur), durum ve onay
+    ...(cleanModules(study.Modules) !== null ? { Modules: cleanModules(study.Modules) } : {}),
+    ...(cleanStatus(study.Status) ? { Status: cleanStatus(study.Status) } : {}),
+    ...(cleanStatus(study.Status) === "approved" && text(study.ApprovedBy, 80) ? { ApprovedBy: text(study.ApprovedBy, 80) } : {}),
+    ...(cleanStatus(study.Status) === "approved" && isoDate(study.ApprovedAt) ? { ApprovedAt: isoDate(study.ApprovedAt) } : {})
   });
   const bytes = new TextEncoder().encode(json);
   if (bytes.length <= 0 || bytes.length > MAX_BYTES) throw new PackageError("Etüt paketi boş olamaz ve 32 MB’ı aşamaz.", "pkg.size");
@@ -511,7 +545,9 @@ export function importPackage(bytes) {
       Notes: observations === null ? null : observations.map((node) => { try { return node instanceof JsonObject && node.has("Note") ? cleanNote(plain(node.get("Note"))) : ""; } catch { return ""; } }),
       Ratings: observations === null ? null : observations.map((node) => { try { return node instanceof JsonObject && node.has("Rating") ? cleanRating(plain(node.get("Rating"))) : null; } catch { return null; } }),
       StudyType: readOptional(root, "StudyType"), Categories: readOptional(root, "Categories"),
-      Samples: readOptional(root, "Samples"), SampleError: readOptional(root, "SampleError")
+      Samples: readOptional(root, "Samples"), SampleError: readOptional(root, "SampleError"),
+      Modules: readOptional(root, "Modules"), Status: readOptional(root, "Status"),
+      ApprovedBy: readOptional(root, "ApprovedBy"), ApprovedAt: readOptional(root, "ApprovedAt")
     };
   } catch (error) {
     if (error instanceof PackageError) throw error;
@@ -525,7 +561,8 @@ export function importPackage(bytes) {
     Steps: cleanSteps(data.Steps), Info: cleanInfo(data.Info), StepPace: cleanStepPace(data.StepPace), Takt: cleanTakt(data.Takt),
     AllowanceParts: matchingParts(data.AllowanceParts, data.Settings.Allowance),
     StudyType: cleanStudyType(data.StudyType), Categories: cleanCategories(data.Categories),
-    Samples: cleanSamples(data.Samples), SampleError: cleanSampleError(data.SampleError)
+    Samples: cleanSamples(data.Samples), SampleError: cleanSampleError(data.SampleError),
+    ...approval(data)
   });
 }
 
@@ -580,7 +617,8 @@ export function fromRecord(record) {
     StepPace: cleanStepPace(new Map(Array.isArray(record.StepPace) ? record.StepPace : [])), Takt: cleanTakt(record.Takt),
     AllowanceParts: matchingParts(record.AllowanceParts, { ...newSettings(), ...record.Settings }.Allowance),
     StudyType: cleanStudyType(record.StudyType), Categories: cleanCategories(record.Categories),
-    Samples: cleanSamples(record.Samples), SampleError: cleanSampleError(record.SampleError)
+    Samples: cleanSamples(record.Samples), SampleError: cleanSampleError(record.SampleError),
+    ...approval(record)
   };
 }
 

@@ -118,7 +118,19 @@ internal static class SelfTest
         Check("yeni adım eklenir ve seçilir", window.TestStepChips == 7 && window.TestNow.StartsWith(lang == "tr" ? "Forklift" : "Forklift"), window.TestNow);
         Shot((FrameworkElement)window.Content, Path.Combine(outDirectory, $"{lang}-1-olcum.png"));
 
-        window.TestSelectTab(2);
+        // v2.2: Hazırlık sekmesi ve kapsam
+        Check("v2.2 demo ölçüm sekmesinde açılır", window.TestSelectedTab == 2, window.TestSelectedTab.ToString());
+        window.TestSelectTab(1);
+        Pump(300);
+        Check("v2.2 Hazırlık adım tablosu (7 adım)", window.TestStepTableRows == 7, window.TestStepTableRows.ToString());
+        Check("v2.2 eski etütte bütün araçlar açık", window.TestImproveVisible && study.Modules is null);
+        window.TestModules();
+        Check("v2.2 araç seçilmezse İyileştirme gizli", !window.TestImproveVisible && study.Modules is { Count: 0 });
+        window.TestModules("Balance", "Work", "Ideas", "Cards");
+        Check("v2.2 araçlar yeniden açılır", window.TestImproveVisible && study.Modules is { Count: 4 });
+        Shot(Full(window.TestTab(1)), Path.Combine(outDirectory, $"{lang}-7-hazirlik.png"));
+
+        window.TestSelectTab(3);
         Pump(500);
         window.TestSettings(5, 4, 20);
         Pump(300);
@@ -132,7 +144,13 @@ internal static class SelfTest
         Check("iki grafik", window.TestCharts == 2, window.TestCharts.ToString());
         var cards = window.TestCards();
         Check("standart süre kartında tolerans dökümü", cards.Count > 0 && cards[0].Details.Any(d => d.Contains(PrintReport.PartName("Personal") + " 5")), string.Join(" | ", cards.FirstOrDefault().Details ?? Array.Empty<string>()));
-        Shot(Full(window.TestTab(2)), Path.Combine(outDirectory, $"{lang}-2-analiz.png"));
+        // v2.2: durum ve onay
+        window.TestStatus_(2, "M. Yıldız");
+        Pump(200);
+        Check("v2.2 onay: durum, onaylayan, bugünün tarihi", study is { Status: "approved", ApprovedBy: "M. Yıldız" } && study.ApprovedAt == DateTime.Today.ToString("yyyy-MM-dd"),
+            $"{study.Status}/{study.ApprovedBy}/{study.ApprovedAt}");
+        Check("v2.2 listede durum etiketi", window.TestStudyStatusLabel(study).StartsWith(L.T("status.approved") + " · M. Yıldız"), window.TestStudyStatusLabel(study));
+        Shot(Full(window.TestTab(3)), Path.Combine(outDirectory, $"{lang}-2-analiz.png"));
 
         // v2.1: kayıt temposu, tür/israf/fikir, otomatik dengeleme, standart iş, adım kartları
         window.TestRateRow(1, 105);
@@ -141,7 +159,7 @@ internal static class SelfTest
         window.TestStepField(1, "Idea", lang == "tr" ? "rafı yaklaştır" : "move the shelf closer");
         window.TestStepField(2, "Type", "Machine");
         Check("v2.1 tür, israf, fikir kaydedilir", study.Steps[1] is { Type: "Walk", Waste: "Motion", Idea: not null } && study.Steps[2].Type == "Machine");
-        window.TestSelectTab(2);
+        window.TestSelectTab(4);
         Pump(300);
         window.TestAutoBalance();
         Pump(300);
@@ -153,7 +171,7 @@ internal static class SelfTest
         Pump(500);
         Check("v2.1 adım kartlarında video kareleri", window.TestStoryImages >= 5, window.TestStoryImages.ToString());
         Pump(300);
-        Shot(Full(window.TestTab(2)), Path.Combine(outDirectory, $"{lang}-4-ileri.png"));
+        Shot(Full(window.TestTab(4)), Path.Combine(outDirectory, $"{lang}-4-ileri.png"));
 
         string xlsx = Path.Combine(outDirectory, $"{lang}-analiz.xlsx");
         StudyExport.Write(study, xlsx, lang);
@@ -165,6 +183,7 @@ internal static class SelfTest
             var sheet = book.Worksheet(1);
             var labels = sheet.Column(1).CellsUsed().Select(c => c.GetString()).ToList();
             Check("Excel özetinde tolerans kalemi ve takt", labels.Any(l => l.StartsWith(L.TIn(lang, "x.o.al"))) && labels.Contains(L.TIn(lang, "x.o.takt")), labels.Count.ToString());
+            Check("v2.2 Excel özetinde etüt durumu", labels.Contains(L.TIn(lang, "x.s.status")) && labels.Contains(L.TIn(lang, "x.s.approvedBy")));
             Check("Excel ham sayfa başlığı dilde", book.Worksheet(2).Cell(1, 2).GetString() == L.TIn(lang, "x.raw").Split('|')[1]);
         }
 
@@ -176,6 +195,31 @@ internal static class SelfTest
         var plain = StudyTransfer.Import(Path.Combine(MainWindow.TestDemoDirectory!, lang == "tr" ? "sentetik-depo-etudu.vzetud" : "synthetic-warehouse-study.vzetud"));
         var cmp = StudyRules.Compare(plain, study);
         Check("önce/sonra: tolerans ve takt değişince fark hesaplanır", cmp.Diff is double d && d != 0, L.Num3(cmp.Diff));
+
+        // v2.2: toplu kayıt düzenleme (Ctrl/Shift ile çoklu seçim)
+        window.TestSelectTab(2);
+        Pump(300);
+        window.TestBulk(2, "NVA", "7");
+        Pump(200);
+        var firstTwo = study.Observations.OrderBy(o => o.StartMs).ThenBy(o => o.EndMs).Take(2).ToList();
+        Check("v2.2 toplu düzenleme: sınıf ve çevrim", firstTwo.All(o => o.Classification == "NVA" && o.Cycle == 7) && window.TestBulkVisible,
+            string.Join(",", firstTwo.Select(o => o.Classification + o.Cycle)));
+        Shot((FrameworkElement)window.Content, Path.Combine(outDirectory, $"{lang}-8-toplu.png"));
+
+        // v2.2: adımsız yeni etüt Hazırlık'ta açılır; adımlar başka etütten alınır
+        var fresh = new Study
+        {
+            Name = lang == "tr" ? "Yeni hat" : "New line", Code = "YH-01", Modules = new(),
+            Video = Path.Combine(MainWindow.TestDemoDirectory!, lang == "tr" ? "sentetik-depo-etudu.mp4" : "synthetic-warehouse-study.mp4")
+        };
+        window.TestOpenStudy(fresh);
+        Pump(400);
+        Check("v2.2 adımsız etüt Hazırlık sekmesinde, İyileştirme gizli", window.TestSelectedTab == 1 && !window.TestImproveVisible, window.TestSelectedTab.ToString());
+        window.TestCopySteps(study, replace: false);
+        Pump(200);
+        Check("v2.2 adımlar başka etütten alınır (kare gelmez)", window.TestCurrent!.Steps.Count == study.Steps.Count && window.TestStepChips == study.Steps.Count
+            && window.TestCurrent.Steps.All(x => x.FrameMs is null) && window.TestCurrent.Steps[1].Idea == study.Steps[1].Idea,
+            window.TestCurrent.Steps.Count.ToString());
 
         // v2.1 iş örneklemesi
         var sampling = new Study
@@ -197,10 +241,11 @@ internal static class SelfTest
         Check("örnekleme: 3 gözlem (biri geri alındı)", window.TestCurrent?.Samples.Count == 3, window.TestCurrent?.Samples.Count.ToString() ?? "");
         Pump(300);
         Shot((FrameworkElement)window.Content, Path.Combine(outDirectory, $"{lang}-5-ornekleme.png"));
-        window.TestSelectTab(2);
+        window.TestSelectTab(3);
         Pump(400);
+        Check("örnekleme: İyileştirme sekmesi yok", !window.TestImproveVisible);
         Check("örnekleme analizi: 3 kategori, kartlar", window.TestSamplingRows == 3 && window.TestSamplingCards == 3, $"{window.TestSamplingRows}/{window.TestSamplingCards}");
-        Shot(Full(window.TestTab(2)), Path.Combine(outDirectory, $"{lang}-6-ornekleme-analiz.png"));
+        Shot(Full(window.TestTab(3)), Path.Combine(outDirectory, $"{lang}-6-ornekleme-analiz.png"));
         string sx = Path.Combine(outDirectory, $"{lang}-ornekleme.xlsx");
         StudyExport.Write(window.TestCurrent!, sx, lang);
         using (var book = new XLWorkbook(sx))

@@ -34,19 +34,6 @@ public partial class MainWindow
     }
 
     /// <summary>Seçili adımın türü, israf türü ya da fikri (boş değer alanı siler).</summary>
-    private void SetStepField(string field, string value)
-    {
-        if (current == null || CurrentStep is not StepDef st) return;
-        string? v = value.Trim().Length == 0 ? null : value.Trim();
-        switch (field)
-        {
-            case "Type": if (st.Type == v) return; st.Type = v; break;
-            case "Waste": if (st.Waste == v) return; st.Waste = v; break;
-            case "Idea": v = StudyRules.CleanNote(v); if (st.Idea == v) return; st.Idea = v; break;
-        }
-        SaveSteps();
-    }
-
     private void SetStepFrame()
     {
         RequireVideo();

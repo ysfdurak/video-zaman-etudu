@@ -35,6 +35,7 @@ internal static class StudyExport
         {
             new object?[] { Tx("x.s.name"), study.Name }, new object?[] { Tx("x.s.code"), study.Code }
         };
+        summary.AddRange(StatusRows(study, Tx));
         foreach (var k in StudyRules.InfoFields.Where(k => study.Info.ContainsKey(k)))
             summary.Add(new object?[] { Tx("info." + k), study.Info[k] });
         summary.Add(new object?[] { Tx("x.o.total"), total });
@@ -51,12 +52,12 @@ internal static class StudyExport
         int outCount = Advanced.Outliers(study).Sum(g => g.Rows.Count);
         var balance = Advanced.LineBalance(study);
         if (outCount > 0) summary.Add(new object?[] { Tx("x.o.outliers"), outCount });
-        if (balance.Stations.Count > 0)
+        if (balance.Stations.Count > 0 && study.HasModule("Balance"))
         {
             summary.Add(new object?[] { Tx("x.o.eff"), balance.Efficiency });
             summary.Add(new object?[] { Tx("x.o.bottleneck"), balance.Bottleneck });
         }
-        if (balance.MinOperators is int minOps) summary.Add(new object?[] { Tx("x.o.minOps"), minOps });
+        if (balance.MinOperators is int minOps && study.HasModule("Balance")) summary.Add(new object?[] { Tx("x.o.minOps"), minOps });
         summary.Add(new object?[] { Tx("x.o.notComputable"), rows.Count(r => r.Sufficiency == "Hesaplanamıyor" && r.Count > 0) });
         foreach (var (k, v) in byClass.OrderByDescending(x => x.Value))
             summary.Add(new object?[] { Tx("x.o.share") + " " + k, (double)v / all * 100 });
@@ -138,7 +139,7 @@ internal static class StudyExport
         for (int i = 0; i < info.Length; i++) Row(config, i + 2, info[i].Name, info[i].Value);
         // v2.1 sayfaları (eski sayfaların ardından).
         var work = Advanced.StandardWork(study);
-        if (work.Rows.Count > 0)
+        if (work.Rows.Count > 0 && study.HasModule("Work"))
         {
             var sheet = Sheet(workbook, Tx("x.sheet.work"), Head("x.work"));
             for (int i = 0; i < work.Rows.Count; i++)
@@ -147,7 +148,7 @@ internal static class StudyExport
                 Row(sheet, i + 2, i + 1, r.Step, Tx("type." + r.Type), r.Start, r.End, r.Seconds);
             }
         }
-        if (balance.Stations.Count > 0)
+        if (balance.Stations.Count > 0 && study.HasModule("Balance"))
         {
             var sheet = Sheet(workbook, Tx("x.sheet.balance"), Head("x.balance"));
             int line = 2;
@@ -157,7 +158,7 @@ internal static class StudyExport
             foreach (var p in balance.Unassigned) Row(sheet, line++, Tx("balance.unassigned"), p.Step, p.Classification, p.Contribution, null);
         }
         var ideas = Advanced.Improvements(study);
-        if (ideas.Count > 0)
+        if (ideas.Count > 0 && study.HasModule("Ideas"))
         {
             var sheet = Sheet(workbook, Tx("x.sheet.ideas"), Head("x.ideas"));
             for (int i = 0; i < ideas.Count; i++)
@@ -167,6 +168,15 @@ internal static class StudyExport
             }
         }
         Finish(workbook, path);
+    }
+
+    /// <summary>v2.2: etüt durumu satırları (taslakta yok; eski çıktılar aynı kalır).</summary>
+    public static IEnumerable<object?[]> StatusRows(Study study, Func<string, string> tx)
+    {
+        if (study.Status.Length == 0) yield break;
+        yield return new object?[] { tx("x.s.status"), tx("status." + study.Status) };
+        if (study.ApprovedBy.Length > 0) yield return new object?[] { tx("x.s.approvedBy"), study.ApprovedBy };
+        if (study.ApprovedAt.Length > 0) yield return new object?[] { tx("x.s.approvedAt"), study.ApprovedAt };
     }
 
     private static void Finish(XLWorkbook workbook, string path)
@@ -188,6 +198,7 @@ internal static class StudyExport
             new object?[] { Tx("x.s.name"), study.Name }, new object?[] { Tx("x.s.code"), study.Code },
             new object?[] { Tx("x.s.studyType"), Tx("studyType.sampling") }
         };
+        summary.AddRange(StatusRows(study, Tx));
         foreach (var k in StudyRules.InfoFields.Where(study.Info.ContainsKey)) summary.Add(new object?[] { Tx("info." + k), study.Info[k] });
         summary.Add(new object?[] { Tx("x.o.n"), r.N });
         summary.Add(new object?[] { Tx("x.o.required"), r.Required });

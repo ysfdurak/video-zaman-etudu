@@ -21,6 +21,37 @@ public static class StudyRules
     public static readonly string[] WorkTypes = { "Manual", "Machine", "Walk", "Wait" };
     public static readonly string[] Wastes = { "Transport", "Inventory", "Motion", "Waiting", "Overproduction", "Overprocessing", "Defects" };
     private const long MaxMs = 922337203685477;
+    public static readonly string[] ModuleNames = { "Balance", "Work", "Ideas", "Cards" };
+
+    /// <summary>Bilinen modüller, sabit sırada; liste değilse null (eski etüt: hepsi açık).</summary>
+    public static List<string>? CleanModules(IEnumerable<string?>? value) =>
+        value is null ? null : ModuleNames.Where(m => value.Contains(m)).ToList();
+
+    public static string CleanStatus(string? value) => value is "done" or "approved" ? value : "";
+
+    /// <summary>yyyy-MM-dd ya da ISO zaman damgası; değilse boş.</summary>
+    public static string CleanIsoDate(string? value)
+    {
+        var t = (value ?? "").Trim();
+        return System.Text.RegularExpressions.Regex.IsMatch(t, @"^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:\d{2})?)?$") ? t : "";
+    }
+
+    /// <summary>Durum, onaylayan ve tarih (onaylayan/tarih yalnız onaylı etütte).</summary>
+    public static void CleanApproval(Study study)
+    {
+        study.Status = CleanStatus(study.Status);
+        bool approved = study.Status == "approved";
+        study.ApprovedBy = approved ? Clip(study.ApprovedBy, 80) ?? "" : "";
+        study.ApprovedAt = approved ? CleanIsoDate(study.ApprovedAt) : "";
+    }
+
+    /// <summary>Başka etütten adım listesi: tanımlar gelir, adım karesi (öteki videoya ait) gelmez.</summary>
+    public static List<StepDef> CopySteps(Study source) =>
+        CleanSteps(DeriveSteps(source).Select(x => new StepDef
+        {
+            Name = x.Name, Classification = x.Classification, Note = x.Note, Type = x.Type,
+            Station = x.Station, Waste = x.Waste, Idea = x.Idea
+        }));
     public const int MaxText = 200;
     public const int MaxSteps = 50;
     public const int MaxStepName = 80;

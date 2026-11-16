@@ -53,7 +53,32 @@ public partial class MainWindow
         current == null ? new() : SummaryCards(current, StudyRules.InProcessOrder(current, Analysis.Steps(current)));
 
     // v2.1
-    internal void TestStepField(int index, string field, string value) => Guard(() => { SelectStep(index); SetStepField(field, value); });
+    internal void TestStepField(int index, string field, string value) => Guard(() => SetStepFieldAt(index, field, value));
+
+    // v2.2
+    internal void TestCopySteps(Study source, bool replace) => Guard(() => CopyStepsFrom(source, replace));
+    internal void TestModules(params string[] modules) => Guard(() =>
+    {
+        foreach (var (m, box) in moduleBoxes) box.IsChecked = modules.Contains(m);
+    });
+    internal bool TestImproveVisible => ((TabItem)tabs.Items[TabImprove]).Visibility == Visibility.Visible;
+    internal int TestStepTableRows => stepTable.RowDefinitions.Count - 1;
+    internal int TestSelectedTab => tabs.SelectedIndex;
+    internal void TestStatus_(int index, string by)
+    {
+        approvedBy.Text = by;
+        studyStatus.SelectedIndex = index;
+    }
+    internal void TestBulk(int count, string cls, string cycle)
+    {
+        observations.SelectedItems.Clear();
+        foreach (var item in observations.Items.Cast<object>().Take(count)) observations.SelectedItems.Add(item);
+        bulkClass.SelectedItem = bulkClass.Items.Cast<ComboBoxItem>().First(i => i.Tag as string == cls);
+        bulkCycle.Text = cycle;
+        Guard(BulkApply);
+    }
+    internal bool TestBulkVisible => bulkEditor.Visibility == Visibility.Visible;
+    internal string TestStudyStatusLabel(Study s) => StatusLabel(s);
     internal void TestAutoBalance() => Guard(AutoBalanceStations);
     internal int TestYamazumi => yamazumiBox.Children.Count;
     internal int TestWork => workBox.Children.OfType<Border>().Count();

@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
   importPackage, exportPackage, analyzeSteps, analyzeCycles, inProcessOrder, cycleSpread, totalStandard,
-  compareStudies, requiredObservations, deriveSteps, stepOrder, matchingParts, newStudy
+  compareStudies, requiredObservations, deriveSteps, stepOrder, matchingParts, newStudy, copySteps
 } from "../../Web/js/core.js";
 import { outliers, histogram, lineBalance, autoBalance, standardWork, improvements, analyzeSampling, stepFrame, normalInv } from "../../Web/js/advanced.js";
 
@@ -28,6 +28,8 @@ export function build() {
   st.Takt = 18.5;
   st.Settings = { ...st.Settings, Allowance: 12.5 };
   st.AllowanceParts = { Personal: 5, Fatigue: 4.5, Delay: 3 };
+  // v1.9: modüller, durum ve onay
+  st.Modules = ["Balance", "Cards"]; st.Status = "approved"; st.ApprovedBy = "M. Yıldız"; st.ApprovedAt = "2026-11-16";
   st.Observations = st.Observations.map((o, i) => (i === 4 ? { ...o, Note: "forklift bekledi" } : i === 7 ? { ...o, Note: "barkod okunmadı" } : i === 1 ? { ...o, Rating: 105 } : i === 6 ? { ...o, Rating: 90 } : o));
   // v1.8: aykırı değer için Toplama'ya üç kayıt daha (biri çok uzun).
   st.Observations.push(
@@ -64,7 +66,10 @@ export function build() {
       AutoBalance: Object.fromEntries(autoBalance(study, 10)),
       StandardWork: standardWork(study),
       Improvements: improvements(study),
-      Frames: Object.fromEntries(stepOrder(study).map((s) => [s, stepFrame(study, s)]))
+      Frames: Object.fromEntries(stepOrder(study).map((s) => [s, stepFrame(study, s)])),
+      // v1.9
+      Modules: study.Modules, Status: study.Status, ApprovedBy: study.ApprovedBy, ApprovedAt: study.ApprovedAt,
+      CopiedSteps: copySteps(study)
     },
     Sampling: sampling()
   };

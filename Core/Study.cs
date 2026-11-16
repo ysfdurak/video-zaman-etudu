@@ -144,6 +144,15 @@ public sealed class Study
     /// <summary>Hedef mutlak hata (yüzde puanı); boşsa 5.</summary>
     public double? SampleError { get; set; }
     [JsonIgnore] public bool IsSampling => StudyType == "sampling";
+
+    // v2.2: etüdün amacına göre modüller (null = eski etüt, hepsi açık; boş liste = yalın araç yok), durum ve onay.
+    public List<string>? Modules { get; set; }
+    /// <summary>"" taslak, "done" tamamlandı, "approved" onaylandı.</summary>
+    public string Status { get; set; } = "";
+    public string ApprovedBy { get; set; } = "";
+    /// <summary>Onay tarihi (yyyy-MM-dd).</summary>
+    public string ApprovedAt { get; set; } = "";
+    public bool HasModule(string module) => Modules is null || Modules.Contains(module);
 }
 
 public sealed class Settings
