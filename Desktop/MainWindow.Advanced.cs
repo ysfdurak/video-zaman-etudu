@@ -34,8 +34,8 @@ public partial class MainWindow
     private static string Pct0(double? v, int d = 1) => L.Pct(v, d);
     private static string AxisFormat(double v) => v.ToString(v < 10 ? "0.#" : "0", L.Culture);
 
-    /// <summary>Analiz sayfasına eklenecek v2.1 bölümleri (adım tablosunun altına).</summary>
-    private UIElement BuildAdvancedSections()
+    /// <summary>Dağılım ve aykırılar (Analiz alt sekmesi). v2.2: yalın araçlar İyileştirme sekmesinde ayrı ayrı.</summary>
+    private UIElement BuildDistSection()
     {
         Ui.Columns(outlierGrid, (L.T("th.r.step"), "Step", false), (L.T("th.c.cycle"), "Cycle", true), (L.T("th.start"), "Start", true),
             (L.T("th.duration"), "Duration", true), (L.T("th.o.range"), "Range", true));
@@ -43,7 +43,7 @@ public partial class MainWindow
         outlierGrid.MouseDoubleClick += (_, _) => Guard(() =>
         {
             if (outlierGrid.SelectedItem is not OutlierRow row) return;
-            tabs.SelectedIndex = 1;
+            tabs.SelectedIndex = TabMeasure;
             SelectRow(row.Source);
             if (ready) Seek(row.Source.StartMs);
             RefreshObservations();
@@ -55,15 +55,21 @@ public partial class MainWindow
         ideasGrid.ColumnWidth = new DataGridLength(1, DataGridLengthUnitType.Star);
         outlierGrid.ColumnWidth = new DataGridLength(1, DataGridLengthUnitType.Star);
         storyPanel.Margin = new Thickness(0, 6, 0, 10);
-        return Ui.Stack(
-            Ui.Title(L.T("h.dist")), Ui.Hint(L.T("dist.hint")), histBox, outlierGrid, Ui.Row(excludeOutliers),
-            Ui.Title(L.T("h.balance")), Ui.Hint(L.T("balance.hint")),
-            Ui.Row(Btn("btn.autoBalance", AutoBalanceStations), Btn("btn.clearBalance", ClearStations)),
-            balanceSummary, yamazumiBox, Ui.Box(balanceRows),
-            Ui.Title(L.T("h.work")), Ui.Hint(L.T("work.hint")), workBox,
-            Ui.Title(L.T("h.ideas")), Ui.Hint(L.T("ideas.hint")), ideasGrid,
-            Ui.Title(L.T("h.story")), Ui.Hint(L.T("story.hint")), Ui.Row(Btn("btn.loadStory", LoadStory), Btn("btn.printStory", PrintStory)), storyPanel);
+        ideasGrid.MaxHeight = 520;
+        return Ui.Stack(Ui.Title(L.T("h.dist")), Ui.Hint(L.T("dist.hint")), histBox, outlierGrid, Ui.Row(excludeOutliers));
     }
+
+    private UIElement BuildBalanceSection() => Ui.Stack(
+        Ui.Title(L.T("h.balance")), Ui.Hint(L.T("balance.hint")),
+        Ui.Row(Btn("btn.autoBalance", AutoBalanceStations), Btn("btn.clearBalance", ClearStations)),
+        balanceSummary, yamazumiBox, Ui.Box(balanceRows));
+
+    private UIElement BuildWorkSection() => Ui.Stack(Ui.Title(L.T("h.work")), Ui.Hint(L.T("work.hint")), workBox);
+
+    private UIElement BuildIdeasSection() => Ui.Stack(Ui.Title(L.T("h.ideas")), Ui.Hint(L.T("ideas.hint")), ideasGrid);
+
+    private UIElement BuildStorySection() => Ui.Stack(
+        Ui.Title(L.T("h.story")), Ui.Hint(L.T("story.hint")), Ui.Row(Btn("btn.loadStory", LoadStory), Btn("btn.printStory", PrintStory)), storyPanel);
 
     private UIElement BuildSamplingBody()
     {

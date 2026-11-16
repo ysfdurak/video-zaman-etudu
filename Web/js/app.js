@@ -785,7 +785,7 @@ function renderStepTable() {
     cell(document.createTextNode(String(i + 1)), "num");
     // Kaydetme adım nesnelerini yeniler (cleanSteps); bu yüzden adım her seferinde sırasından okunur.
     const cur = () => steps()[i];
-    const name = cell(Object.assign(document.createElement("input"), { type: "text", value: st.Name, maxLength: 120, autocomplete: "off" }));
+    const name = cell(Object.assign(document.createElement("input"), { type: "text", value: st.Name, maxLength: 80, autocomplete: "off" }));
     name.setAttribute("aria-label", `${t("th.r.step")} ${i + 1}`);
     name.addEventListener("change", () => guard(() => renameStep(cur(), name)));
     const cls = cell(selectOf(["VA", "SVA", "NVA"], st.Classification, (v) => v));

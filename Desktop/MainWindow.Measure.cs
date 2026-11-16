@@ -28,14 +28,8 @@ public partial class MainWindow
     private const long NudgeMaxMs = 1000;
 
     private readonly WrapPanel stepsPanel = new() { Margin = new Thickness(0, 2, 0, 4) };
-    private readonly StackPanel stepTools = new();
-    private readonly ComboBox stepClass = Ui.ClassCombo();
-    private readonly TextBox stepNote = Ui.Input(340);
-    private ComboBox stepType = null!, stepWaste = null!;
-    private readonly TextBox stepIdea = Ui.Input(260);
     private readonly TextBox nowRating = Ui.Input(60);
     private readonly TextBox rowRating = Ui.Input(60);
-    private Button stepLeft = null!, stepRight = null!;
     private readonly TextBox newStep = Ui.Input(220);
     private readonly ComboBox newStepClass = Ui.ClassCombo();
     private readonly CheckBox autoAdvance = new() { IsChecked = true, Margin = new Thickness(0, 4, 0, 2) };
@@ -80,8 +74,6 @@ public partial class MainWindow
         excludedNext.Unchecked += (_, _) => UpdateNow();
         cycleBox.TextChanged += (_, _) => UpdateNow();
         rowExcluded.Content = L.T("check.excluded");
-        stepType = Ui.TagCombo(StudyRules.WorkTypes.Select(t => (t, L.T("type." + t))), 120);
-        stepWaste = Ui.TagCombo(StudyRules.Wastes.Select(w => (w, L.T("waste." + w))), 150);
         nowRating.ToolTip = L.T("title.rating");
 
         // Video
@@ -123,30 +115,18 @@ public partial class MainWindow
         player.Children.Add(controls);
         player.Children.Add(frame);
 
-        // Adımlar
-        stepLeft = Btn("btn.stepLeft", () => MoveStep(-1), tipKey: "title.stepLeft");
-        stepRight = Btn("btn.stepRight", () => MoveStep(1), tipKey: "title.stepRight");
-        stepClass.SelectionChanged += (_, _) => { if (!suppressSelection) Guard(ChangeStepClass); };
-        stepNote.LostFocus += (_, _) => Guard(SaveStepNote);
-        stepTools.Children.Add(Ui.Row(stepLeft, stepRight, Ui.Field(L.T("field.class"), stepClass),
-            Btn("btn.stepRename", RenameStep), Btn("btn.stepRemove", RemoveStep, danger: true)));
-        stepTools.Children.Add(Ui.Field(L.T("field.stepNote"), Ui.WithPlaceholder(stepNote, L.T("placeholder.stepNote"))));
-        // v2.1: tür (standart iş), israf türü, iyileştirme fikri, adım karesi
-        stepType.SelectionChanged += (_, _) => { if (!suppressSelection) Guard(() => SetStepField("Type", Ui.TagOf(stepType))); };
-        stepWaste.SelectionChanged += (_, _) => { if (!suppressSelection) Guard(() => SetStepField("Waste", Ui.TagOf(stepWaste))); };
-        stepIdea.LostFocus += (_, _) => Guard(() => SetStepField("Idea", stepIdea.Text));
-        stepTools.Children.Add(Ui.Row(Ui.Field(L.T("field.workType"), stepType), Ui.Field(L.T("field.waste"), stepWaste),
-            Ui.Field(L.T("field.idea"), Ui.WithPlaceholder(stepIdea, L.T("placeholder.idea"))),
-            Btn("btn.stepFrame", SetStepFrame, tipKey: "title.stepFrame")));
+        // Adımlar: yalnız seçim ve hızlı ekleme; tanımlar Hazırlık sekmesindeki tablodan (v2.2).
         newStep.PreviewKeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; Guard(AddStep); } };
+        var editSteps = Btn("btn.editSteps", () => tabs.SelectedIndex = TabSetup);
+        editSteps.Margin = new Thickness(10, 0, 0, 4);
         var stepsHead = new DockPanel();
         var stepsHint = Ui.Hint(L.T("steps.hint"));
         DockPanel.SetDock(stepsHint, Dock.Right);
         stepsHead.Children.Add(stepsHint);
         stepsHead.Children.Add(Ui.Text(L.T("h.steps"), 14, true));
-        var stepsBox = Ui.Box(Ui.Stack(stepsHead, stepsPanel, stepTools,
+        var stepsBox = Ui.Box(Ui.Stack(stepsHead, stepsPanel,
             Ui.Row(Ui.Field(L.T("field.newStep"), Ui.WithPlaceholder(newStep, L.T("placeholder.newStep"))),
-                Ui.Field(L.T("field.class"), newStepClass), Btn("btn.addStep", AddStep)),
+                Ui.Field(L.T("field.class"), newStepClass), Btn("btn.addStep", AddStep), editSteps),
             autoAdvance));
 
         // Sıradaki kayıt
@@ -154,29 +134,37 @@ public partial class MainWindow
             Ui.Field(L.T("field.cycle"), Ui.Row(Btn("d.minus", () => SetCycle(CycleValue() - 1), tipKey: "title.cycleDown"), cycleBox,
                 Btn("d.plus", () => SetCycle(CycleValue() + 1), tipKey: "title.cycleUp"))),
             Ui.Field(L.T("now.label"), Ui.Stack(nowStep, nowNote, nowLive)),
-            excludedNext, Ui.Field(L.T("field.rating"), Ui.WithPlaceholder(nowRating, L.T("placeholder.rating")))));
+            excludedNext));
 
         // Kayıtlar
         Ui.Columns(observations, (L.T("th.start"), "Start", true), (L.T("th.end"), "End", true), (L.T("th.duration"), "Duration", true),
             (L.T("th.step"), "Step", false), (L.T("th.class"), "Class", false), (L.T("th.excluded"), "Excluded", false),
             (L.T("th.cycle"), "Cycle", true), (L.T("th.rating"), "Rating", true), (L.T("th.note"), "Note", false));
         observations.MinHeight = 140;
+        // v2.2: Ctrl/Shift ile çoklu seçim → toplu düzenleme; tek seçim → kayıt düzenleyici.
+        observations.SelectionMode = DataGridSelectionMode.Extended;
         observations.SelectionChanged += (_, _) =>
         {
-            if (suppressSelection || observations.SelectedItem is not ObservationRow row) return;
-            SelectRow(row.Source);
+            if (suppressSelection) return;
+            var picked = observations.SelectedItems.OfType<ObservationRow>().Select(r => r.Source).ToList();
+            bulkSelection.Clear();
+            if (picked.Count > 1) foreach (var o in picked) bulkSelection.Add(o);
+            UpdateBulk();
+            if (picked.Count != 1) { if (selectedRow != null) SelectRow(null); return; }
+            SelectRow(picked[0]);
             // Kaydın başına gider; süren ölçüm kesilmez.
-            if (ready) Seek(row.Source.StartMs);
+            if (ready) Seek(picked[0].StartMs);
         };
         filterStep.SelectionChanged += (_, _) => { if (!fillingFilters) RefreshObservations(); };
         filterCycle.SelectionChanged += (_, _) => { if (!fillingFilters) RefreshObservations(); };
-        var filterRow = Ui.Row(Ui.Field(L.T("filter.step"), filterStep), Ui.Field(L.T("filter.cycle"), filterCycle), obsCount);
+        var selectAll = Btn("bulk.all", () => { observations.Focus(); observations.SelectAll(); });
+        var filterRow = Ui.Row(Ui.Field(L.T("filter.step"), filterStep), Ui.Field(L.T("filter.cycle"), filterCycle), obsCount, selectAll);
 
         rowEditor.Child = Ui.Stack(
             Ui.Text(L.T("h.rowEditor"), 14, true),
             Ui.Row(Ui.Field(L.T("field.step"), rowStep), Ui.Field(L.T("field.class"), rowClass), Ui.Field(L.T("field.cycle"), rowCycle), rowExcluded, Ui.Field(L.T("field.rating"), Ui.WithPlaceholder(rowRating, L.T("placeholder.rating"))),
                 Ui.Field(L.T("field.rowNote"), Ui.WithPlaceholder(rowNote, L.T("placeholder.rowNote")))),
-            Ui.Row(Btn("btn.editRow", EditRow, primary: true), Btn("btn.bulk", BulkClassify), Btn("btn.deleteRow", DeleteRow, danger: true),
+            Ui.Row(Btn("btn.editRow", EditRow, primary: true), Btn("btn.deleteRow", DeleteRow, danger: true),
                 Btn("btn.rowClose", () => { SelectRow(null); RefreshObservations(); })));
         rowEditor.Background = Ui.Paper;
         rowEditor.BorderBrush = Ui.Line;
@@ -185,10 +173,16 @@ public partial class MainWindow
         rowEditor.Padding = new Thickness(12, 8, 12, 8);
         rowEditor.Margin = new Thickness(0, 8, 0, 0);
         rowEditor.Visibility = Visibility.Collapsed;
+        // Gelişmiş: kayıt temposu, paralel aralık, adım görseli (adım kartları açıksa).
+        frameButton = Btn("btn.stepFrame", SetStepFrame, tipKey: "title.stepFrame");
+        frameButton.Margin = new Thickness(14, 0, 6, 4);
         var interval = new Expander
         {
-            Header = L.T("more.interval"), Margin = new Thickness(0, 6, 0, 0),
-            Content = Ui.Stack(Ui.Row(Btn("btn.markStart", MarkStart), Btn("btn.addMarked", AddMarked)), Ui.Hint(L.T("measure.hint")))
+            Header = L.T("more.advanced"), Margin = new Thickness(0, 6, 0, 0),
+            Content = Ui.Stack(
+                Ui.Row(Ui.Field(L.T("field.rating"), Ui.WithPlaceholder(nowRating, L.T("placeholder.rating"))), Ui.Hint(L.T("rating.hint"))),
+                Ui.Hint(L.T("measure.hint")),
+                Ui.Row(Btn("btn.markStart", MarkStart), Btn("btn.addMarked", AddMarked), frameButton))
         };
 
         var side = new DockPanel();
@@ -197,7 +191,7 @@ public partial class MainWindow
                 Btn("btn.undo", UndoLast, tipKey: "title.undo")),
             Ui.Help(L.T("help.measure.title"), L.T("help.measure.body")),
             filterRow);
-        var sideBottom = Ui.Stack(rowEditor, interval);
+        var sideBottom = Ui.Stack(rowEditor, BuildBulkEditor(), interval);
         DockPanel.SetDock(sideTop, Dock.Top);
         DockPanel.SetDock(sideBottom, Dock.Bottom);
         side.Children.Add(sideTop);
@@ -218,8 +212,11 @@ public partial class MainWindow
         Grid.SetColumn(sideHost, 1);
         split.Children.Add(sideHost);
         var root = new DockPanel { Margin = new Thickness(12) };
-        DockPanel.SetDock(status, Dock.Top);
-        root.Children.Add(status);
+        approvedNoteBox = Ui.Box(approvedNote, Ui.NoteBack, Ui.NoteLine);
+        approvedNoteBox.Visibility = Visibility.Collapsed;
+        var head = Ui.Stack(status, approvedNoteBox);
+        DockPanel.SetDock(head, Dock.Top);
+        root.Children.Add(head);
         root.Children.Add(split);
         return root;
     }
@@ -322,7 +319,7 @@ public partial class MainWindow
 
     private void OnShortcut(object sender, KeyEventArgs e)
     {
-        if (tabs.SelectedIndex != 1 || current == null || Ui.IsTyping()) return;
+        if (tabs.SelectedIndex != TabMeasure || current == null || Ui.IsTyping()) return;
         var modifiers = Keyboard.Modifiers;
         long step = modifiers.HasFlag(ModifierKeys.Shift) ? 1000 : modifiers.HasFlag(ModifierKeys.Control) ? 40 : 100;
         int digit = e.Key is >= Key.D1 and <= Key.D9 ? e.Key - Key.D1 : e.Key is >= Key.NumPad1 and <= Key.NumPad9 ? e.Key - Key.NumPad1 : -1;
@@ -451,20 +448,6 @@ public partial class MainWindow
             chip.SetValue(AutomationProperties.NameProperty, st.Name + (on ? " ✓" : ""));
             stepsPanel.Children.Add(chip);
         }
-        var current_ = CurrentStep;
-        stepTools.Visibility = current_ is null ? Visibility.Collapsed : Visibility.Visible;
-        if (current_ is not null)
-        {
-            suppressSelection = true;
-            Ui.SetClass(stepClass, current_.Classification);
-            Ui.SetTag(stepType, current_.Type);
-            Ui.SetTag(stepWaste, current_.Waste);
-            suppressSelection = false;
-            stepNote.Text = current_.Note ?? "";
-            stepIdea.Text = current_.Idea ?? "";
-        }
-        stepLeft.IsEnabled = flow.Index > 0;
-        stepRight.IsEnabled = flow.Index < list.Count - 1;
         UpdateNow();
     }
 
@@ -480,93 +463,21 @@ public partial class MainWindow
     /// <summary>Elle adım seçimi. Önceki adım hatırlanır: araya giren kapsam dışı kayıttan sonra sıra oraya döner.</summary>
     private void SelectStep(int index)
     {
-        SaveStepNote();
         flow.Select(index, StepList.Count);
         RenderSteps();
     }
 
-    private void SaveSteps()
+    /// <summary>table: false iken Hazırlık tablosu yeniden çizilmez (alan değişikliğinde odak kaybolmasın).</summary>
+    private void SaveSteps(bool table = true)
     {
         if (current == null) return;
         current.Steps = StudyRules.CleanSteps(current.Steps);
         RenderSteps();
+        if (table) RenderStepTable();
         Save();
     }
 
-    private void AddStep()
-    {
-        if (current == null) return;
-        string name = newStep.Text.Trim();
-        if (name.Length == 0) throw Error("msg.stepEmpty");
-        if (StepList.Any(x => x.Name == name)) throw Error("msg.stepExists", ("step", name));
-        SaveStepNote();
-        StepList.Add(new StepDef { Name = name, Classification = Ui.ClassOf(newStepClass) });
-        newStep.Text = "";
-        // Yeni adım seçilir; araya giren bir kayıtsa (kapsam dışı) sonra önceki adıma dönülür.
-        flow.Added(StepList.Count);
-        SaveSteps();
-        if (ready && anchor is null) SetStatus(L.T("status.ready"));
-    }
-
-    private void MoveStep(int delta)
-    {
-        var list = StepList;
-        int i = flow.Index, j = i + delta;
-        if (j < 0 || j >= list.Count) return;
-        (list[i], list[j]) = (list[j], list[i]);
-        flow.Index = j;
-        SaveSteps();
-    }
-
-    private void ChangeStepClass()
-    {
-        if (current == null || CurrentStep is not StepDef st) return;
-        string cls = Ui.ClassOf(stepClass);
-        if (st.Classification == cls) return;
-        st.Classification = cls;
-        SaveSteps();
-        var others = current.Observations.Where(o => o.Step == st.Name && o.Classification != cls).ToList();
-        if (others.Count > 0 && Ask(L.T("msg.stepClassExisting", ("n", others.Count), ("step", st.Name), ("cls", cls.Length > 0 ? cls : "—")), L.T("title.stepClass")))
-        {
-            foreach (var o in others) o.Classification = cls;
-            RefreshObservations();
-            Save();
-        }
-    }
-
-    private void SaveStepNote()
-    {
-        if (current == null || CurrentStep is not StepDef st) return;
-        var note = StudyRules.CleanNote(stepNote.Text);
-        if (note == st.Note) return;
-        st.Note = note;
-        UpdateNow();
-        Save();
-    }
-
-    private void RenameStep()
-    {
-        if (current == null || CurrentStep is not StepDef st) return;
-        var next = Ui.Ask(this, L.T("btn.stepRename").TrimEnd('…'), L.T("msg.stepRename", ("step", st.Name)), st.Name)?.Trim();
-        if (string.IsNullOrEmpty(next) || next == st.Name) return;
-        if (StepList.Any(x => x.Name == next)) throw Error("msg.stepExists", ("step", next));
-        string old = st.Name;
-        st.Name = next;
-        foreach (var o in current.Observations.Where(o => o.Step == old)) o.Step = next;
-        if (current.Frequency.Remove(old, out int every)) current.Frequency[next] = every;
-        if (current.StepPace.Remove(old, out double pace)) current.StepPace[next] = pace;
-        RefreshObservations();
-        SaveSteps();
-    }
-
-    private void RemoveStep()
-    {
-        if (current == null || CurrentStep is not StepDef st) return;
-        int used = current.Observations.Count(o => o.Step == st.Name);
-        if (!Ask(used > 0 ? L.T("msg.stepRemoveUsed", ("step", st.Name), ("n", used)) : L.T("msg.stepRemove", ("step", st.Name)), L.T("title.stepRemove"))) return;
-        StepList.RemoveAt(flow.Index);
-        SaveSteps();
-    }
+    private void AddStep() => AddStepFrom(newStep, newStepClass);
 
     // ------------------------------------------------------------ çevrim
 
@@ -707,17 +618,6 @@ public partial class MainWindow
         SetStatus(L.T("status.rowUpdated", ("step", row.Step)));
     }
 
-    private void BulkClassify()
-    {
-        if (selectedRow is not Observation row || current == null) return;
-        string cls = Ui.ClassOf(rowClass);
-        foreach (var item in current.Observations.Where(x => x.Step == row.Step)) item.Classification = cls;
-        if (StepList.FirstOrDefault(x => x.Name == row.Step) is StepDef st) st.Classification = cls;
-        RenderSteps();
-        Save();
-        RefreshObservations();
-    }
-
     private void DeleteRow()
     {
         if (selectedRow is not Observation row || current == null) return;
@@ -752,10 +652,16 @@ public partial class MainWindow
             : rows.Count == all.Count ? L.T("filter.countAll", ("total", all.Count)) : L.T("filter.count", ("n", rows.Count), ("total", all.Count));
         var view = rows.Select(o => new ObservationRow(o, L.Clock(o.StartMs), L.Clock(o.EndMs), L.Num3(o.Seconds), o.Step, o.Classification,
             L.T(o.Excluded ? "yes" : "no"), o.Cycle.ToString(), o.Rating is double r ? L.Num(r, 6) : "", o.Note ?? "")).ToList();
+        // Toplu seçim yalnız görünen kayıtlarda kalır (süzgeçle gizlenen kayıt yanlışlıkla değişmesin).
+        bulkSelection.IntersectWith(rows);
         suppressSelection = true;
         observations.ItemsSource = view;
-        observations.SelectedItem = view.FirstOrDefault(v => v.Source == selectedRow);
+        if (bulkSelection.Count > 1)
+            foreach (var v in view.Where(v => bulkSelection.Contains(v.Source))) observations.SelectedItems.Add(v);
+        else
+            observations.SelectedItem = view.FirstOrDefault(v => v.Source == selectedRow);
         suppressSelection = false;
+        UpdateBulk();
         RenderSegments();
     }
 }

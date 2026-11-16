@@ -27,6 +27,7 @@ public partial class MainWindow
     private readonly TextBlock analysisStatus = Ui.Hint("");
     private readonly Dictionary<string, TextBox> infoBoxes = new();
     private readonly Border emptyState = new();
+    private readonly Expander settingsBox = new() { Margin = new Thickness(0, 4, 0, 6) };
     private readonly StackPanel analysisBody = new();
     private readonly WrapPanel summary = new();
     private readonly WrapPanel charts = new();
@@ -45,17 +46,6 @@ public partial class MainWindow
         method.Items.Add(L.T("method.mean"));
         method.Items.Add(L.T("method.repeated"));
         stable.Content = L.T("check.stable");
-
-        var infoRow = new WrapPanel();
-        foreach (var field in StudyRules.InfoFields)
-        {
-            var box = Ui.Input(field == "Note" ? 320 : 160);
-            box.MaxLength = StudyRules.MaxText;
-            box.LostFocus += (_, _) => Guard(SaveInfo);
-            infoBoxes[field] = box;
-            infoRow.Children.Add(Ui.Field(L.T("info." + field), box));
-        }
-        var info = new Expander { Header = L.T("info.title"), Content = infoRow, Margin = new Thickness(0, 0, 0, 4) };
 
         foreach (var box in new[] { confidence, target, pace, allowance, groupMs, takt, sampleError }) box.LostFocus += (_, _) => ApplySettingsInline();
         method.SelectionChanged += (_, _) => { if (!loadingSettings) ApplySettingsInline(); };
@@ -78,7 +68,7 @@ public partial class MainWindow
         allowanceBox.Content = Ui.Stack(Ui.Hint(L.T("al.hint")), partsRow);
 
         settingsError.Visibility = Visibility.Collapsed;
-        var goMeasure = Btn("btn.goMeasure", () => tabs.SelectedIndex = 1, primary: true);
+        var goMeasure = Btn("btn.goMeasure", () => tabs.SelectedIndex = TabMeasure, primary: true);
         goMeasure.HorizontalAlignment = HorizontalAlignment.Left;
         emptyState.Child = Ui.Stack(Ui.Text(L.T("analysis.emptyLead")), goMeasure);
         emptyState.Background = Ui.Paper;
@@ -113,42 +103,43 @@ public partial class MainWindow
             Ui.Row(Ui.Field(L.T("sel.label"), selStep), Ui.Field(L.T("field.every"), every),
                 Ui.Field(L.T("field.stepPace"), Ui.WithPlaceholder(stepPace, L.T("placeholder.stepPace"))), applyStep),
             Ui.Hint(L.T("sel.hint"))));
-        var lower = new Grid { Margin = new Thickness(0, 8, 0, 0) };
-        lower.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        lower.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
-        lower.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var cyclesPart = Ui.Stack(Ui.Text(L.T("h.cycles"), 14, true), cycles);
-        var groupsPart = Ui.Stack(Ui.Text(L.T("h.groups"), 14, true), groups);
-        lower.Children.Add(cyclesPart);
-        Grid.SetColumn(groupsPart, 2);
-        lower.Children.Add(groupsPart);
+        cycles.MaxHeight = 520;
         charts.SizeChanged += (_, e) => { if (Math.Abs(e.NewSize.Width - e.PreviousSize.Width) > 40 && current != null) RenderCharts(); };
 
-        analysisBody.Children.Add(Ui.Title(L.T("h.results")));
-        analysisBody.Children.Add(summary);
-        analysisBody.Children.Add(charts);
-        analysisBody.Children.Add(Ui.Help(L.T("help.analysis.title"), L.T("help.analysis.body")));
-        analysisBody.Children.Add(Ui.Title(L.T("h.stepTable")));
-        analysisBody.Children.Add(stepSettings);
-        analysisBody.Children.Add(results);
-        analysisBody.Children.Add(lower);
+        // v2.2: alt sekmeler — Özet · Adım tablosu · Çevrimler · Dağılım ve aykırılar
+        void Sub(string key, UIElement content) => analysisTabs.Items.Add(new TabItem { Header = L.T(key), Content = content });
+        Sub("sub.sum", Ui.Stack(Ui.Title(L.T("h.results")), summary, charts, Ui.Help(L.T("help.analysis.title"), L.T("help.analysis.body"))));
+        Sub("sub.steps", Ui.Stack(Ui.Title(L.T("h.stepTable")), stepSettings, results, Ui.Text(L.T("h.groups"), 14, true), groups));
+        Sub("sub.cycles", Ui.Stack(Ui.Title(L.T("h.cycles")), Ui.Hint(L.T("cycles.hint")), cycles));
+        Sub("sub.dist", BuildDistSection());
+        analysisTabs.SelectionChanged += (_, e) => { if (ReferenceEquals(e.Source, analysisTabs) && current != null) Guard(RefreshAnalysis); };
+        analysisBody.Children.Add(analysisTabs);
 
         // Zaman etüdüne özgü alanlar örneklemede gizlenir; örneklemede hedef mutlak hata görünür.
         FrameworkElement T(FrameworkElement e) { timeOnly.Add(e); return e; }
         var sampleErrorField = Ui.Field(L.T("field.sampleError"), Ui.WithPlaceholder(sampleError, L.T("placeholder.sampleError")));
         samplingOnly.Add(sampleErrorField);
         sampleErrorField.Visibility = Visibility.Collapsed;
-        var tTable = Btn("btn.tTable", ShowStatistics);
-        analysisBody.Children.Add(BuildAdvancedSections());
-        var page = Ui.Stack(
-            info,
-            Ui.Title(L.T("h.settings")),
+        // Üst çubuk: etüt durumu ve onay (solda), Çıktı al menüsü (sağda).
+        var toolbar = new DockPanel { Margin = new Thickness(0, 0, 0, 2) };
+        var output = BuildOutputButton();
+        DockPanel.SetDock(output, Dock.Right);
+        toolbar.Children.Add(output);
+        toolbar.Children.Add(BuildStatusRow());
+        // Ayarlar katlı; başlıkta geçerli ayarların tek satırlık özeti.
+        var settingsHead = new StackPanel { Orientation = Orientation.Horizontal };
+        settingsHead.Children.Add(new TextBlock { Text = L.T("h.settings"), FontWeight = FontWeights.SemiBold });
+        settingsHead.Children.Add(settingsSummary);
+        settingsBox.Header = settingsHead;
+        settingsBox.Content = Ui.Stack(
             Ui.Row(Ui.Field(L.T("field.confidence"), confidence), T(Ui.Field(L.T("field.target"), target)), T(Ui.Field(L.T("field.pace"), pace)),
                 T(Ui.Field(L.T("field.allowance"), allowance)), T(Ui.Field(L.T("field.group"), groupMs)), T(Ui.Field(L.T("field.method"), method)),
                 T(Ui.Field(L.T("field.takt"), Ui.WithPlaceholder(takt, L.T("placeholder.takt")))), T(stable), sampleErrorField),
-            T(allowanceBox),
+            T(allowanceBox));
+        var page = Ui.Stack(
+            toolbar,
+            settingsBox,
             settingsError,
-            Ui.Row(Btn("btn.excel", Export, primary: true), Btn("btn.print", Print), T(tTable)),
             analysisStatus,
             emptyState,
             analysisBody,
@@ -196,6 +187,7 @@ public partial class MainWindow
         settingsError.Visibility = Visibility.Collapsed;
         loadingSettings = false;
         SyncAllowanceField();
+        UpdateSettingsSummary();
     }
 
     /// <summary>Ayarlar alan değiştikçe uygulanır; geçersiz değer ekranda gösterilir, önceki geçerli ayar kalır.</summary>
@@ -232,6 +224,7 @@ public partial class MainWindow
         current.AllowanceParts = StudyRules.CleanAllowanceParts(parts);
         allowance.Text = L.Num(settings.Allowance, 6);
         SyncAllowanceField();
+        UpdateSettingsSummary();
         Save();
         RefreshAnalysis();
     }
@@ -244,6 +237,7 @@ public partial class MainWindow
         {
             settingsError.Text = L.ErrorText(error);
             settingsError.Visibility = Visibility.Visible;
+            settingsBox.IsExpanded = true;
         }
     }
 
@@ -301,6 +295,8 @@ public partial class MainWindow
         bool empty = study.Observations.Count == 0;
         emptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         analysisBody.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
+        improveEmpty.Visibility = emptyState.Visibility;
+        improveTabs.Visibility = analysisBody.Visibility;
         selStep.Text = selected?.Step ?? "—";
         applyStep.IsEnabled = selected != null;
         var view = rows.Select(r => new ResultRow(r, r.Step, r.Count.ToString(), r.Excluded.ToString(), L.Num3(r.Mean), L.Num3(r.Median), L.Num3(r.Min), L.Num3(r.Max),

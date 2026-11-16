@@ -11,6 +11,16 @@ namespace VideoZamanEtudu;
 /// </summary>
 internal static class PrintReport
 {
+    /// <summary>v2.2: "Etüt durumu: Onaylandı · onaylayan · tarih" (taslakta yok).</summary>
+    public static string? StatusLine(Study study)
+    {
+        if (study.Status.Length == 0) return null;
+        var detail = study.Status == "approved"
+            ? new[] { study.ApprovedBy, study.ApprovedAt.Length >= 10 ? (L.Lang == "tr" ? $"{study.ApprovedAt[8..10]}.{study.ApprovedAt[5..7]}.{study.ApprovedAt[..4]}" : study.ApprovedAt[..10]) : "" }.Where(x => x.Length > 0).ToList()
+            : new List<string>();
+        return L.T("print.status", ("status", L.T("status." + study.Status)), ("detail", detail.Count > 0 ? " · " + string.Join(" · ", detail) : ""));
+    }
+
     public static void Print(Window owner, Study study, IReadOnlyList<(string Label, string Value, IReadOnlyList<string> Details)> cards,
         Func<double, IReadOnlyList<UIElement>> charts)
     {
@@ -26,6 +36,7 @@ internal static class PrintReport
         doc.Blocks.Add(new Paragraph(new Bold(new Run($"{study.Code} · {study.Name}"))) { FontSize = 16, Margin = new Thickness(0, 0, 0, 2) });
         var info = StudyRules.InfoFields.Where(study.Info.ContainsKey).Select(k => $"{L.T("info." + k)}: {study.Info[k]}").ToList();
         if (info.Count > 0) doc.Blocks.Add(new Paragraph(new Run(string.Join(" · ", info))) { Margin = new Thickness(0, 0, 0, 2) });
+        if (StatusLine(study) is string status) doc.Blocks.Add(new Paragraph(new Run(status)) { Margin = new Thickness(0, 0, 0, 2) });
         doc.Blocks.Add(new Paragraph(new Run(SettingsLine(study))) { Margin = new Thickness(0, 0, 0, 10), Foreground = Ui.Soft });
 
         doc.Blocks.Add(Heading(L.T("h.results")));

@@ -9,7 +9,7 @@ using Microsoft.Win32;
 namespace VideoZamanEtudu;
 
 // Tablo satırları: değerler geçerli dilde biçimlenmiş metindir (WPF bağlaması için türler public).
-public sealed record StudyRow(Study Source, string Code, string Name, string Where, string Count, string Cycles, string State, string Video, string Updated);
+public sealed record StudyRow(Study Source, string Code, string Name, string Where, string Count, string Cycles, string State, string Status, string Video, string Updated);
 public sealed record ObservationRow(Observation Source, string Start, string End, string Duration, string Step, string Class, string Excluded, string Cycle, string Rating, string Note);
 public sealed record SampleRow(Sample Source, string At, string Category, string Class, string Note);
 public sealed record OutlierRow(Observation Source, string Step, string Cycle, string Start, string Duration, string Range);
@@ -23,7 +23,7 @@ public sealed record GroupRow(string Seconds, string Count);
 public sealed record CompareViewRow(string Step, string Before, string After, string Diff, string DiffPercent);
 
 /// <summary>
-/// Ana pencere (v2). Arayüz kodla kurulur; üç bölüm: Çalışmalar, Video ve ölçüm, Analiz ve rapor.
+/// Ana pencere (v2.2). Arayüz kodla kurulur; beş bölüm: Çalışmalar, Hazırlık, Ölçüm, Analiz, İyileştirme (MainWindow.Setup.cs).
 /// Akış ve metinler tarayıcı sürümüyle (Web/js/app.js) aynıdır. Dil değişince pencere yeni dilde yeniden kurulur.
 /// Bu dosya: genel yapı, dil, Çalışmalar bölümü. Ölçüm: MainWindow.Measure.cs. Analiz: MainWindow.Analysis.cs.
 /// </summary>
@@ -62,8 +62,13 @@ public partial class MainWindow : Window
         var top = new DockPanel();
         var lang = new Button { Content = L.T("lang.switch"), ToolTip = L.T("lang.switchTitle"), Padding = new Thickness(12, 4, 12, 4), VerticalAlignment = VerticalAlignment.Top };
         lang.Click += (_, _) => Guard(SwitchLanguage);
-        DockPanel.SetDock(lang, Dock.Right);
-        top.Children.Add(lang);
+        var tour = new Button { Content = L.T("tour.open"), Padding = new Thickness(12, 4, 12, 4), Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top };
+        tour.Click += (_, _) => Guard(ShowTour);
+        var links = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Top };
+        links.Children.Add(tour);
+        links.Children.Add(lang);
+        DockPanel.SetDock(links, Dock.Right);
+        top.Children.Add(links);
         top.Children.Add(Ui.Stack(header, Ui.Hint(L.T("edition"))));
         DockPanel.SetDock(top, Dock.Top);
         var shell = new DockPanel { Margin = new Thickness(20, 14, 20, 14) };
@@ -73,13 +78,16 @@ public partial class MainWindow : Window
         UpdateHeader();
 
         tabs.Items.Add(new TabItem { Header = L.T("tab.0"), Content = BuildHome() });
-        tabs.Items.Add(new TabItem { Header = L.T("tab.1"), Content = BuildMeasure(), IsEnabled = false });
-        tabs.Items.Add(new TabItem { Header = L.T("tab.2"), Content = BuildAnalysis(), IsEnabled = false });
+        tabs.Items.Add(new TabItem { Header = L.T("tab.1"), Content = BuildSetup(), IsEnabled = false });
+        tabs.Items.Add(new TabItem { Header = L.T("tab.2"), Content = BuildMeasure(), IsEnabled = false });
+        tabs.Items.Add(new TabItem { Header = L.T("tab.3"), Content = BuildAnalysis(), IsEnabled = false });
+        tabs.Items.Add(new TabItem { Header = L.T("tab.4"), Content = BuildImprove(), IsEnabled = false, Visibility = Visibility.Collapsed });
         tabs.SelectionChanged += (_, e) =>
         {
             if (!ReferenceEquals(e.Source, tabs)) return;
-            if (tabs.SelectedIndex != 1) Pause();
-            if (tabs.SelectedIndex == 2 && current != null) Guard(RefreshAnalysis);
+            if (tabs.SelectedIndex != TabMeasure) Pause();
+            if (tabs.SelectedIndex == TabSetup && current != null) Guard(RenderStepTable);
+            if (tabs.SelectedIndex is TabAnalysis or TabImprove && current != null) Guard(RefreshAnalysis);
         };
         clock.Tick += (_, _) => UpdatePosition();
         clock.Start();
@@ -96,6 +104,8 @@ public partial class MainWindow : Window
                 tabs.SelectedIndex = reopenTab;
             }
             reopenId = null;
+            // İlk açılışta kısa tur (bir kez; sonra üstteki Kısa tur düğmesiyle).
+            if (!TourSeen && TestLog == null) ShowTour();
         });
     }
 
@@ -199,10 +209,25 @@ public partial class MainWindow : Window
         }
         newType.SelectionChanged += (_, _) => SyncType();
         SyncType();
+        var stepsFrom = Ui.Field(L.T("field.stepsFrom"), newStepsFrom);
         var more = new Expander
         {
             Header = L.T("new.more"), Margin = new Thickness(0, 2, 0, 6),
-            Content = Ui.Stack(newStepsLabel, stepsBox, infoRow)
+            Content = Ui.Stack(stepsFrom, newStepsLabel, stepsBox, infoRow)
+        };
+        // v2.2: etüdün kapsamı (yalın araçlar); varsayılan kapalı, sonradan Hazırlık sekmesinden açılır.
+        var newModules = new WrapPanel();
+        foreach (var m in StudyRules.ModuleNames)
+        {
+            var box = new CheckBox { Content = L.T("mod." + m), Margin = new Thickness(0, 2, 18, 4) };
+            newModuleBoxes[m] = box;
+            newModules.Children.Add(box);
+        }
+        var modulesBox = Ui.Box(Ui.Stack(Ui.Hint(L.T("mod.legend")), newModules, Ui.Hint(L.T("mod.hint"))));
+        newType.SelectionChanged += (_, _) =>
+        {
+            bool sampling = (newType.SelectedItem as ComboBoxItem)?.Tag as string == "sampling";
+            modulesBox.Visibility = stepsFrom.Visibility = sampling ? Visibility.Collapsed : Visibility.Visible;
         };
 
         openButton = Btn("btn.open", OpenSelected);
@@ -216,7 +241,7 @@ public partial class MainWindow : Window
 
         Ui.Columns(studies, (L.T("th.code"), "Code", false), (L.T("th.name"), "Name", false), (L.T("th.where"), "Where", false),
             (L.T("th.count"), "Count", true), (L.T("th.cycles"), "Cycles", true), (L.T("th.state"), "State", false),
-            (L.T("th.video"), "Video", false), (L.T("th.updated"), "Updated", false));
+            (L.T("th.status"), "Status", false), (L.T("th.video"), "Video", false), (L.T("th.updated"), "Updated", false));
         studies.MinHeight = 160;
         studies.SelectionChanged += (_, _) =>
         {
@@ -230,6 +255,7 @@ public partial class MainWindow : Window
             Ui.Row(Ui.Field(L.T("field.studyType"), newType), Ui.Field(L.T("field.name"), newName), Ui.Field(L.T("field.code"), newCode)),
             Ui.Row(Ui.Field(L.T("field.video"), Ui.WithPlaceholder(newVideo, L.T("placeholder.video"))),
                 Btn("btn.pickFile", () => { if (PickVideo() is string p) newVideo.Text = p; })),
+            modulesBox,
             more,
             Ui.Row(Btn("btn.create", CreateStudy, primary: true), openButton, importButton, exportButton,
                 Btn("btn.backup", BackupAll), compareButton, deleteButton),
@@ -264,10 +290,11 @@ public partial class MainWindow : Window
         var rows = studyList.Select(s => new StudyRow(s, s.Code, s.Name,
             string.Join(" · ", new[] { s.Info.GetValueOrDefault("Station"), s.Info.GetValueOrDefault("Operator") }.Where(x => !string.IsNullOrEmpty(x))),
             s.Observations.Count.ToString(), s.Observations.Count > 0 ? s.Observations.Select(o => o.Cycle).Distinct().Count().ToString() : "",
-            StudyState(s), s.VideoLabel, L.Date(s.Updated))).ToList();
+            StudyState(s), StatusLabel(s), s.VideoLabel, L.Date(s.Updated))).ToList();
         studies.ItemsSource = rows;
         studies.SelectedItem = rows.FirstOrDefault(r => r.Source.Id == selectedStudyId);
         UpdateStudyButtons();
+        FillStepSources();
     }
 
     /// <summary>Listede kısa durum: ölçüm yok / yeterli / k adım yetersiz.</summary>
@@ -288,17 +315,22 @@ public partial class MainWindow : Window
             throw Error("msg.createMissing");
         bool sampling = (newType.SelectedItem as ComboBoxItem)?.Tag as string == "sampling";
         var lines = newSteps.Text.Split('\n').Select(x => new StepDef { Name = x.Trim() }).ToList();
+        // v2.2: adımlar başka etütten alınabilir (yazılan satırlar sona eklenir); kapsam (modüller) seçilir.
+        var fromSource = !sampling && NewStepsSource is Study source ? StudyRules.CopySteps(source) : new List<StepDef>();
         var study = new Study
         {
             Name = newName.Text.Trim(), Code = newCode.Text.Trim(), Video = newVideo.Text,
             StudyType = sampling ? "sampling" : "",
-            Steps = sampling ? new() : StudyRules.CleanSteps(lines),
+            Steps = sampling ? new() : StudyRules.CleanSteps(fromSource.Concat(lines.Where(l => !fromSource.Any(x => x.Name == l.Name)))),
+            Modules = sampling ? null : StudyRules.CleanModules(newModuleBoxes.Where(p => p.Value.IsChecked == true).Select(p => p.Key)),
             Categories = sampling ? StudyRules.CleanCategories(lines.Select(x => new SampleCategory { Name = x.Name })) : new(),
             Info = StudyRules.CleanInfo(newInfo.ToDictionary(p => p.Key, p => p.Value.Text))
         };
         store.Save(study);
         newName.Text = newCode.Text = newVideo.Text = newSteps.Text = "";
         newType.SelectedIndex = 0;
+        newStepsFrom.SelectedIndex = 0;
+        foreach (var box in newModuleBoxes.Values) box.IsChecked = false;
         foreach (var box in newInfo.Values) box.Text = "";
         OpenStudy(study);
     }
@@ -419,7 +451,12 @@ public partial class MainWindow : Window
         selectedResult = null;
         undo.Clear();
         // Adım listesi yoksa ölçümlerden çıkarılır; ilk değişiklikte kaydedilir.
-        study.Steps = StudyRules.DeriveSteps(study).Select(x => new StepDef { Name = x.Name, Classification = x.Classification, Note = x.Note }).ToList();
+        // Bütün tanım alanları korunur (tür, israf, fikir, istasyon, kare).
+        study.Steps = StudyRules.DeriveSteps(study).Select(x => new StepDef
+        {
+            Name = x.Name, Classification = x.Classification, Note = x.Note, Type = x.Type, Station = x.Station,
+            Waste = x.Waste, Idea = x.Idea, FrameMs = x.FrameMs
+        }).ToList();
         // Kaldığı yerden devam: son kaydın ardındaki adım ve çevrim; video son kaydın bitişine gider (video hazır olunca).
         var point = StudyRules.Resume(study);
         flow.Index = point.Step;
@@ -432,12 +469,19 @@ public partial class MainWindow : Window
         filterCycle.SelectedIndex = -1;
         ApplyStudyType();
         storyFrames = null;
+        bulkSelection.Clear();
+        settingsBox.IsExpanded = false;
         RenderSteps();
         RenderSampling();
         RefreshObservations();
+        UpdateBulk();
         LoadSettings();
         LoadInfo();
-        tabs.SelectedIndex = 1;
+        LoadStatus();
+        LoadModules();
+        ApplyModules();
+        // Yeni etüt (adım ve ölçüm yok): Hazırlık; aksi halde ölçüm.
+        tabs.SelectedIndex = !study.IsSampling && study.Steps.Count == 0 && study.Observations.Count == 0 ? TabSetup : TabMeasure;
         LoadVideo();
         ReloadStudies();
     }
@@ -461,7 +505,10 @@ public partial class MainWindow : Window
         groups.ItemsSource = null;
         stepsPanel.Children.Clear();
         segments.Children.Clear();
+        bulkSelection.Clear();
+        UpdateBulk();
         tabs.SelectedIndex = 0;
+        ApplyModules();
         for (int i = 1; i < tabs.Items.Count; i++) ((TabItem)tabs.Items[i]).IsEnabled = false;
         UpdateHeader();
     }
@@ -471,7 +518,7 @@ public partial class MainWindow : Window
     {
         if (Keyboard.FocusedElement is TextBox box) box.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
         if (current == null) return;
-        try { SaveStepNote(); SaveInfo(); } catch (Exception) { /* geçersiz değer kaydedilmez */ }
+        try { SaveInfo(); } catch (Exception) { /* geçersiz değer kaydedilmez */ }
     }
 
     private static string? PickVideo()
