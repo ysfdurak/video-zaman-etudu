@@ -4,7 +4,8 @@ import {
   exportPackage, importPackage, suggestedFileName, parseNumber, parsePositiveInt, EXTENSION,
   INFO_FIELDS, cleanInfo, cleanSteps, deriveSteps, inProcessOrder, cycleSpread, totalStandard, compareStudies, cleanTakt, stepOrder, VERSION, requiredObservations,
   ALLOWANCE_PARTS, cleanAllowanceParts, allowanceSum,
-  cleanRating, cleanCategories, cleanSampleError, WORK_TYPES, WASTES
+  cleanRating, cleanCategories, cleanSampleError, WORK_TYPES, WASTES,
+  MODULES, hasModule, cleanModules, copySteps
 } from "./core.js";
 import { outliers, histogram, lineBalance, autoBalance, standardWork, improvements, analyzeSampling, randomMoment, stepFrame } from "./advanced.js";
 import { stepChart, cycleChart, CLASS_COLORS, histogramChart, yamazumiChart, workChart, samplingChart } from "./charts.js";
@@ -35,6 +36,7 @@ const state = {
   newVideo: null,            // {file, handle}
   videos: new Map(),         // etüt Id → {file, url} (bu oturumda bağlanan videolar)
   selectedSample: null, sampleUndo: [],   // iş örneklemesi (v1.8)
+  checked: new Set(), visibleRows: [],     // v1.9: toplu düzenleme için işaretli kayıtlar
   saving: Promise.resolve()
 };
 
@@ -128,6 +130,16 @@ function renderTable(id, rows, cells, { isSelected = () => false, onSelect = nul
     tr.setAttribute("aria-selected", String(isSelected(row)));
     for (const cell of cells(row)) {
       const td = tr.insertCell();
+      if (cell.check) {
+        // Satır seçiminden bağımsız işaret (toplu düzenleme); tıklama satırı seçmez.
+        const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: cell.checked });
+        box.setAttribute("aria-label", cell.label);
+        box.addEventListener("click", (e) => e.stopPropagation());
+        box.addEventListener("change", () => guard(() => cell.onCheck(box.checked)));
+        td.className = "check-cell";
+        td.append(box);
+        continue;
+      }
       td.textContent = cell.text;
       if (cell.num) td.className = "num";
     }
@@ -140,22 +152,64 @@ const num = (text) => ({ text: String(text ?? ""), num: true });
 
 // ------------------------------------------------------------ sekmeler
 
+// v1.9: 1 Çalışmalar · 2 Hazırlık · 3 Ölçüm · 4 Analiz · 5 İyileştirme
+const TABS = 5, TAB = { studies: 0, setup: 1, measure: 2, analysis: 3, improve: 4 };
 let activeTab = 0;
 function selectTab(index) {
   activeTab = index;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < TABS; i++) {
     $(`tab-${i}`).setAttribute("aria-selected", String(i === index));
+    $(`tab-${i}`).tabIndex = i === index ? 0 : -1;
     $(`panel-${i}`).hidden = i !== index;
   }
-  if (index !== 1) pause();
-  if (index === 2 && state.current) guard(refreshAnalysis);
+  if (index !== TAB.measure) pause();
+  if (index === TAB.setup && state.current) renderStepTable();
+  if ((index === TAB.analysis || index === TAB.improve) && state.current) guard(refreshAnalysis);
 }
-for (let i = 0; i < 3; i++) $(`tab-${i}`).addEventListener("click", () => selectTab(i));
+for (let i = 0; i < TABS; i++) $(`tab-${i}`).addEventListener("click", () => selectTab(i));
+// Sekme listesinde ok tuşlarıyla gezinme (WAI-ARIA sekme deseni).
+for (const list of document.querySelectorAll('[role="tablist"]'))
+  list.addEventListener("keydown", (e) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+    const tabs = [...list.querySelectorAll('[role="tab"]')].filter((b) => !b.disabled && !b.hidden && b.offsetParent !== null);
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    const next = e.key === "Home" ? 0 : e.key === "End" ? tabs.length - 1 : (i + (e.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+    e.preventDefault(); e.stopPropagation();
+    tabs[next].focus(); tabs[next].click();
+  });
 
 function setTabsEnabled(enabled) {
-  $("tab-1").disabled = !enabled;
-  $("tab-2").disabled = !enabled;
+  for (let i = 1; i < TABS; i++) $(`tab-${i}`).disabled = !enabled;
+  applyModules();
 }
+
+/** Alt sekmeler (Analiz ve İyileştirme içinde). */
+function selectSub(button) {
+  for (const b of document.querySelectorAll(`.subtabs [data-group="${button.dataset.group}"]`)) {
+    const on_ = b === button;
+    b.setAttribute("aria-selected", String(on_));
+    b.tabIndex = on_ ? 0 : -1;
+    $(b.getAttribute("aria-controls")).hidden = !on_;
+  }
+}
+for (const b of document.querySelectorAll(".subtabs [role=tab]"))
+  b.addEventListener("click", () => { selectSub(b); if (state.current) guard(refreshAnalysis); });
+
+/** Modüller: kapalı araçlar ve sütunlar gövde sınıflarıyla gizlenir; İyileştirme sekmesi araç yoksa görünmez. */
+function applyModules() {
+  const study = state.current;
+  for (const m of MODULES) document.body.classList.toggle(`no-mod-${m}`, !!study && (isSampling() || !hasModule(study, m)));
+  const anyTool = !!study && !isSampling() && MODULES.some((m) => hasModule(study, m));
+  $("tab-4").hidden = !anyTool;
+  if (!anyTool && activeTab === TAB.improve) selectTab(TAB.analysis);
+  // Seçili alt sekme gizlendiyse ilk görünene geç.
+  const group = [...document.querySelectorAll('.subtabs [data-group="im"]')];
+  const visible = group.filter((b) => !study || hasModule(study, MODULE_OF[b.id]));
+  if (visible.length && !visible.some((b) => b.getAttribute("aria-selected") === "true")) selectSub(visible[0]);
+  if (study) for (const box of $("modules").querySelectorAll("input")) box.checked = hasModule(study, box.value);
+}
+const MODULE_OF = { "st-balance": "Balance", "st-work": "Work", "st-ideas": "Ideas", "st-story": "Cards" };
 
 function updateHeader() {
   const h = $("header");
@@ -173,7 +227,7 @@ async function reloadStudies() {
   state.studies = await store.readAll();
   renderTable("studies", state.studies,
     (s) => [txt(s.Code), txt(s.Name), txt([s.Info?.Station, s.Info?.Operator].filter(Boolean).join(" · ")),
-      num(s.Observations.length), num(new Set(s.Observations.map((o) => o.Cycle)).size || ""), txt(studyState(s)), txt(videoLabel(s)), txt(fmtDate(s.Updated))],
+      num(s.Observations.length), num(new Set(s.Observations.map((o) => o.Cycle)).size || ""), txt(studyState(s)), txt(statusLabel(s)), txt(videoLabel(s)), txt(fmtDate(s.Updated))],
     {
       isSelected: (s) => s.Id === state.selectedStudyId,
       onSelect: (s) => { state.selectedStudyId = s.Id; reloadStudiesView(); },
@@ -183,6 +237,23 @@ async function reloadStudies() {
   const none = !selectedStudy();
   for (const id of ["open", "export", "delete"]) $(id).disabled = none;
   $("compare").disabled = state.studies.length < 2;
+  fillStepSources($("new-steps-from"), null);
+}
+/** Durum: Taslak / Tamamlandı / Onaylandı (onaylayan ve tarih ile). */
+function statusLabel(study) {
+  const label = t("status." + (study.Status || "draft"));
+  return study.Status === "approved" ? [label, study.ApprovedBy, study.ApprovedAt ? fmtDay(study.ApprovedAt) : ""].filter(Boolean).join(" · ") : label;
+}
+const fmtDay = (iso) => { const [y, m, d] = iso.slice(0, 10).split("-"); return getLang() === "tr" ? `${d}.${m}.${y}` : `${y}-${m}-${d}`; };
+/** Adım kaynağı olabilecek zaman etütleri (adım listesi ya da ölçümü olan). */
+const stepSources = (exceptId) => state.studies.filter((s) => s.Id !== exceptId && s.StudyType !== "sampling" && copySteps(s).length > 0);
+function fillStepSources(select, exceptId, withNone = true) {
+  const keep = select.value;
+  const list = stepSources(exceptId);
+  select.replaceChildren(...(withNone ? [new Option(t("stepsFrom.none"), "")] : []),
+    ...list.map((s) => new Option(`${s.Code} · ${s.Name} (${copySteps(s).length})`, s.Id)));
+  if (list.some((s) => s.Id === keep)) select.value = keep;
+  return list;
 }
 const reloadStudiesView = () => reloadStudies();
 /** Listede kısa durum: ölçüm yok / tüm adımlar yeterli / k adım yetersiz. */
@@ -240,14 +311,21 @@ on("create", async () => {
   const lines = $("new-steps").value.split("\n").map((x) => ({ Name: x, Classification: "" }));
   const info = readInfo("new-info");
   const sampling = $("new-type").value === "sampling";
+  // v1.9: adımlar başka etütten alınabilir (yazılan satırlar sona eklenir); kapsam (modüller) seçilir.
+  const source = sampling ? null : state.studies.find((x) => x.Id === $("new-steps-from").value);
+  const fromSource = source ? copySteps(source) : [];
+  const modules = [...document.querySelectorAll("#new-modules input:checked")].map((x) => x.value);
   const study = newStudy({ Name: name, Code: code, Video: state.newVideo.file.name, Info: info,
-    ...(sampling ? { StudyType: "sampling", Categories: cleanCategories(lines) } : { Steps: cleanSteps(lines) }) });
+    ...(sampling ? { StudyType: "sampling", Categories: cleanCategories(lines) }
+      : { Steps: cleanSteps([...fromSource, ...lines.filter((l) => !fromSource.some((x) => x.Name === l.Name.trim()))]), Modules: cleanModules(modules) }) });
   attachVideo(study, state.newVideo.file);
   if (state.newVideo.handle) await store.saveHandle(study.Id, state.newVideo.handle);
   await store.save(study);
   requestPersistence();
   state.newVideo = null;
   $("new-name").value = ""; $("new-code").value = ""; $("new-video").value = ""; $("new-steps").value = ""; $("new-type").value = ""; syncNewType();
+  $("new-steps-from").value = "";
+  for (const box of document.querySelectorAll("#new-modules input")) box.checked = false;
   renderInfoFields("new-info", {});
   await openStudy(study);
 });
@@ -373,8 +451,12 @@ async function openStudy(study) {
   renderSteps();
   renderSampling();
   renderInfoFields("info-fields", study.Info);
+  state.checked.clear();
+  $("settings-box").open = false;
   setTabsEnabled(true);
-  selectTab(1);
+  loadStatus();
+  // Yeni etüt (adım ve ölçüm yok): Hazırlık; aksi halde ölçüm.
+  selectTab(!isSampling() && study.Steps.length === 0 && study.Observations.length === 0 ? TAB.setup : TAB.measure);
   $("filter-step").value = ""; $("filter-cycle").value = "";
   refreshObservations();
   loadSettings();
@@ -404,6 +486,8 @@ function closeStudy() {
   for (const id of ["observations", "results", "cycles", "groups"]) $(id).tBodies[0].replaceChildren();
   $("steps").replaceChildren(); $("segments").replaceChildren(); $("charts").replaceChildren(); $("segment-legend").replaceChildren();
   $("row-editor").hidden = true;
+  state.checked.clear(); $("bulk-editor").hidden = true;
+  $("step-table").tBodies[0].replaceChildren();
   selectTab(0);
   setTabsEnabled(false);
   updateHeader();
@@ -610,14 +694,6 @@ function renderSteps() {
     b.addEventListener("click", () => guard(() => selectStep(i)));
     box.append(b);
   });
-  const st = currentStep();
-  $("step-tools").hidden = !st;
-  if (st) {
-    $("step-class").value = st.Classification; $("step-note").value = st.Note ?? "";
-    $("step-type").value = st.Type ?? ""; $("step-waste").value = st.Waste ?? ""; $("step-idea").value = st.Idea ?? "";
-  }
-  $("step-left").disabled = state.stepIndex <= 0;
-  $("step-right").disabled = state.stepIndex >= list.length - 1;
   $("step-names").replaceChildren(...list.map((x) => Object.assign(document.createElement("option"), { value: x.Name })));
   updateNow();
 }
@@ -646,95 +722,192 @@ function selectStep(i) {
   renderSteps();
 }
 
-async function saveSteps() {
+/** table: false iken adım tablosu yeniden çizilmez (alan değişikliğinde odak kaybolmasın). */
+async function saveSteps({ table = true } = {}) {
   state.current.Steps = cleanSteps(state.current.Steps);
   renderSteps();
+  if (table) renderStepTable();
   await save();
 }
 
-on("add-step", async () => {
+async function addStep(inputId, classId) {
   if (!state.current) return;
-  const name = $("new-step").value.trim();
+  const name = $(inputId).value.trim();
   if (!name) throw new Error(t("msg.stepEmpty"));
   if (steps().some((x) => x.Name === name)) throw new Error(t("msg.stepExists", { step: name }));
-  steps().push({ Name: name, Classification: $("new-step-class").value });
-  $("new-step").value = "";
+  steps().push({ Name: name, Classification: $(classId).value });
+  $(inputId).value = "";
   // Yeni adım seçilir; araya giren bir kayıtsa (kapsam dışı) sonra önceki adıma dönülür.
   if (steps().length > 1) state.resume = state.stepIndex;
   state.stepIndex = steps().length - 1;
   await saveSteps();
   if (state.ready && state.anchor === null) setStatus(t("status.ready"));
-});
+}
+on("add-step", () => addStep("new-step", "new-step-class"));
+on("setup-add-step", async () => { await addStep("setup-new-step", "setup-new-step-class"); $("setup-new-step").focus(); });
 // Yeni adım kutusunda Enter adımı ekler (kısayollar metin kutusunda çalışmaz).
 $("new-step").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("add-step").click(); } });
+$("setup-new-step").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("setup-add-step").click(); } });
+on("edit-steps", () => selectTab(TAB.setup));
+on("go-measure-setup", () => selectTab(TAB.measure));
 
-function moveStep(delta) {
-  const list = steps(), i = state.stepIndex, j = i + delta;
+function moveStep(i, delta) {
+  const list = steps(), j = i + delta;
   if (j < 0 || j >= list.length) return;
   [list[i], list[j]] = [list[j], list[i]];
-  state.stepIndex = j;
+  if (state.stepIndex === i) state.stepIndex = j; else if (state.stepIndex === j) state.stepIndex = i;
   return saveSteps();
 }
-on("step-left", () => moveStep(-1));
-on("step-right", () => moveStep(1));
-on("step-class", async () => {
-  const st = currentStep();
-  if (!st) return;
-  st.Classification = $("step-class").value;
+
+// ---- Hazırlık: adım tablosu (v1.9; ölçüm ekranındaki adım araçlarının yerini alır)
+
+const selectOf = (values, value, label) => {
+  const sel = document.createElement("select");
+  sel.append(new Option(t("class.none"), ""), ...values.map((v) => new Option(label(v), v)));
+  sel.value = value ?? "";
+  return sel;
+};
+function renderStepTable() {
+  const body = $("step-table").tBodies[0];
+  body.replaceChildren();
+  if (!state.current || isSampling()) return;
+  const list = steps();
+  if (!list.length) {
+    const tr = body.insertRow(); tr.className = "empty";
+    const td = tr.insertCell(); td.colSpan = $("step-table").tHead.rows[0].cells.length; td.textContent = t("steps.empty");
+    return;
+  }
+  const counts = new Map();
+  for (const o of state.current.Observations) counts.set(o.Step, (counts.get(o.Step) ?? 0) + 1);
+  list.forEach((st, i) => {
+    const tr = body.insertRow();
+    const cell = (el, cls = "") => { const td = tr.insertCell(); if (cls) td.className = cls; td.append(el); return el; };
+    cell(document.createTextNode(String(i + 1)), "num");
+    // Kaydetme adım nesnelerini yeniler (cleanSteps); bu yüzden adım her seferinde sırasından okunur.
+    const cur = () => steps()[i];
+    const name = cell(Object.assign(document.createElement("input"), { type: "text", value: st.Name, maxLength: 120, autocomplete: "off" }));
+    name.setAttribute("aria-label", `${t("th.r.step")} ${i + 1}`);
+    name.addEventListener("change", () => guard(() => renameStep(cur(), name)));
+    const cls = cell(selectOf(["VA", "SVA", "NVA"], st.Classification, (v) => v));
+    cls.setAttribute("aria-label", `${t("field.class")} · ${st.Name}`);
+    cls.addEventListener("change", () => guard(() => setStepClass(cur(), cls.value)));
+    const field = (el, key, clean, cssClass, label) => {
+      cell(el, cssClass);
+      el.setAttribute("aria-label", `${label} · ${st.Name}`);
+      el.addEventListener("change", () => guard(async () => {
+        const v = clean(el.value), target = cur();
+        if (v) target[key] = v; else delete target[key];
+        await saveSteps({ table: false });
+      }));
+    };
+    field(selectOf(WORK_TYPES, st.Type, (v) => t("type." + v)), "Type", (v) => (WORK_TYPES.includes(v) ? v : ""), "mod-Work", t("field.workType"));
+    // Örnek metin yalnız ilk satırda (her satırda tekrar etmesin).
+    field(Object.assign(document.createElement("input"), { type: "text", value: st.Note ?? "", maxLength: 200, autocomplete: "off", placeholder: i === 0 ? t("placeholder.stepNote") : "" }),
+      "Note", (v) => v.trim().slice(0, 200), "", t("field.stepNote"));
+    field(selectOf(WASTES, st.Waste, (v) => t("waste." + v)), "Waste", (v) => (WASTES.includes(v) ? v : ""), "mod-Ideas", t("field.waste"));
+    field(Object.assign(document.createElement("input"), { type: "text", value: st.Idea ?? "", maxLength: 200, autocomplete: "off", placeholder: i === 0 ? t("placeholder.idea") : "" }),
+      "Idea", (v) => v.trim().slice(0, 200), "mod-Ideas", t("field.idea"));
+    cell(document.createTextNode(String(counts.get(st.Name) ?? 0)), "num");
+    const actions = document.createElement("span");
+    actions.className = "row-actions";
+    for (const [text, label, action, disabled, danger] of [
+      ["▲", t("setup.up"), () => moveStep(i, -1), i === 0, false],
+      ["▼", t("setup.down"), () => moveStep(i, 1), i === list.length - 1, false],
+      ["✕", t("setup.remove"), () => removeStep(i), false, true]]) {
+      const b = Object.assign(document.createElement("button"), { type: "button", textContent: text, disabled, title: label });
+      b.setAttribute("aria-label", `${label} · ${st.Name}`);
+      if (danger) b.className = "danger";
+      b.addEventListener("click", () => guard(action));
+      actions.append(b);
+    }
+    cell(actions);
+  });
+}
+
+/** Ad değişikliği kayıtlara, sıklığa ve adım temposuna da yansır. */
+async function renameStep(st, input) {
+  const next = input.value.trim();
+  if (!next || next === st.Name) { input.value = st.Name; return; }
+  if (steps().some((x) => x !== st && x.Name === next)) { input.value = st.Name; throw new Error(t("msg.stepExists", { step: next })); }
+  const old = st.Name;
+  st.Name = next;
+  for (const o of state.current.Observations) if (o.Step === old) o.Step = next;
+  for (const map of [state.current.Frequency, state.current.StepPace])
+    if (map.has(old)) { map.set(next, map.get(old)); map.delete(old); }
+  refreshObservations();
   await saveSteps();
+}
+async function setStepClass(target, value) {
+  target.Classification = value;
+  const name = target.Name;
+  await saveSteps({ table: false });
+  const st = steps().find((x) => x.Name === name);
   const others = state.current.Observations.filter((o) => o.Step === st.Name && o.Classification !== st.Classification);
   if (others.length && (await ask(t("msg.stepClassExisting", { n: others.length, step: st.Name, cls: st.Classification || "—" }), t("title.stepClass")))) {
     for (const o of others) o.Classification = st.Classification;
     refreshObservations();
     await save();
   }
-}, "change");
-on("step-note", async () => {
-  const st = currentStep();
-  if (!st) return;
-  const note = $("step-note").value.trim().slice(0, 200);
-  if (note) st.Note = note; else delete st.Note;
+}
+async function removeStep(i) {
+  const st = steps()[i];
+  const used = state.current.Observations.filter((o) => o.Step === st.Name).length;
+  if (!(await ask(used ? t("msg.stepRemoveUsed", { step: st.Name, n: used }) : t("msg.stepRemove", { step: st.Name }), t("title.stepRemove")))) return;
+  steps().splice(i, 1);
+  if (state.stepIndex > i) state.stepIndex--;
   await saveSteps();
-}, "change");
-/** v1.8: adımın türü, israf türü ve iyileştirme fikri. */
-for (const [id, field, clean] of [["step-type", "Type", (v) => (WORK_TYPES.includes(v) ? v : "")], ["step-waste", "Waste", (v) => (WASTES.includes(v) ? v : "")],
-  ["step-idea", "Idea", (v) => v.trim().slice(0, 200)]])
-  on(id, async () => {
-    const st = currentStep();
-    if (!st) return;
-    const v = clean($(id).value);
-    if (v) st[field] = v; else delete st[field];
-    await saveSteps();
-  }, "change");
+}
+
 on("step-frame", async () => {
   requireVideo();
   const st = currentStep();
   if (!st) throw new Error(t("msg.noSteps"));
   st.FrameMs = positionMs();
-  await saveSteps();
+  await saveSteps({ table: false });
   setStatus(t("status.frameSet", { step: st.Name, at: fmtClock(st.FrameMs) }));
 });
 
-on("step-rename", async () => {
-  const st = currentStep();
-  if (!st) return;
-  const next = window.prompt(t("msg.stepRename", { step: st.Name }), st.Name)?.trim();
-  if (!next || next === st.Name) return;
-  if (steps().some((x) => x.Name === next)) throw new Error(t("msg.stepExists", { step: next }));
-  const old = st.Name;
-  st.Name = next;
-  for (const o of state.current.Observations) if (o.Step === old) o.Step = next;
-  if (state.current.Frequency.has(old)) { state.current.Frequency.set(next, state.current.Frequency.get(old)); state.current.Frequency.delete(old); }
-  refreshObservations();
+// ---- Hazırlık: kapsam (modüller)
+
+for (const box of document.querySelectorAll("#modules input"))
+  box.addEventListener("change", () => guard(async () => {
+    if (!state.current) return;
+    state.current.Modules = cleanModules([...document.querySelectorAll("#modules input:checked")].map((x) => x.value));
+    applyModules();
+    await save();
+  }));
+
+// ---- Hazırlık: adımları başka etütten al
+
+function copyPreview() {
+  const src = state.studies.find((s) => s.Id === $("copy-source").value);
+  const list = src ? copySteps(src) : [];
+  $("copy-preview").textContent = list.length ? t("copy.preview", { n: list.length, names: list.map((x) => x.Name).join(" · ") }) : "";
+}
+$("copy-source").addEventListener("change", copyPreview);
+on("copy-steps", async () => {
+  if (!state.current) return;
+  if (!fillStepSources($("copy-source"), state.current.Id, false).length) { await showDialog(t("copy.none")); return; }
+  copyPreview();
+  dialogOpen = true;
+  const dlg = $("copy-dialog");
+  dlg.returnValue = "";
+  dlg.showModal();
+  await new Promise((resolve) => dlg.addEventListener("close", resolve, { once: true }));
+  dialogOpen = false;
+  if (dlg.returnValue !== "yes") return;
+  const src = state.studies.find((s) => s.Id === $("copy-source").value);
+  if (!src) return;
+  const copied = copySteps(src);
+  const replace = document.querySelector('input[name="copy-mode"]:checked')?.value === "replace";
+  const measured = new Set(state.current.Observations.map((o) => o.Step));
+  const current = steps();
+  state.current.Steps = replace
+    ? [...copied, ...current.filter((x) => measured.has(x.Name) && !copied.some((c) => c.Name === x.Name))]
+    : [...current, ...copied.filter((c) => !current.some((x) => x.Name === c.Name))];
+  state.stepIndex = 0;
   await saveSteps();
-});
-on("step-remove", async () => {
-  const st = currentStep();
-  if (!st) return;
-  const used = state.current.Observations.filter((o) => o.Step === st.Name).length;
-  if (!(await ask(used ? t("msg.stepRemoveUsed", { step: st.Name, n: used }) : t("msg.stepRemove", { step: st.Name }), t("title.stepRemove")))) return;
-  steps().splice(state.stepIndex, 1);
-  await saveSteps();
+  setStatus(t("copy.done", { n: copied.length, source: `${src.Code} · ${src.Name}` }));
 });
 
 // ---- çevrim
@@ -886,17 +1059,58 @@ on("edit-row", async () => {
   await save();
 });
 
-on("bulk-class", async () => {
-  const row = state.selectedRow;
-  if (!row || !state.current) return;
-  const cls = $("row-class").value;
-  for (const item of state.current.Observations) if (item.Step === row.Step) item.Classification = cls;
-  const st = steps().find((x) => x.Name === row.Step);
-  if (st) st.Classification = cls;
-  renderSteps();
+// ---- v1.9: toplu düzenleme (işaretli kayıtlar)
+
+function updateBulk() {
+  for (const o of [...state.checked]) if (!state.current?.Observations.includes(o)) state.checked.delete(o);
+  const n = state.checked.size;
+  $("bulk-editor").hidden = n === 0;
+  $("bulk-title").textContent = t("bulk.title", { n });
+  const visible = state.visibleRows;
+  $("obs-all").checked = visible.length > 0 && visible.every((o) => state.checked.has(o));
+  $("obs-all").indeterminate = n > 0 && !$("obs-all").checked;
+}
+$("obs-all").addEventListener("change", () => {
+  for (const o of state.visibleRows) if ($("obs-all").checked) state.checked.add(o); else state.checked.delete(o);
   refreshObservations();
+});
+function clearBulkFields() {
+  $("bulk-step").value = ""; $("bulk-cycle").value = ""; $("bulk-rating").value = "";
+  $("bulk-class").value = "keep"; $("bulk-excluded").value = "keep";
+}
+on("bulk-apply", async () => {
+  const rows = [...state.checked];
+  if (!rows.length) return;
+  const name = $("bulk-step").value.trim(), cycleText = $("bulk-cycle").value.trim(), ratingText = $("bulk-rating").value.trim();
+  const cls = $("bulk-class").value, ex = $("bulk-excluded").value;
+  const cycle = cycleText ? parsePositiveInt(cycleText, t("name.cycle")) : null;
+  const rating = ratingText ? readRating(ratingText) : null;
+  if (!name && cycle === null && rating === null && cls === "keep" && ex === "keep") throw new Error(t("bulk.nothing"));
+  for (const o of rows) {
+    if (name) o.Step = name;
+    if (cycle !== null) o.Cycle = cycle;
+    if (cls !== "keep") o.Classification = cls;
+    if (ex !== "keep") o.Excluded = ex === "yes";
+    if (rating !== null) o.Rating = rating;
+  }
+  if (name && !steps().some((x) => x.Name === name)) { steps().push({ Name: name, Classification: cls === "keep" ? "" : cls }); state.current.Steps = cleanSteps(steps()); renderSteps(); }
+  clearBulkFields();
+  refreshObservations();
+  setStatus(t("bulk.done", { n: rows.length }));
   await save();
 });
+on("bulk-delete", async () => {
+  const rows = [...state.checked];
+  if (!rows.length) return;
+  if (!(await ask(t("bulk.deleteConfirm", { n: rows.length }), t("title.deleteRow")))) return;
+  state.current.Observations = state.current.Observations.filter((o) => !state.checked.has(o));
+  if (state.checked.has(state.selectedRow)) selectRow(null);
+  state.checked.clear();
+  refreshObservations();
+  setStatus(t("bulk.deleted", { n: rows.length }));
+  await save();
+});
+on("bulk-clear", () => { state.checked.clear(); refreshObservations(); });
 
 on("delete-row", async () => {
   const row = state.selectedRow;
@@ -921,9 +1135,14 @@ function refreshObservations() {
   fillFilter("filter-cycle", [...new Set(all.map((o) => o.Cycle))].sort((a, b) => a - b), (v) => String(v));
   const fs = $("filter-step").value, fc = $("filter-cycle").value;
   const rows = all.filter((o) => (!fs || o.Step === fs) && (!fc || String(o.Cycle) === fc));
+  // İşaret yalnız görünen kayıtlarda kalır (süzgeç değişince gizlenen kayıt yanlışlıkla değişmesin).
+  for (const o of [...state.checked]) if (!rows.includes(o)) state.checked.delete(o);
+  state.visibleRows = rows;
   $("obs-count").textContent = all.length ? t(rows.length === all.length ? "filter.countAll" : "filter.count", { n: rows.length, total: all.length }) : "";
   renderTable("observations", rows,
-    (r) => [num(fmtTime(r.StartMs)), num(fmtTime(r.EndMs)), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle), num(cleanRating(r.Rating) === null ? "" : fmtNum(r.Rating)), txt(r.Note ?? "")],
+    (r) => [{ check: true, checked: state.checked.has(r), label: `${t("bulk.row")} · ${r.Step} · ${fmtTime(r.StartMs)}`,
+      onCheck: (v) => { if (v) state.checked.add(r); else state.checked.delete(r); updateBulk(); } },
+      num(fmtTime(r.StartMs)), num(fmtTime(r.EndMs)), num(fmt3(seconds(r))), txt(r.Step), txt(r.Classification), txt(r.Excluded ? t("yes") : t("no")), num(r.Cycle), num(cleanRating(r.Rating) === null ? "" : fmtNum(r.Rating)), txt(r.Note ?? "")],
     {
       isSelected: (r) => r === state.selectedRow,
       onSelect: (r) => {
@@ -934,6 +1153,7 @@ function refreshObservations() {
       },
       empty: t("obs.empty")
     });
+  updateBulk();
   renderSegments();
 }
 
@@ -1007,7 +1227,7 @@ function isEditable(el) {
 }
 
 window.addEventListener("keydown", (e) => {
-  if (activeTab !== 1 || !state.current || dialogOpen || e.altKey) return;
+  if (activeTab !== TAB.measure || !state.current || dialogOpen || e.altKey) return;
   if (e.metaKey && e.key.toLowerCase() !== "z") return;
   if (isEditable(document.activeElement)) return;
   const step = e.shiftKey ? 1000 : e.ctrlKey ? 40 : 100;
@@ -1053,6 +1273,17 @@ function loadSettings() {
   $("group-ms").value = String(s.GroupMs);
   $("method").value = s.RepeatedLow ? "1" : "0";
   $("stable").checked = s.Stable;
+  updateSettingsSummary();
+}
+/** Katlanmış ayar kutusunun başlığı: geçerli ayarların tek satırlık özeti. */
+function updateSettingsSummary() {
+  const st = state.current;
+  if (!st) return;
+  const s = st.Settings;
+  $("settings-summary").textContent = isSampling()
+    ? t("set.summarySampling", { conf: fmtNum(s.Confidence), err: st.SampleError === null || st.SampleError === undefined ? t("set.auto") : fmtNum(st.SampleError) })
+    : t("set.summary", { conf: fmtNum(s.Confidence), target: fmtNum(s.TargetError), pace: fmtNum(s.Pace), al: fmtNum(s.Allowance),
+      takt: st.Takt ? t("set.takt", { takt: fmtNum(st.Takt) }) : "" });
 }
 
 /** Ayarlar alan değiştikçe uygulanır; geçersiz değer ekranda gösterilir, önceki geçerli ayar kalır. */
@@ -1088,12 +1319,13 @@ async function applySettings() {
   state.current.AllowanceParts = cleanAllowanceParts(parts);
   $("allowance").value = fmtNum(settings.Allowance);
   syncAllowanceField();
+  updateSettingsSummary();
   await save();
   refreshAnalysis();
 }
 async function applySettingsInline() {
   try { await applySettings(); }
-  catch (error) { $("settings-error").textContent = errorText(error); $("settings-error").hidden = false; }
+  catch (error) { $("settings-error").textContent = errorText(error); $("settings-error").hidden = false; $("settings-box").open = true; }
 }
 for (const id of ["confidence", "target", "pace", "allowance", "group-ms", "method", "stable", "takt", "sample-error", ...ALLOWANCE_PARTS.map((k) => "al-" + k)])
   $(id).addEventListener("change", applySettingsInline);
@@ -1121,6 +1353,8 @@ function refreshAnalysis() {
   const empty = study.Observations.length === 0;
   $("analysis-empty").hidden = !empty;
   $("analysis-body").hidden = empty;
+  $("improve-empty").hidden = !empty;
+  $("improve-body").hidden = empty;
   $("sel-step").textContent = selected?.Step ?? "—";
   $("apply-step").disabled = !selected;
   renderTable("results", rows,
@@ -1259,6 +1493,70 @@ async function saveInfo() {
   await save();
 }
 
+// ------------------------------------------------------------ v1.9: etüt durumu ve onay
+
+function loadStatus() {
+  const s = state.current;
+  if (!s) return;
+  $("study-status").value = s.Status || "";
+  $("approved-by").value = s.ApprovedBy || "";
+  $("approved-at").value = s.ApprovedAt ? s.ApprovedAt.slice(0, 10) : "";
+  const approved = s.Status === "approved";
+  for (const el of document.querySelectorAll(".approval")) el.hidden = !approved;
+  $("approved-note").hidden = !approved;
+  if (approved) $("approved-note").textContent = t("approved.note", { detail: statusLabel(s) });
+}
+async function saveStatus() {
+  const s = state.current;
+  if (!s) return;
+  s.Status = $("study-status").value;
+  if (s.Status === "approved") {
+    s.ApprovedBy = $("approved-by").value.trim().slice(0, 80);
+    // Tarih boşsa bugün.
+    if (!$("approved-at").value) { const d = new Date(); $("approved-at").value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+    s.ApprovedAt = $("approved-at").value;
+  } else { s.ApprovedBy = ""; s.ApprovedAt = ""; }
+  loadStatus();
+  await save();
+  await reloadStudies();
+}
+for (const id of ["study-status", "approved-by", "approved-at"]) on(id, saveStatus, "change");
+
+// ------------------------------------------------------------ v1.9: Çıktı al menüsü
+
+for (const b of document.querySelectorAll("#output-menu .menu-list button")) b.addEventListener("click", () => { $("output-menu").open = false; });
+document.addEventListener("click", (e) => { if (!$("output-menu").contains(e.target)) $("output-menu").open = false; });
+$("output-menu").addEventListener("keydown", (e) => { if (e.key === "Escape") { $("output-menu").open = false; $("output-menu").querySelector("summary").focus(); } });
+
+// ------------------------------------------------------------ v1.9: ilk kullanım turu
+
+const TOUR_KEY = "vze-tour-seen";
+let tourStep = 0;
+function showTourStep() {
+  const n = 5, i = tourStep;
+  $("tour-count").textContent = t("tour.count", { i: i + 1, n });
+  $("tour-title").textContent = t(`tour.${i + 1}.title`);
+  $("tour-text").textContent = t(`tour.${i + 1}.text`);
+  $("tour-back").disabled = i === 0;
+  $("tour-next").textContent = t(i === n - 1 ? "tour.finish" : "tour.next");
+  for (let k = 0; k < TABS; k++) $(`tab-${k}`).classList.toggle("tour-focus", k === i);
+}
+function openTour() {
+  tourStep = 0;
+  showTourStep();
+  dialogOpen = true;
+  $("tour").showModal();
+}
+$("tour").addEventListener("close", () => {
+  dialogOpen = false;
+  for (let k = 0; k < TABS; k++) $(`tab-${k}`).classList.remove("tour-focus");
+  try { localStorage.setItem(TOUR_KEY, "1"); } catch { /* gizli pencere */ }
+});
+$("tour-back").addEventListener("click", () => { tourStep = Math.max(0, tourStep - 1); showTourStep(); });
+$("tour-next").addEventListener("click", () => { if (tourStep >= 4) $("tour").close(); else { tourStep++; showTourStep(); } });
+$("tour-open").addEventListener("click", openTour);
+const tourSeen = () => { try { return localStorage.getItem(TOUR_KEY) === "1" || new URL(location.href).searchParams.has("notour"); } catch { return true; } };
+
 // ------------------------------------------------------------ önce / sonra
 
 on("compare", async () => {
@@ -1312,7 +1610,7 @@ on("t-table", async () => {
   await showDialog(t("tTable.formula"), { pre: t("tTable.header") + "\n" + lines.join("\n"), title: t("tTable.title", { c: fmtNum(c) }) });
 });
 
-on("go-measure", () => selectTab(1));
+on("go-measure", () => selectTab(TAB.measure));
 on("print", async () => {
   if (!state.current) return;
   await applySettings();
@@ -1345,6 +1643,7 @@ function fillPrintHead() {
     method: t(set.RepeatedLow ? "method.repeated" : "method.mean")
   }) + (Object.keys(parts).length ? " (" + ALLOWANCE_PARTS.filter((k) => parts[k] !== undefined).map((k) => `${t("al." + k).replace(/ ?%$/, "")} ${fmtNum(parts[k])}`).join(" + ") + ")" : "") +
     (s.Takt ? " · " + t("print.takt", { takt: fmtNum(s.Takt) }) : "") + (s.StepPace.size ? " · " + t("print.stepPace") : ""));
+  if (s.Status) line(t("print.status", { status: t("status." + s.Status), detail: s.Status === "approved" && (s.ApprovedBy || s.ApprovedAt) ? " · " + [s.ApprovedBy, s.ApprovedAt ? fmtDay(s.ApprovedAt) : ""].filter(Boolean).join(" · ") : "" }));
   $("print-foot").textContent = t("print.foot", { code: s.Code, name: s.Name, date: fmtDate(new Date().toISOString()) }) + ` · ${t("app.title")} ${VERSION}`;
 }
 window.addEventListener("beforeprint", fillPrintHead);
@@ -1376,7 +1675,10 @@ function renderLanguage() {
     renderSampling();
     renderInfoFields("info-fields", state.current.Info);
     refreshObservations();
-    if (activeTab === 2) guard(refreshAnalysis);
+    renderStepTable();
+    loadStatus();
+    applyModules();
+    if (activeTab === TAB.analysis || activeTab === TAB.improve) guard(refreshAnalysis);
   }
   const url = new URL(location.href);
   url.searchParams.set("lang", getLang());
@@ -1564,7 +1866,7 @@ function renderAdvanced(study, rows, selected) {
   const outs = outliers(study);
   const flat = outs.flatMap((g) => g.Rows.map((o) => ({ g, o })));
   renderTable("outliers", flat, ({ g, o }) => [txt(g.Step), num(o.Cycle), num(fmtTime(o.StartMs)), num(fmt3(seconds(o))), num(`${fmt3(Math.max(0, g.Low))} – ${fmt3(g.High)}`)],
-    { empty: t("outliers.none"), onSelect: ({ o }) => { selectTab(1); selectRow(o); if (state.ready) seek(o.StartMs); refreshObservations(); } });
+    { empty: t("outliers.none"), onSelect: ({ o }) => { selectTab(TAB.measure); selectRow(o); if (state.ready) seek(o.StartMs); refreshObservations(); } });
   $("exclude-outliers").disabled = flat.length === 0;
 
   // Hat dengeleme
@@ -1786,4 +2088,6 @@ guard(async () => {
   await reloadStudies();
   if (store.lastSkipped > 0)
     await showDialog(t("msg.skipped", { n: store.lastSkipped }));
+  // İlk açılışta kısa tur (bir kez; sonra sağ üstten açılır).
+  if (!tourSeen()) openTour();
 });
