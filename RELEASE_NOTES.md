@@ -1,3 +1,12 @@
+# v2.2.1 (Windows) · Video Zaman Etüdü — metin düzeltmeleri
+
+v2.2.0'daki sade düzen aynen geçerli. Bu sürümde yalnız metinler düzeltildi; hesaplar ve paket biçimi değişmedi. Tarayıcı sürümünde aynı düzeltmeler zaten yayında.
+
+- **İngilizce tekil/çoğul:** Sayı 1 olunca bozulan ifadeler ("1 stations", "1 records selected" gibi) sayıdan bağımsız kalıba çevrildi. Etkilenen yerler: toplu düzenleme, adım kopyalama, hat dengeleme özeti, yedek ve geri yükleme, aykırı kayıt iletileri.
+- **Eski ekran adı:** Üç iletide kalan "Video ve ölçüm" / "Video & measurement" adı "Ölçüm sekmesi" / "Measure tab" oldu.
+
+Yenilikler için bkz. v2.2.0.
+
 # v2.2.0 (Windows) · v1.9.0 (tarayıcı) · Video Zaman Etüdü — sade düzen ve yeni kolaylıklar
 
 Program büyüdükçe ölçüm ve analiz ekranları kalabalıklaşmıştı. Ekranlar işin sırasına göre yeniden düzenlendi ve dört yeni özellik eklendi. Değişiklikler tarayıcı ve Windows sürümünde, Türkçe ve İngilizce arayüzde aynı.
