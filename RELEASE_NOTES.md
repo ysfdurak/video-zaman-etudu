@@ -1,3 +1,51 @@
+# v2.2.0 (Windows) · v1.9.0 (tarayıcı) · Video Zaman Etüdü — sade düzen ve yeni kolaylıklar
+
+Program büyüdükçe ölçüm ve analiz ekranları kalabalıklaşmıştı. Ekranlar işin sırasına göre yeniden düzenlendi ve dört yeni özellik eklendi. Değişiklikler tarayıcı ve Windows sürümünde, Türkçe ve İngilizce arayüzde aynı.
+
+**Yeni düzen: beş sekme**
+1. **Çalışmalar:** Etüt listesi. Yeni sütun: **Durum** (taslak, tamamlandı, onaylandı). Eski "Durum" sütununun adı **Yeterlilik** oldu.
+2. **Hazırlık (yeni):** Ölçmeden önce yapılan her şey burada.
+   - Adım tablosu: ad, sınıf, tür, bitiş anı, israf, fikir, sıra ve silme tek tabloda.
+   - Etüdün kapsamı.
+   - Etüt bilgileri.
+   - Ölçüm ekranındaki adım araçları kaldırıldı.
+3. **Ölçüm:** Yalnız ölçmek için gerekenler kaldı: video, adım düğmeleri, Başla/Ölç, çevrim ve kapsam dışı. Kayıt temposu, paralel aralık ve adım görseli **Gelişmiş** bölümüne taşındı.
+4. **Analiz:** Dört alt sekmesi var: **Özet · Adım tablosu · Çevrimler · Dağılım ve aykırılar**.
+   - Ayarlar katlı durur. Başlıkta tek satırlık özet görünür (ör. "güven %95 · tempo %110 · tolerans %15"); tıklayınca açılır.
+   - Excel, Yazdır/PDF, adım kartları ve t tablosu tek **Çıktı al** menüsünde.
+5. **İyileştirme (yeni):** Yalın araçlar analizden ayrıldı ve her biri kendi alt sekmesinde: hat dengeleme, standart iş, fikirler, adım kartları.
+
+**Seçime göre sadelik: etüdün kapsamı**
+- Yeni etüt açarken standart sürenin yanında hangi araçların kullanılacağı seçilir: hat dengeleme, standart iş, israf ve fikirler, adım kartları. Varsayılan olarak hiçbiri seçili gelmez; o zaman program yalnız standart süreyi gösterir.
+- Seçilmeyen araçların sekmesi, tablo sütunu ve Excel sayfası çıkmaz.
+- Seçim sonradan Hazırlık sekmesinden değiştirilebilir. Eski etütlerde bütün araçlar açık kalır.
+- İş örneklemesi kendi akışında kalır; İyileştirme sekmesi görünmez.
+
+**Yeni özellikler**
+- **Adımları başka etütten al:** Hazırlık'ta "Başka etütten al…" ya da yeni etüt formunda "Adımları şu etütten al".
+  - Gelenler: ad, sınıf, tür, bitiş anı, israf, fikir ve istasyon. Ölçümler ve adım görselleri gelmez.
+  - Mevcut liste korunup eksikler eklenebilir ya da liste değiştirilebilir. Değiştirmede ölçülmüş adımlar silinmez.
+- **Toplu kayıt düzenleme:** Birden çok kayıt seçilip adım, çevrim, sınıf, kapsam dışı ve tempo birlikte değiştirilir ya da kayıtlar birlikte silinir. Boş bırakılan alan değişmez.
+  - Tarayıcıda işaret kutularıyla seçilir.
+  - Windows'ta Ctrl/Shift ile seçilir.
+- **Etüt durumu ve onay:** Taslak, Tamamlandı ya da Onaylandı. Onayda onaylayan ve tarih tutulur; tarih boşsa bugün yazılır.
+  - Durum listede, yazdırma başlığında ve Excel özetinde görünür.
+  - Onaylı etüt ölçüm ekranında uyarı notu gösterir.
+- **İlk kullanım turu:** İlk açılışta beş adımlık kısa tur sekmeleri sırayla tanıtır. Sağ üstteki **Kısa tur** ile her zaman yeniden açılır.
+
+**Düzeltme (Windows):** Etüt açılınca adımın tür, israf, fikir, istasyon ve kare bilgisi kopyalanırken düşüyordu; şimdi korunuyor.
+
+**Erişilebilirlik:** Sekmeler ve alt sekmeler ok tuşlarıyla gezilir (WAI-ARIA sekme deseni). Adım tablosundaki her alanın okunabilir bir adı var.
+
+**Uyumluluk:** Paket sürümü 1 olarak kalır. Etütte dört yeni isteğe bağlı alan var: `Modules` (boş liste "yalın araç yok" demektir; alan yoksa hepsi açık), `Status`, `ApprovedBy`, `ApprovedAt`. Eski sürümler bu alanları yok sayar. Excel'de durum satırları yalnız durum girilmişse yazılır; eski etütlerin çıktısı değişmez.
+
+**Testler**
+- Node: 199/199.
+- Chrome uçtan uca: 86/86.
+- axe: iki dilde, masaüstünde ve telefonda, beş sekme ve alt sekmelerin hepsinde 0 ihlal.
+- C# kontrolleri: v2 için 73 denetim (modül, durum ve adım kopyalama `Shared/ek-alanlar.json` ile tarayıcıyla eşdeğer).
+- Windows öz-denemesi: iki dilde, Hazırlık, kapsam, onay, toplu düzenleme ve adım kopyalama dahil.
+
 # v2.1.0 (Windows) · v1.8.0 (tarayıcı) · Video Zaman Etüdü — muadil yazılımlardaki eksik özellikler
 
 Timer Pro, AVIX, UMT Plus ve Proplanner gibi zaman etüdü yazılımlarında olup bizde olmayan özellikler eklendi. Hepsi tarayıcı ve Windows sürümünde, Türkçe ve İngilizce.

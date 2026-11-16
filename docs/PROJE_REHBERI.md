@@ -93,17 +93,55 @@ Hesaplar `Web/js/advanced.js` ve `Core/Advanced.cs` içindedir. `Shared/ek-alanl
 | Özellik | Kural | Nerede girilir |
 |---|---|---|
 | Kayıt temposu (`Observation.Rating`) | Puan varsa adım temposu = Σ(süre × puan) ÷ Σ süre (ortalama yöntemi) ya da puanların ortalaması (tekrar yöntemi). Puansız kayıt adım/genel tempoyu alır. | Ölçüm: "Tempo puanı %" (sonraki kayıtlara); kayıt düzenleyici |
-| Aykırı değer | IQR: Q1 − 1,5·IQR altı ya da Q3 + 1,5·IQR üstü. Yüzdelik doğrusal ara değerli (Excel/R tip 7). En az 4 geçerli kayıt. | Analiz: "Aykırıları kapsam dışı bırak" |
+| Aykırı değer | IQR: Q1 − 1,5·IQR altı ya da Q3 + 1,5·IQR üstü. Yüzdelik doğrusal ara değerli (Excel/R tip 7). En az 4 geçerli kayıt. | Analiz → Dağılım: "Aykırıları kapsam dışı bırak" |
 | Histogram | √n sınıf (3–10), eşit genişlik | Analiz, seçili adım |
-| Hat dengeleme | Yük = katkılar toplamı. Denge verimi = Σ atanmış yük ÷ (istasyon sayısı × en büyük yük). En az istasyon = ⌈toplam ÷ takt⌉. Otomatik dağıtım: sırayla doldur, yük + adım > takt ise yeni istasyon. | Analiz: İstasyon sütunu / otomatik dağıt |
-| Standart iş | El işi, yürüme ve bekleme ardışık; makine işi başladığı andan paralel. Süre = katkı. Tür boşsa el işi. | Ölçüm: adım araçları → Tür |
-| İyileştirme | İsraf türü (7 israf) ya da fikri olan adımlar + NVA adımlar | Ölçüm: adım araçları → İsraf, fikir |
-| Adım kartı | Kare = `StepDef.FrameMs`, yoksa ilk geçerli kaydın ortası. Tarayıcı ayrı bir `<video>`'dan canvas'a, Windows `MediaPlayer` + `DrawingVisual` ile çizer. | Ölçüm: "Bu kareyi adım görseli yap" |
+| Hat dengeleme | Yük = katkılar toplamı. Denge verimi = Σ atanmış yük ÷ (istasyon sayısı × en büyük yük). En az istasyon = ⌈toplam ÷ takt⌉. Otomatik dağıtım: sırayla doldur, yük + adım > takt ise yeni istasyon. | İyileştirme → Hat dengeleme: İstasyon sütunu / otomatik dağıt |
+| Standart iş | El işi, yürüme ve bekleme ardışık; makine işi başladığı andan paralel. Süre = katkı. Tür boşsa el işi. | Hazırlık: adım tablosu → Tür |
+| İyileştirme | İsraf türü (7 israf) ya da fikri olan adımlar + NVA adımlar | Hazırlık: adım tablosu → İsraf, fikir |
+| Adım kartı | Kare = `StepDef.FrameMs`, yoksa ilk geçerli kaydın ortası. Tarayıcı ayrı bir `<video>`'dan canvas'a, Windows `MediaPlayer` + `DrawingVisual` ile çizer. | Ölçüm → Gelişmiş: "Bu kareyi adım görseli yap" |
 | İş örneklemesi | p = sayı ÷ n; aralık p ± z·√(p(1−p)/n); gereken n = ⌈z²·p(1−p) ÷ e²⌉, e = hedef mutlak hata (varsayılan 5 puan). z normal dağılımdan (tarayıcı kendi ters normali, Windows MathNet). | Yeni etüt → Etüt türü: İş örneklemesi |
 
 - **Sık sorulabilecek: Neden IQR, ±2σ değil?** IQR, aykırının kendisinden etkilenmez; az kayıtta (4–10) σ'ya dayalı kural aykırıyı gizler.
 - **Yamazumi neden katkı kullanıyor?** Seyrek adımlar (her N çevrimde bir) takta karşı çevrim başına yükleriyle karşılaştırılmalı.
 - **İş örneklemesinde neden rastgele an?** Gözlem anı önceden bilinmezse davranış değişmez ve sonuç yanlı olmaz. Düzenli aralık (Her X sn) yalnız iş döngüsüyle çakışmıyorsa kullanılmalı.
+
+## 3g. Sade düzen (tarayıcı v1.9, Windows v2.2)
+
+**Neden?** v1.8/v2.1 ile ölçüm ekranında adım tanımlama araçları, analizde dokuz bölüm vardı (yaklaşık üç ekran kaydırma). Kullanıcı neyin nerede olduğunu aramak zorunda kalıyordu. Kural şu oldu: **her sekme işin bir aşaması; bir aşamada yalnız o aşamanın işi**.
+
+| Sekme | Ne yapılır | Kod (tarayıcı / Windows) |
+|---|---|---|
+| 1 Çalışmalar | Yeni etüt, aç, içe/dışa al, yedek, karşılaştır, durum sütunu | `app.js` başı / `MainWindow.xaml.cs` |
+| 2 Hazırlık | Adım tablosu, etüdün kapsamı, etüt bilgileri, başka etütten adım | `renderStepTable` / `MainWindow.Setup.cs` |
+| 3 Ölçüm | Video, adım düğmeleri, Başla/Ölç, kayıt tablosu, toplu düzenleme, Gelişmiş | `app.js` ölçüm / `MainWindow.Measure.cs` |
+| 4 Analiz | Durum ve onay, Çıktı al, katlı ayarlar, alt sekmeler | `refreshAnalysis` / `MainWindow.Analysis.cs` |
+| 5 İyileştirme | Seçili yalın araçlar, her biri bir alt sekme | `renderAdvanced` / `MainWindow.Advanced.cs` |
+
+**Kapsam (modüller):**
+- `Study.Modules` dört değerden oluşan bir listedir: `Balance`, `Work`, `Ideas`, `Cards`.
+- Alan **yoksa** (`null`, eski etüt) bütün araçlar açık sayılır. Böylece eski kullanıcı hiçbir şey kaybetmez.
+- **Boş liste** "yalın araç yok" demektir ve pakete `"Modules": []` olarak yazılır. Bu yüzden `null` ile `[]` ayrı tutulur.
+- Kapalı aracın sekmesi, tablo sütunu ve Excel sayfası çıkmaz. Hesaplar değişmez; yalnız görünürlük değişir.
+- Tarayıcıda gövdeye `no-mod-X` sınıfı eklenir ve `.mod-X` öğeleri gizlenir. Windows'ta `ApplyModules()` aynı işi yapar.
+
+**Adım kopyalama:** `copySteps` / `StudyRules.CopySteps`. Adım tanımlarını alır, `FrameMs` gelmez: kare öteki videonun zamanıdır, bu videoda anlamsız olur. "Değiştir" seçilirse ölçülmüş ama kaynakta olmayan adımlar sona eklenir; böylece kayıtlar sahipsiz kalmaz.
+
+**Durum:**
+- `Status` üç değer alır: `""` (taslak), `done`, `approved`.
+- `ApprovedBy` ve `ApprovedAt` yalnız onaylı etütte yazılır. Durum değişince silinir.
+- Onaylı etüt kilitlenmez. Ölçüm ekranında not çıkar; değişiklik yapan kişi durumu kendisi günceller. Kilit, sahada küçük bir düzeltmeyi bile engellerdi; bu yüzden tercih edilmedi.
+
+**Toplu düzenleme:** Boş alan "değişmez" demektir. Seçim yalnız görünen kayıtlarda kalır: süzgeç değişince gizlenen kayıt seçimden çıkar, yanlışlıkla değişmez.
+- Tarayıcıda satır başında işaret kutusu vardır.
+- Windows'ta Ctrl/Shift ile çoklu seçim yapılır; bu, platformun alışılmış yoludur.
+
+**Kısa tur:**
+- Tarayıcıda `localStorage` (`vze-tour-seen`) ile bir kez gösterilir.
+- Windows'ta `%LOCALAPPDATA%\VideoZamanEtudu\tur-goruldu` dosyasıyla bir kez gösterilir.
+- Öz-denemede tur açılmaz. Tarayıcı testleri turu ilk adımda kapatır.
+
+- **Sık sorulabilecek: Neden araçlar varsayılan kapalı?** Çoğu etüt yalnız standart süre içindir. Yeni kullanıcı önce sade ekranı görür; ihtiyaç olunca araç tek tıkla açılır.
+- **Neden Hazırlık ayrı sekme?** Adım tanımları ölçümden önce ve bir kez yapılır. Ölçüm sırasında araçlar dikkati dağıtıyor ve yanlışlıkla değiştiriliyordu. Ölçerken beklenmeyen bir adım için hızlı "Adım ekle" kutusu Ölçüm'de kaldı.
 
 ## 4. Formüller (sorulursa)
 - Süre (sn) = (bitiş ms − başlangıç ms) / 1000

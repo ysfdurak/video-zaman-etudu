@@ -13,8 +13,9 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | Ölçüm akışı | Adım listesi, 1–9 tuşları, otomatik çevrim, geri al; gezinmek ölçümü kesmez (v2.0) | Aynısı (v1.5) |
 | Analiz ekleri | Grafikler, çevrim değişkenliği, etüt bilgileri, önce/sonra, adım açıklaması, kayıt notu, adım temposu, takt, yazdır/PDF, tolerans kalemleri, toplu yedek, kaldığı yerden devam, kayıt süzgeci (v2.0) | Aynısı (v1.5–v1.7) |
 | İleri analiz (v2.1 / v1.8) | Kayıt başına tempo, dağılım ve aykırı değer, hat dengeleme (Yamazumi), standart iş kombinasyon tablosu, iyileştirme fikirleri (7 israf), adım kartları (storyboard), iş örneklemesi, yan yana önce/sonra video | Aynısı |
+| Sade düzen (v2.2 / v1.9) | Beş sekme: Çalışmalar · Hazırlık · Ölçüm · Analiz · İyileştirme; analizde alt sekmeler, tek "Çıktı al" menüsü; etüdün kapsamı (yalın araçlar seçime göre), adımları başka etütten alma, toplu kayıt düzenleme, etüt durumu ve onay, kısa tur | Aynısı |
 
-Windows **v2.1.0** ile tarayıcı **v1.8.0** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
+Windows **v2.2.0** ile tarayıcı **v1.9.0** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır. v2 alanları (adım listesi, notlar, adım temposu, takt, tolerans kalemleri, karşılaştırma) için `Shared/ek-alanlar.json` aynı işi görür: tarayıcı çekirdeği üretir, C# aynı paketi bayt bayt aynı metinle yazmak ve aynı sonuçları bulmak zorundadır.
 
@@ -70,17 +71,28 @@ Etiket komutu yerine GitHub'da **Actions → Derleme ve kontroller → Run workf
 
 ## İlk etüt
 
-### Tarayıcı sürümü (v1.5)
+### Akış (tarayıcı v1.9, Windows v2.2)
 
-1. **Çalışmalar** ekranında ad ve kod yaz, videoyu seç. İstersen **Adımlar ve etüt bilgileri** bölümüne süreç adımlarını (her satıra bir) ve operatör, istasyon, vardiya gibi bilgileri gir. **Yeni çalışma başlat**.
-2. **Video ve ölçüm** ekranında adım listesi sağdadır. Eksik adımı **Yeni adım** kutusuna yazıp Enter'a bas. Seçili adımın sınıfını (VA/SVA/NVA) ve **bitiş anını** (Ölç'e ne zaman basılacağı) tanımla; kayıtlar sınıfı adımdan alır.
-3. Videoyu adımın başına getir ve **Başla**'ya bas. Adım bitince **Ölç**: kayıt eklenir, sıradaki adım seçilir. Son adımdan sonra çevrim kendiliğinden 1 artar. Adım sınırını bulmak için zaman çizgisinde gezinebilirsin; ölçüm kesilmez.
-4. Araya giren bir bekleme için o adımı seç (ya da ekle), **Sonraki kayıt kapsam dışı**'yı işaretle ve Ölç'e bas. İşaret kalkar, sıra önceki adıma döner.
-5. Yanlış kaydı **Son kaydı geri al** ya da Ctrl+Z ile geri al. Eski bir kaydı düzeltmek için tabloda satıra tıkla; **Seçili kayıt** kutusunda değiştir.
-6. **Analiz ve rapor** ekranında tempo ve toleransı gir; değerler alan değişince uygulanır. Takt süresi girersen özette takt doluluğu ve gereken operatör sayısı çıkar. Bir adımın temposu farklıysa tabloda adımı seçip **Bu adımın temposu**'nu gir. Grafikleri ve yeterliliği incele; **Excel'e aktar** ya da **Yazdır / PDF** ile paylaş.
-7. İyileştirmeden sonra aynı işi yeniden ölç. **Çalışmalar → Önce / sonra karşılaştır…** iki etüdün adım ve toplam farkını gösterir.
+Sekmeler işin sırasını izler: **1 Çalışmalar → 2 Hazırlık → 3 Ölçüm → 4 Analiz → 5 İyileştirme**. İlk açılışta kısa bir tur bunu anlatır; sağ üstteki **Kısa tur** ile yeniden açılır.
 
-### Windows sürümü (v2.0)
+1. **Çalışmalar:** Ad ve kod yaz, videoyu seç.
+   - Standart sürenin yanında kullanacağın araçları işaretle: hat dengeleme, standart iş, israf ve fikirler, adım kartları. Hiçbirini seçmezsen ekranlar sade kalır; sonradan değiştirilebilir.
+   - İstersen **Adımlar ve etüt bilgileri** bölümünde adımları yaz ya da **Adımları şu etütten al** ile benzer bir etütten getir.
+   - **Yeni çalışma başlat**.
+2. **Hazırlık:** Adım tablosunda her adımın adını, sınıfını (VA/SVA/NVA) ve **bitiş anını** (Ölç'e ne zaman basılacağı) yaz. Kapsamda seçtiysen tür, israf ve fikir de buradadır. Sıra ▲▼ ile değişir. **Başka etütten al…** başka bir etüdün adım listesini getirir. Operatör, istasyon ve vardiya gibi etüt bilgileri de burada.
+3. **Ölçüm:** Videoyu adımın başına getir ve **Başla**'ya bas. Adım bitince **Ölç** (Enter): kayıt eklenir, sıradaki adım seçilir. Son adımdan sonra çevrim kendiliğinden 1 artar. Zaman çizgisinde gezinmek ölçümü kesmez.
+   - Araya giren bir bekleme için o adımı seç (ya da hızlıca ekle), **Sonraki kayıt kapsam dışı**'yı işaretle ve Ölç'e bas. İşaret kalkar, sıra önceki adıma döner.
+   - Yanlış kaydı **Son kaydı geri al** ya da Ctrl+Z ile geri al.
+   - Tek kaydı düzeltmek için satıra tıkla. Birden çok kaydı birlikte değiştirmek için tarayıcıda satır başındaki kutuları işaretle, Windows'ta Ctrl/Shift ile seç.
+   - Kayıt temposu, paralel aralık ve adım görseli **Gelişmiş** bölümündedir.
+4. **Analiz:** Ayarlar üstte katlı durur; başlığa tıklayıp tempo, tolerans ve takt gir.
+   - Alt sekmeler: **Özet** (kartlar ve grafikler), **Adım tablosu** (adıma özel sıklık ve tempo), **Çevrimler**, **Dağılım ve aykırılar**.
+   - İş bitince **Etüt durumu**nu Tamamlandı ya da Onaylandı yap (onaylayan ve tarih).
+   - **Çıktı al** menüsünden Excel, Yazdır/PDF, adım kartları ya da t tablosu.
+5. **İyileştirme:** Kapsamda seçtiğin yalın araçlar burada: hat dengeleme, standart iş, fikirler, adım kartları.
+6. İyileştirmeden sonra aynı işi yeniden ölç. **Çalışmalar → Önce / sonra karşılaştır…** iki etüdün adım ve toplam farkını gösterir.
+
+### Windows sürümü (v2.2)
 
 Akış tarayıcı sürümüyle aynıdır (yukarıdaki adımlar). Farklar:
 - Etütler bu bilgisayarda, Windows kullanıcısına ait yerel kayıtta tutulur; video yolu hatırlanır.
@@ -89,7 +101,7 @@ Akış tarayıcı sürümüyle aynıdır (yukarıdaki adımlar). Farklar:
 - Dil düğmesi (sağ üst) pencereyi seçilen dilde yeniden kurar; açık etüt ve bölüm korunur.
 - Video oynatma Windows codec desteğine bağlıdır (H.264 MP4 önerilir).
 
-### Klavye kısayolları (Video ve ölçüm ekranı)
+### Klavye kısayolları (Ölçüm sekmesi)
 
 | Tuş | İşlem |
 |---|---|

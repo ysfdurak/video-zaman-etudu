@@ -114,8 +114,8 @@ public partial class MainWindow
         bool work = current.HasModule("Work"), ideas = current.HasModule("Ideas");
         var heads = new List<(string Text, double Width)> { ("#", 34), (L.T("th.r.step"), 200), (L.T("th.class"), 96) };
         if (work) heads.Add((L.T("field.workType"), 130));
-        heads.Add((L.T("field.stepNote"), 260));
-        if (ideas) { heads.Add((L.T("field.waste"), 150)); heads.Add((L.T("field.idea"), 230)); }
+        heads.Add((L.T("field.stepNote"), 230));
+        if (ideas) { heads.Add((L.T("field.waste"), 150)); heads.Add((L.T("field.idea"), 210)); }
         heads.Add((L.T("th.count"), 64));
         heads.Add((L.T("setup.thActions"), 120));
         foreach (var h in heads) stepTable.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(h.Width) });
@@ -163,7 +163,8 @@ public partial class MainWindow
             var note = new TextBox { Text = st.Note ?? "", MaxLength = StudyRules.MaxText, MinHeight = 28, VerticalContentAlignment = VerticalAlignment.Center };
             AutomationName(note, $"{L.T("field.stepNote")} · {st.Name}");
             note.LostFocus += (_, _) => Guard(() => SetStepFieldAt(index, "Note", note.Text));
-            Put(i == 0 ? Ui.WithPlaceholder(note, L.T("placeholder.stepNote")) : note, row, col++);
+            if (i == 0) note.ToolTip = L.T("placeholder.stepNote");
+            Put(note, row, col++);
             if (ideas)
             {
                 var waste = Ui.TagCombo(StudyRules.Wastes.Select(w => (w, L.T("waste." + w))), 144);
@@ -174,7 +175,8 @@ public partial class MainWindow
                 var idea = new TextBox { Text = st.Idea ?? "", MaxLength = StudyRules.MaxText, MinHeight = 28, VerticalContentAlignment = VerticalAlignment.Center };
                 AutomationName(idea, $"{L.T("field.idea")} · {st.Name}");
                 idea.LostFocus += (_, _) => Guard(() => SetStepFieldAt(index, "Idea", idea.Text));
-                Put(i == 0 ? Ui.WithPlaceholder(idea, L.T("placeholder.idea")) : idea, row, col++);
+                if (i == 0) idea.ToolTip = L.T("placeholder.idea");
+                Put(idea, row, col++);
             }
             Put(new TextBlock { Text = counts.GetValueOrDefault(st.Name).ToString(), TextAlignment = TextAlignment.Right }, row, col++);
             var actions = new StackPanel { Orientation = Orientation.Horizontal };
