@@ -15,7 +15,7 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | İleri analiz (v2.1 / v1.8) | Kayıt başına tempo, dağılım ve aykırı değer, hat dengeleme (Yamazumi), standart iş kombinasyon tablosu, iyileştirme fikirleri (7 israf), adım kartları (storyboard), iş örneklemesi, yan yana önce/sonra video | Aynısı |
 | Sade düzen (v2.2 / v1.9) | Beş sekme: Çalışmalar · Hazırlık · Ölçüm · Analiz · İyileştirme; analizde alt sekmeler, tek "Çıktı al" menüsü; etüdün kapsamı (yalın araçlar seçime göre), adımları başka etütten alma, toplu kayıt düzenleme, etüt durumu ve onay, kısa tur | Aynısı |
 
-Windows **v2.2.0** ile tarayıcı **v1.9.0** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
+Windows **v2.2.2** ile tarayıcı **v1.9.1** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır. v2 alanları (adım listesi, notlar, adım temposu, takt, tolerans kalemleri, karşılaştırma) için `Shared/ek-alanlar.json` aynı işi görür: tarayıcı çekirdeği üretir, C# aynı paketi bayt bayt aynı metinle yazmak ve aynı sonuçları bulmak zorundadır.
 
@@ -82,11 +82,12 @@ Sekmeler işin sırasını izler: **1 Çalışmalar → 2 Hazırlık → 3 Ölç
 2. **Hazırlık:** Adım tablosunda her adımın adını, sınıfını (VA/SVA/NVA) ve **bitiş anını** (Ölç'e ne zaman basılacağı) yaz. Kapsamda seçtiysen tür, israf ve fikir de buradadır. Sıra ▲▼ ile değişir. **Başka etütten al…** başka bir etüdün adım listesini getirir. Operatör, istasyon ve vardiya gibi etüt bilgileri de burada.
 3. **Ölçüm:** Videoyu adımın başına getir ve **Başla**'ya bas. Adım bitince **Ölç** (Enter): kayıt eklenir, sıradaki adım seçilir. Son adımdan sonra çevrim kendiliğinden 1 artar. Zaman çizgisinde gezinmek ölçümü kesmez.
    - Araya giren bir bekleme için o adımı seç (ya da hızlıca ekle), **Sonraki kayıt kapsam dışı**'yı işaretle ve Ölç'e bas. İşaret kalkar, sıra önceki adıma döner.
+   - Adım düğmesindeki sayı geçerli ölçüm / gereken ölçümdür (ör. 3/21); "✓" yeterli demektir. Bütün düğmeler ✓ olunca o etüt için yeterince ölçmüşsündür.
    - Yanlış kaydı **Son kaydı geri al** ya da Ctrl+Z ile geri al.
    - Tek kaydı düzeltmek için satıra tıkla. Birden çok kaydı birlikte değiştirmek için tarayıcıda satır başındaki kutuları işaretle, Windows'ta Ctrl/Shift ile seç.
    - Kayıt temposu, paralel aralık ve adım görseli **Gelişmiş** bölümündedir.
 4. **Analiz:** Ayarlar üstte katlı durur; başlığa tıklayıp tempo, tolerans ve takt gir.
-   - Alt sekmeler: **Özet** (kartlar ve grafikler), **Adım tablosu** (adıma özel sıklık ve tempo), **Çevrimler**, **Dağılım ve aykırılar**.
+   - Alt sekmeler: **Özet** (kartlar ve grafikler), **Adım tablosu** (adıma özel sıklık ve tempo; çift tıklayınca adımın kayıtları açılır), **Çevrimler**, **Dağılım ve aykırılar**.
    - İş bitince **Etüt durumu**nu Tamamlandı ya da Onaylandı yap (onaylayan ve tarih).
    - **Çıktı al** menüsünden Excel, Yazdır/PDF, adım kartları ya da t tablosu.
 5. **İyileştirme:** Kapsamda seçtiğin yalın araçlar burada: hat dengeleme, standart iş, fikirler, adım kartları.
@@ -108,6 +109,7 @@ Akış tarayıcı sürümüyle aynıdır (yukarıdaki adımlar). Farklar:
 | Boşluk | Oynat / duraklat |
 | Enter | Başla, ardından Ölç |
 | 1–9 | Adım seç |
+| X | Sonraki kaydı kapsam dışı işaretle / kaldır |
 | + / − | Çevrimi artır / azalt |
 | Ctrl + Z | Son kaydı geri al |
 | Esc | Durdur (kayıt eklemez) |

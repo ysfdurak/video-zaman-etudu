@@ -105,6 +105,10 @@ internal static class SelfTest
         if (window.TestReady)
             Check("devam iletisi", window.TestStatus.Contains(L.Clock(35000)), window.TestStatus);
         Check("kayıt tablosu 14 satır", window.TestObservationRows == 14, window.TestObservationRows.ToString());
+        Check("v2.2.1 adım düğmesinde yeterlilik göstergesi (3/21)", window.TestChip(1).Contains("3/21"), window.TestChip(1));
+        window.TestKey(System.Windows.Input.Key.X);
+        Check("v2.2.1 X kısayolu kapsam dışını işaretler", window.TestExcludedNext);
+        window.TestKey(System.Windows.Input.Key.X);
         window.TestFilterStep(study.Steps[1].Name);
         Pump();
         Check("süzgeç: yalnız seçili adım", window.TestObservationRows == 3, window.TestObservationRows.ToString());
@@ -140,6 +144,12 @@ internal static class SelfTest
         Check("adım temposu kaydedilir", study.StepPace.TryGetValue(study.Steps[1].Name, out var sp) && sp == 95);
         Pump(300);
         Check("adım tablosu 6 satır", window.TestResultRows == 6, window.TestResultRows.ToString());
+        window.TestOpenResult(study.Steps[3].Name);
+        Pump(200);
+        Check("v2.2.1 adım tablosundan kayda gitme", window.TestSelectedTab == 2 && window.TestFilterStepValue == study.Steps[3].Name, window.TestFilterStepValue);
+        window.TestFilterStep(L.T("filter.all"));
+        window.TestSelectTab(3);
+        Pump(300);
         Check("özet kartları (standart, kapasite, takt, yeterlilik, çevrim, dağılım)", window.TestSummaryCards == 6, window.TestSummaryCards.ToString());
         Check("iki grafik", window.TestCharts == 2, window.TestCharts.ToString());
         var cards = window.TestCards();
@@ -215,6 +225,11 @@ internal static class SelfTest
         window.TestOpenStudy(fresh);
         Pump(400);
         Check("v2.2 adımsız etüt Hazırlık sekmesinde, İyileştirme gizli", window.TestSelectedTab == 1 && !window.TestImproveVisible, window.TestSelectedTab.ToString());
+        window.TestAddSetupStep("A1");
+        window.TestAddSetupStep("A2");
+        Check("v2.2.1 ölçümsüz etütte adım eklerken seçim ilk adımda kalır", window.TestNow.StartsWith("A1"), window.TestNow);
+        Check("v2.2.1 ölçüm yokken yeterlilik kartı yok, tek ölçümde karar verilmez", window.TestCards().Count == 0);
+        window.TestCurrent!.Steps.Clear();
         window.TestCopySteps(study, replace: false);
         Pump(200);
         Check("v2.2 adımlar başka etütten alınır (kare gelmez)", window.TestCurrent!.Steps.Count == study.Steps.Count && window.TestStepChips == study.Steps.Count
@@ -250,6 +265,14 @@ internal static class SelfTest
         StudyExport.Write(window.TestCurrent!, sx, lang);
         using (var book = new XLWorkbook(sx))
             Check("örnekleme Excel’i: 4 sayfa", book.Worksheets.Count == 4 && book.Worksheet(2).Name == L.TIn(lang, "x.sheet.sampling"));
+
+        // v2.2.1: tek ölçümlü etütte "Tüm adımlar yeterli" denmez
+        var single = new Study { Name = "Tek", Code = "T-1", Video = sampling.Video, Observations = { new Observation { StartMs = 0, EndMs = 2000, Step = "A", Cycle = 1 } } };
+        window.TestOpenStudy(single);
+        Pump(200);
+        window.TestSelectTab(3);
+        Pump(300);
+        Check("v2.2.1 tek ölçümde yeterlilik kartı: karar verilemiyor", window.TestSufficiencyCard() == L.T("summary.undecided"), window.TestSufficiencyCard());
 
         window.TestSelectTab(0);
         Pump(300);

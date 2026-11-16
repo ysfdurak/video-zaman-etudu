@@ -52,6 +52,16 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, TextBox> newInfo = new();
     private readonly TextBlock studiesStatus = Ui.Text("", 13.5, true, Ui.Accent);
     private Button openButton = null!, exportButton = null!, deleteButton = null!, compareButton = null!;
+    private readonly Button resumeLast = new() { Padding = new Thickness(12, 5, 12, 5), Margin = new Thickness(0, 0, 0, 10), HorizontalAlignment = HorizontalAlignment.Left, Background = Ui.Accent, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, Visibility = Visibility.Collapsed };
+
+    /// <summary>v2.2.1: son açılan etüdün kimliği (Çalışmalar'da "Kaldığın etüde dön").</summary>
+    private static string LastFile => Path.Combine(TestStoreDirectory ??
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VideoZamanEtudu"), "son-etut");
+    private static Guid? LastStudyId
+    {
+        get { try { return File.Exists(LastFile) && Guid.TryParse(File.ReadAllText(LastFile).Trim(), out var id) ? id : null; } catch (Exception) { return null; } }
+        set { try { Directory.CreateDirectory(Path.GetDirectoryName(LastFile)!); File.WriteAllText(LastFile, value?.ToString() ?? ""); } catch (Exception) { /* yazılamazsa yalnız kolaylık kaybolur */ } }
+    }
 
     public MainWindow()
     {
@@ -250,8 +260,9 @@ public partial class MainWindow : Window
         };
         studies.MouseDoubleClick += (_, _) => Guard(OpenSelected);
 
+        resumeLast.Click += (_, _) => Guard(() => { if (studyList.FirstOrDefault(x => x.Id == LastStudyId) is Study last) OpenStudy(last); });
         var form = Ui.Stack(
-            Ui.Text(L.T("home.lead")), how, note, demoRow,
+            Ui.Text(L.T("home.lead")), resumeLast, how, note, demoRow,
             Ui.Row(Ui.Field(L.T("field.studyType"), newType), Ui.Field(L.T("field.name"), newName), Ui.Field(L.T("field.code"), newCode)),
             Ui.Row(Ui.Field(L.T("field.video"), Ui.WithPlaceholder(newVideo, L.T("placeholder.video"))),
                 Btn("btn.pickFile", () => { if (PickVideo() is string p) newVideo.Text = p; })),
@@ -295,6 +306,14 @@ public partial class MainWindow : Window
         studies.SelectedItem = rows.FirstOrDefault(r => r.Source.Id == selectedStudyId);
         UpdateStudyButtons();
         FillStepSources();
+        // Son açılan etüde dönüş (etüt açık değilken); listede de seçili gelir.
+        var last = studyList.FirstOrDefault(s => s.Id == LastStudyId);
+        resumeLast.Visibility = last != null && current == null ? Visibility.Visible : Visibility.Collapsed;
+        if (last != null)
+        {
+            resumeLast.Content = L.T("resume.last", ("code", last.Code), ("name", last.Name));
+            if (selectedStudyId is null) { selectedStudyId = last.Id; studies.SelectedItem = rows.FirstOrDefault(r => r.Source.Id == last.Id); UpdateStudyButtons(); }
+        }
     }
 
     /// <summary>Listede kısa durum: ölçüm yok / yeterli / k adım yetersiz.</summary>
@@ -443,6 +462,7 @@ public partial class MainWindow : Window
         CommitPendingEdits();
         current = study;
         selectedStudyId = study.Id;
+        LastStudyId = study.Id;
         AttachDemoVideo(study);
         UpdateHeader();
         StopMeasure();

@@ -79,6 +79,25 @@ public partial class MainWindow
     }
     internal bool TestBulkVisible => bulkEditor.Visibility == Visibility.Visible;
     internal string TestStudyStatusLabel(Study s) => StatusLabel(s);
+
+    // v2.2.1
+    internal string TestChip(int index) => stepsPanel.Children.OfType<Button>().ElementAtOrDefault(index) is { Content: StackPanel p }
+        ? string.Join(" ", p.Children.OfType<FrameworkElement>().Select(e => e is TextBlock t ? t.Text : e is Border { Child: TextBlock bt } ? bt.Text : "")) : "";
+    internal void TestKey(System.Windows.Input.Key key)
+    {
+        var args = new System.Windows.Input.KeyEventArgs(System.Windows.Input.Keyboard.PrimaryDevice, PresentationSource.FromVisual(this)!, 0, key) { RoutedEvent = System.Windows.Input.Keyboard.PreviewKeyDownEvent };
+        OnShortcut(this, args);
+    }
+    internal bool TestExcludedNext => excludedNext.IsChecked == true;
+    internal string TestFilterStepValue => filterStep.SelectedItem as string ?? "";
+    internal void TestOpenResult(string step)
+    {
+        results.SelectedItem = (results.ItemsSource as IEnumerable<ResultRow>)?.FirstOrDefault(r => r.Source.Step == step);
+        results.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs(System.Windows.Input.Mouse.PrimaryDevice, 0, System.Windows.Input.MouseButton.Left) { RoutedEvent = Control.MouseDoubleClickEvent });
+    }
+    internal string TestSufficiencyCard() => TestCards().FirstOrDefault(c => c.Label == L.T("summary.sufficiency")).Value ?? "";
+    internal bool TestResumeVisible => resumeLast.Visibility == Visibility.Visible;
+    internal void TestAddSetupStep(string name) { setupNewStep.Text = name; Guard(() => AddStepFrom(setupNewStep, setupNewStepClass)); }
     internal void TestAutoBalance() => Guard(AutoBalanceStations);
     internal int TestYamazumi => yamazumiBox.Children.Count;
     internal int TestWork => workBox.Children.OfType<Border>().Count();

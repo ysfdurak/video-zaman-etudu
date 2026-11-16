@@ -62,7 +62,8 @@ public partial class MainWindow
 
     private UIElement BuildSetup()
     {
-        setupNewStep.PreviewKeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; Guard(() => AddStepFrom(setupNewStep, setupNewStepClass)); } };
+        // Boş kutuda Enter sessizce yok sayılır.
+        setupNewStep.PreviewKeyDown += (_, e) => { if (e.Key == Key.Enter) { e.Handled = true; if (setupNewStep.Text.Trim().Length > 0) Guard(() => AddStepFrom(setupNewStep, setupNewStepClass)); } };
         var modules = new WrapPanel();
         foreach (var m in StudyRules.ModuleNames)
         {
@@ -208,8 +209,8 @@ public partial class MainWindow
         if (StepList.Any(x => x.Name == name)) throw Error("msg.stepExists", ("step", name));
         StepList.Add(new StepDef { Name = name, Classification = Ui.ClassOf(cls) });
         input.Text = "";
-        // Yeni adım seçilir; araya giren bir kayıtsa (kapsam dışı) sonra önceki adıma dönülür.
-        flow.Added(StepList.Count);
+        // Ölçüm başladıysa yeni adım seçilir (araya giren kayıt için); liste kurulurken seçim ilk adımda kalır.
+        if (current.Observations.Count > 0) flow.Added(StepList.Count); else flow.Clamp(StepList.Count);
         SaveSteps();
         if (ready && anchor is null) SetStatus(L.T("status.ready"));
     }
