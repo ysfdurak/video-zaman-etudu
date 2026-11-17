@@ -15,7 +15,7 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | İleri analiz (v2.1 / v1.8) | Kayıt başına tempo, dağılım ve aykırı değer, hat dengeleme (Yamazumi), standart iş kombinasyon tablosu, iyileştirme fikirleri (7 israf), adım kartları (storyboard), iş örneklemesi, yan yana önce/sonra video | Aynısı |
 | Sade düzen (v2.2 / v1.9) | Beş sekme: Çalışmalar · Hazırlık · Ölçüm · Analiz · İyileştirme; analizde alt sekmeler, tek "Çıktı al" menüsü; etüdün kapsamı (yalın araçlar seçime göre), adımları başka etütten alma, toplu kayıt düzenleme, etüt durumu ve onay, kısa tur | Aynısı |
 
-Windows **v2.2.2** ile tarayıcı **v1.9.1** aynı özelliklere sahiptir. Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
+Windows **v2.2.2** ile tarayıcı **v1.9.2** aynı özelliklere sahiptir (tarayıcı v1.9.2 yalnızca çevrimdışı çalışmayı ekler; Windows zaten internet gerektirmez). Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır. v2 alanları (adım listesi, notlar, adım temposu, takt, tolerans kalemleri, karşılaştırma) için `Shared/ek-alanlar.json` aynı işi görür: tarayıcı çekirdeği üretir, C# aynı paketi bayt bayt aynı metinle yazmak ve aynı sonuçları bulmak zorundadır.
 
@@ -29,7 +29,7 @@ Masaüstü program, ilk derlemede NuGet bağımlılıkları yüklendikten sonra 
 - **Measuring:** times come from the video position (Start → Measure → Measure); a step list moves to the next step and cycle automatically, out-of-scope interruptions do not break the sequence, Ctrl+Z undoes the last record.
 - **Analysis:** VA / SVA / NVA classes, per-step sample sufficiency with Student-t, pace rating and allowances, normal and standard time, takt, outliers (IQR) and cycle variation.
 - **Lean tools:** line balancing (Yamazumi), standard work combination sheet, improvement ideas by the 7 wastes, step cards with video frames, work sampling, before/after comparison with side-by-side video.
-- **Privacy:** videos and measurements never leave the computer; studies live in the browser (IndexedDB) or in a local SQLite file on Windows. Back up all studies to one `.zip`.
+- **Privacy:** videos and measurements never leave the computer, and the browser version works fully offline once opened; studies live in the browser (IndexedDB) or in a local SQLite file on Windows. Back up all studies to one `.zip`.
 - **Equivalence tests:** 61 calculation cases, 175 t values and 86 package scenarios must give the same result in C# and JavaScript on every push.
 
 The rest of this README (running, release, first study, keyboard shortcuts) is in Turkish; the code guide is in [docs/PROJE_REHBERI.md](docs/PROJE_REHBERI.md).

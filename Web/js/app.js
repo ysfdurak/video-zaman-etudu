@@ -1702,6 +1702,11 @@ if (DESKTOP_URL) {
   $("desktop-link-wrap").hidden = false;
 }
 window.addEventListener("beforeunload", () => { for (const v of state.videos.values()) URL.revokeObjectURL(v.url); });
+// v1.9.2: çevrimdışı çalışma. sw.js yalnız bu sitenin kendi dosyalarını önbelleğe alır; video ve etütler zaten tarayıcıda.
+// Yerel dosyadan (file://) ya da desteklemeyen tarayıcıda sessizce atlanır; uygulama yine çalışır.
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
 /** Dil değişince sabit metinler, başlık, tablolar ve analiz yeniden çizilir; seçim hatırlanır ve adrese yazılır. */
 function renderLanguage() {
   applyStatic();

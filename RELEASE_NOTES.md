@@ -1,3 +1,17 @@
+# v1.9.2 (tarayıcı) · Video Zaman Etüdü — çevrimdışı çalışma
+
+Tarayıcı sürümü artık internet olmadan da tamamen çalışıyor. Sayfa bir kez açıldıktan sonra bağlantı kesilse ya da internet hiç olmasa da etüt açılır, ölçülür, analiz edilir ve Excel'e aktarılır. Demo etüdü de çevrimdışı açılır.
+
+- **Nasıl:** Tarayıcı, uygulamanın kendi dosyalarını (sayfa, kod, demolar) kendi önbelleğinde saklar. İnternet varken her açılışta en yeni sürüm alınır; yoksa önbellekteki kullanılır.
+- **Gizlilik:** Hiçbir şey değişmedi ve bu, kendi gözünle sınanabilir hale geldi: interneti kapat, uygulama yine çalışır. Video ve etütler zaten bilgisayarda; önbelleğe yalnız sitenin kendi dosyaları girer. Sayfanın güvenlik politikası (`connect-src 'self'`) dış adreslere bağlantıyı engellemeye devam ediyor.
+- **Windows sürümü:** Zaten internet gerektirmiyor; değişiklik yok.
+
+**Uyumluluk:** Paket biçimi ve hesaplar değişmedi.
+
+**Testler**
+- Node: yeni `sw.test.mjs` (önbellek sürümü uygulama sürümüyle aynı, önbellek listesi bütün dosyaları kapsıyor, dış adres yok).
+- Chrome: sayfa açıldıktan sonra ağ kesilip yeniden yüklendiğinde uygulama ve demo açılıyor.
+
 # v2.2.2 (Windows) · v1.9.1 (tarayıcı) · Video Zaman Etüdü — kullanım kolaylıkları
 
 Son gözden geçirmede bulunan sorunlar düzeltildi ve ölçümü hızlandıran küçük eklemeler yapıldı. Hepsi tarayıcıda ve Windows'ta, Türkçe ve İngilizce.
