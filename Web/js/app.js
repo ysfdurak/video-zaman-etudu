@@ -245,6 +245,9 @@ async function reloadStudies() {
   try { lastId = localStorage.getItem(LAST_KEY); } catch { /* gizli pencere */ }
   const last = state.studies.find((s) => s.Id === lastId);
   $("resume-last").hidden = !last || !!state.current;
+  // İlk giriş: hiç etüt yoksa iki net seçenek (hazır sonucu gör / kendin ölç)
+  $("start-choice").hidden = state.studies.length > 0 || !!state.current;
+  $("demo").closest("p").hidden = !$("start-choice").hidden; // aynı demo bağlantısı kartta zaten var
   if (last) {
     $("resume-last-btn").textContent = t("resume.last", { code: last.Code, name: last.Name });
     if (!state.selectedStudyId) { state.selectedStudyId = last.Id; for (const id of ["open", "export", "delete"]) $(id).disabled = false; }
@@ -350,7 +353,8 @@ on("create", async () => {
 on("open", async () => { const s = selectedStudy(); if (s) await openStudy(s); });
 
 /** Demo etüdü: zaten varsa onu açar, yoksa içe alır. Video sunucudan değil sitenin kendi dosyasından gelir. */
-on("demo", async () => {
+/** Demo etüdünü açar; analiz=true ise doğrudan Analiz sekmesine geçer (ilk giriş: "Hazır sonucu gör"). */
+async function openDemo(analiz = false) {
   const demo = DEMOS[getLang()];
   let study = state.studies.find((s) => s.Code === demo.code && s.ExpectedVideoName === demo.videoName);
   if (!study) {
@@ -361,7 +365,11 @@ on("demo", async () => {
     requestPersistence();
   }
   await openStudy(study);
-});
+  if (analiz) selectTab(TAB.analysis);
+}
+on("demo", () => openDemo(false));
+on("start-demo", () => openDemo(true));
+on("start-own", () => { const el = $("new-name"); el.scrollIntoView({ block: "center", behavior: "smooth" }); el.focus({ preventScroll: true }); });
 
 /** Demo videosu bağlı değilse sitenin kendi kopyasından bağlar. */
 async function attachDemoVideo(study) {
@@ -2134,5 +2142,6 @@ guard(async () => {
   if (store.lastSkipped > 0)
     await showDialog(t("msg.skipped", { n: store.lastSkipped }));
   // İlk açılışta kısa tur (bir kez; sonra sağ üstten açılır).
-  if (!tourSeen()) openTour();
+  // İlk girişte iki seçenek kartı yön verir; kısa tur yalnızca kayıtlı etüdü olana kendiliğinden açılır (her zaman "Kısa tur" ile açılabilir)
+  if (!tourSeen() && state.studies.length > 0) openTour();
 });

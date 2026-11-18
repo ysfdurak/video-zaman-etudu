@@ -1,3 +1,11 @@
+# v1.9.3 (tarayıcı) · Video Zaman Etüdü — ilk giriş ve dokunma hedefleri
+
+- **İlk giriş:** Hiç etüdü olmayan kullanıcı iki net seçenekle karşılanır: **Hazır sonucu gör** (sentetik depo etüdü açılır ve doğrudan Analiz sekmesine geçer) ve **Kendin ölç** (yeni etüt formuna götürür). Kısa tur artık yalnızca kayıtlı etüdü olana kendiliğinden açılır; her zaman üstteki "Kısa tur" ile açılabilir.
+- **Dokunma hedefleri:** Düğme ve seçim kutuları en az 36 px; dokunmatik ekranda en az 44 px.
+- **Windows sürümü:** Değişiklik yok (metin sözlüğü yeni anahtarlarla yeniden üretildi).
+
+**Uyumluluk:** Paket biçimi ve hesaplar değişmedi.
+
 # v1.9.2 (tarayıcı) · Video Zaman Etüdü — çevrimdışı çalışma
 
 Tarayıcı sürümü artık internet olmadan da tamamen çalışıyor. Sayfa bir kez açıldıktan sonra bağlantı kesilse ya da internet hiç olmasa da etüt açılır, ölçülür, analiz edilir ve Excel'e aktarılır. Demo etüdü de çevrimdışı açılır.
