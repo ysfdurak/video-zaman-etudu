@@ -1,11 +1,11 @@
-// Video Zaman Etüdü — çevrimdışı çalışma (tarayıcı v1.9.3).
+// Video Zaman Etüdü — çevrimdışı çalışma (tarayıcı v1.9.4).
 // Yalnız bu sitenin kendi dosyalarını önbelleğe alır; başka hiçbir adrese istek göndermez ve
 // kullanıcının videosuna ya da etütlerine dokunmaz (onlar zaten tarayıcıda, IndexedDB'de).
 // Strateji: önce ağ (her zaman en yeni sürüm), ağ yoksa önbellek.
 // Sürüm değişince CACHE adı değişir; eski önbellek "activate" adımında silinir.
 // Testler (tests/sw.test.mjs): CACHE sürümü core.js VERSION ile aynı, FILES listesi Web/ altındaki
 // bütün js dosyalarını ve demoları içermeli.
-const CACHE = "vze-1.9.3";
+const CACHE = "vze-1.9.4";
 const FILES = [
   "./",
   "index.html",

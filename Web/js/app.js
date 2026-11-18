@@ -1467,6 +1467,16 @@ function renderSummary(study, rows) {
   if (na.length) details.push(t("summary.na", { k: na.length }));
   // Hesaplanamayan adım varken "Tüm adımlar yeterli" denmez.
   card(t("summary.sufficiency"), bad.length ? t("summary.need", { k: bad.length }) : na.length ? t("summary.undecided") : t("summary.allOk"), details);
+  // Yetersiz adım satırları tıklanabilir: gözlemler, hedef sayı ve videoda o ana gitme (stepDetail)
+  if (bad.length) {
+    const smalls = box.lastElementChild.querySelectorAll("small");
+    bad.forEach((r, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "link need-step"; b.textContent = smalls[i].textContent + " ›";
+      b.addEventListener("click", () => stepDetail(r, requiredObservations(r, settings)));
+      smalls[i].replaceWith(b);
+    });
+  }
   const spread = cycleSpread(analyzeCycles(study));
   if (spread.Rows.length > 1)
     card(t("summary.cycles"), t("summary.cyclesValue", { n: spread.Rows.length, cv: pct(spread.Variation, 1).replace(/^[+]/, "") }),
@@ -2145,3 +2155,40 @@ guard(async () => {
   // İlk girişte iki seçenek kartı yön verir; kısa tur yalnızca kayıtlı etüdü olana kendiliğinden açılır (her zaman "Kısa tur" ile açılabilir)
   if (!tourSeen() && state.studies.length > 0) openTour();
 });
+
+/** Yetersiz adım ayrıntısı: mevcut/hedef gözlem, adımın gözlemleri (çıkarılanlar dahil) ve videoda o ana gitme. */
+function stepDetail(row, need) {
+  let dlg = $("step-dialog");
+  if (!dlg) {
+    dlg = document.createElement("dialog"); dlg.id = "step-dialog"; dlg.className = "wide"; dlg.setAttribute("aria-labelledby", "step-title");
+    document.body.append(dlg);
+  }
+  const obs = state.current.Observations.filter((o) => o.Step === row.Step).sort((a, b) => a.StartMs - b.StartMs);
+  const valid = obs.filter((o) => !o.Excluded && o.EndMs > o.StartMs), excl = obs.filter((o) => o.Excluded);
+  const more = Math.max(0, need - row.Count);
+  dlg.replaceChildren();
+  const h = document.createElement("h2"); h.id = "step-title"; h.textContent = row.Step;
+  const p = document.createElement("p"); p.textContent = t("step.summary", { c: row.Count, n: need, m: more });
+  const p2 = document.createElement("p"); p2.className = "hint"; p2.textContent = t("step.why", { conf: state.current.Settings.Confidence, err: state.current.Settings.TargetError });
+  const tbl = document.createElement("table"); tbl.className = "grid step-obs";
+  const head = document.createElement("tr");
+  for (const k of ["step.col.cycle", "step.col.time", "step.col.status", ""]) { const th = document.createElement("th"); th.textContent = k ? t(k) : ""; head.append(th); }
+  tbl.append(head);
+  for (const o of obs) {
+    const tr = document.createElement("tr"); if (o.Excluded) tr.className = "excluded";
+    const go = document.createElement("button"); go.type = "button"; go.className = "link"; go.textContent = t("step.open");
+    go.addEventListener("click", () => { dlg.close(); selectTab(TAB.measure); if (state.ready) seek(o.StartMs); else setStatus(t("step.noVideo")); });
+    for (const v of [String(o.Cycle ?? "—"), fmt3(seconds(o)), (o.Excluded ? t("step.excluded") : t("step.included")) + (o.Note ? " · " + o.Note : "")]) { const td = document.createElement("td"); td.textContent = v; tr.append(td); }
+    const td = document.createElement("td"); td.append(go); tr.append(td); tbl.append(tr);
+  }
+  const ex = document.createElement("p"); ex.className = "hint";
+  ex.textContent = excl.length ? t("step.excludedNote", { k: excl.length }) : t("step.noExcluded");
+  const row2 = document.createElement("div"); row2.className = "row end";
+  const back = document.createElement("button"); back.type = "button"; back.className = "primary"; back.textContent = t("step.measure");
+  back.addEventListener("click", () => { dlg.close(); selectTab(TAB.measure); });
+  const close = document.createElement("button"); close.type = "button"; close.textContent = t("dialog.close");
+  close.addEventListener("click", () => dlg.close());
+  row2.append(close, back);
+  dlg.append(h, p, p2, tbl, ex, row2);
+  dlg.showModal();
+}

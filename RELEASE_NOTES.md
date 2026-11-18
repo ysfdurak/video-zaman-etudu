@@ -1,3 +1,8 @@
+# v1.9.4 (tarayıcı) · Video Zaman Etüdü — yetersiz adım ayrıntısı
+
+- **Analiz → Özet → İstatistiksel yeterlilik:** "Toplama: yaklaşık 21 gözlem gerekir (şu an 3)" gibi satırlar tıklanabilir. Açılan pencerede adımın şu anki ve hedef gözlem sayısı, kaç gözlem daha gerektiği, neden yetmediği, adımın tüm gözlemleri (hesaba katılan / çıkarılan ve notu) ve her gözlem için **Videoda aç** (Ölçüm sekmesinde o ana gider) var.
+- **Windows sürümü:** Değişiklik yok (metin sözlüğü yeniden üretildi).
+
 # v1.9.3 (tarayıcı) · Video Zaman Etüdü — ilk giriş ve dokunma hedefleri
 
 - **İlk giriş:** Hiç etüdü olmayan kullanıcı iki net seçenekle karşılanır: **Hazır sonucu gör** (sentetik depo etüdü açılır ve doğrudan Analiz sekmesine geçer) ve **Kendin ölç** (yeni etüt formuna götürür). Kısa tur artık yalnızca kayıtlı etüdü olana kendiliğinden açılır; her zaman üstteki "Kısa tur" ile açılabilir.

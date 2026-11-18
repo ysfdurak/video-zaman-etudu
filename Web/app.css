@@ -345,3 +345,10 @@ button, select { min-height: 36px; }
   button, select, input:not([type=checkbox]):not([type=radio]), .tabs button { min-height: 44px; }
   button.link { min-height: 44px; display: inline-flex; align-items: center; }
 }
+
+/* Yetersiz adım ayrıntısı */
+.sum-card button.need-step { display: block; text-align: left; font-size: 13px; padding: 2px 0; min-height: 0; }
+#step-dialog table.step-obs { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+#step-dialog table.step-obs th, #step-dialog table.step-obs td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+#step-dialog tr.excluded td { color: var(--ink-soft); text-decoration: line-through; }
+#step-dialog tr.excluded td:last-child, #step-dialog tr.excluded td:nth-child(3) { text-decoration: none; }
