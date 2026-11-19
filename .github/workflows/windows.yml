@@ -44,7 +44,7 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "Öz-deneme başarısız ($($p.ExitCode))." }
       - name: Öz-deneme çıktısını yükle
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VideoZamanEtudu_OzDeneme
           path: ${{ runner.temp }}/oz-deneme
@@ -79,7 +79,7 @@ jobs:
           Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $zip
       - name: İndirilebilir Windows ZIP’ini yükle
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VideoZamanEtudu_Windows_x64
           path: ${{ runner.temp }}/VideoZamanEtudu_Windows_x64.zip
@@ -129,7 +129,7 @@ jobs:
           test -f "$out/index.html" && test -f "$out/js/app.js"
       - name: Siteye konulacak web paketini yükle
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VideoZamanEtudu_Web
           path: ${{ runner.temp }}/site
