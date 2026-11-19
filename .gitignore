@@ -34,3 +34,11 @@ node_modules/
 
 # Cloudflare yerel geliştirme çıktısı
 .wrangler/
+
+# Gizli bilgiler depoya girmesin
+.env
+.env.*
+!.env.example
+.dev.vars*
+*.pem
+*.pfx
