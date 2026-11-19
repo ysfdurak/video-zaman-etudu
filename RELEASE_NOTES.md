@@ -1,3 +1,9 @@
+# v2.2.3 (Windows) · Video Zaman Etüdü — güvenlik güncellemesi
+
+- **SQLite güvenlik yaması:** Etütlerin saklandığı veritabanı kütüphanesi güncellendi. Önceki sürümün içindeki SQLite'ta bellek bozulmasına yol açabilen kritik bir açık vardı (CVE-2025-6965). Yeni sürüm SQLitePCLRaw 3.0.5 ve Microsoft.Data.Sqlite 8.0.28 kullanıyor.
+- **Özellik değişikliği yok.** Kayıtlı etütler olduğu gibi açılır; paket biçimi ve hesaplar değişmedi.
+- **Tarayıcı sürümü:** Değişiklik yok.
+
 # v1.9.4 (tarayıcı) · Video Zaman Etüdü — yetersiz adım ayrıntısı
 
 - **Analiz → Özet → İstatistiksel yeterlilik:** "Toplama: yaklaşık 21 gözlem gerekir (şu an 3)" gibi satırlar tıklanabilir. Açılan pencerede adımın şu anki ve hedef gözlem sayısı, kaç gözlem daha gerektiği, neden yetmediği, adımın tüm gözlemleri (hesaba katılan / çıkarılan ve notu) ve her gözlem için **Videoda aç** (Ölçüm sekmesinde o ana gider) var.
