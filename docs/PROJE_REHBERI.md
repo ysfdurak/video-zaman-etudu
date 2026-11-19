@@ -192,3 +192,9 @@ Hesaplar `Web/js/advanced.js` ve `Core/Advanced.cs` içindedir. `Shared/ek-alanl
 - Codec: H.264 MP4 önerilir. Windows “N” sürümlerinde Media Feature Pack gerekir.
 - Birlikte düzenleme ve merkezi kayıt V1 kapsamında yok (K01).
 - Paket imzasız; şirket dağıtımı için kod imzalama BT sürecine bağlıdır.
+
+## SQLite güvenlik kapısı (19 Kasım 2026)
+CVE-2025-6965 (NVD: SQLite 3.50.2 öncesi, bellek bozulması) için masaüstü projesi `SQLitePCLRaw.bundle_e_sqlite3` 3.0.5 kullanır. Dağıtılan paket indirilerek doğrulandı: **v2.2.3 paketindeki `e_sqlite3.dll` SQLite 3.53.4** (kaynak kimliği 2026-07-24), SQLitePCLRaw 3.0.5, Microsoft.Data.Sqlite 8.0.28. Önceki v2.2.2 paketi SQLite 3.41.2 içerir (etkilenen sürüm). Sitedeki bütün indirme bağlantıları `releases/latest` adresine gider.
+
+Windows iş akışı (`.github/workflows/windows.yml`) paketi sıkıştırmadan önce `e_sqlite3.dll` içindeki `sqlite3_version` metnini okur; 3.50.2'den eskiyse ya da okunamazsa paket üretilmez. Bağımlılık güncellenirken bu kapı yeni bir geri dönüşü yakalar.
+

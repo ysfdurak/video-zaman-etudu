@@ -60,6 +60,15 @@ jobs:
           if (!(Test-Path (Join-Path $publish 'Desktop.exe') -PathType Leaf)) {
             throw 'Desktop.exe bulunamadı.'
           }
+          # Güvenlik kapısı: paketteki gerçek SQLite sürümü CVE-2025-6965 düzeltmesini (3.50.2) içermeli.
+          # Sürüm, e_sqlite3.dll içindeki sqlite3_version metninden okunur; eski ya da bulunamazsa paket üretilmez.
+          $dll = Join-Path $publish 'e_sqlite3.dll'
+          if (!(Test-Path $dll)) { throw 'e_sqlite3.dll pakette yok.' }
+          $txt = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($dll))
+          $m = [regex]::Matches($txt, '\x00(3\.\d{2}\.\d{1,2})\x00') | ForEach-Object { [version]$_.Groups[1].Value } | Sort-Object -Descending | Select-Object -First 1
+          if (!$m) { throw 'Paketteki SQLite sürümü okunamadı.' }
+          "Paketteki SQLite sürümü: $m"
+          if ($m -lt [version]'3.50.2') { throw "SQLite $m, CVE-2025-6965 düzeltmesinden (3.50.2) eski." }
           Copy-Item demo (Join-Path $publish 'demo') -Recurse
           @'
           Desktop.exe dosyasını çalıştırın.
