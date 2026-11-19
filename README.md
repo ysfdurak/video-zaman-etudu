@@ -24,6 +24,9 @@ Masaüstü program, ilk derlemede NuGet bağımlılıkları yüklendikten sonra 
 
 **Kurumda kullanacaksan:** Çalışanların kişisel verisi işlenir. KVKK notları, çalışan duyurusu ve (video projelerinde) çekim öncesi onay şablonu: [docs/KVKK_VE_CALISAN_BILGILENDIRME.md](docs/KVKK_VE_CALISAN_BILGILENDIRME.md).
 
+
+**Projeyi anlatırken:** Mülakatta sorulabilecek 10 soru, kısa cevaplar ve verilen kararlar (sorun → karar → bedel): [docs/MULAKAT.md](docs/MULAKAT.md).
+
 ## English
 
 **Video Time Study** (Video Zaman Etüdü) measures work steps from video, calculates standard time and exports the results to Excel. It comes in two versions that share the same calculation rules and the same `.vzetud` study package: a serverless browser version and a Windows desktop app (C# / WPF, .NET 8). Both are available in English and Turkish.
