@@ -5,7 +5,7 @@ import {
   INFO_FIELDS, cleanInfo, cleanSteps, deriveSteps, inProcessOrder, cycleSpread, totalStandard, compareStudies, cleanTakt, stepOrder, VERSION, requiredObservations,
   ALLOWANCE_PARTS, cleanAllowanceParts, allowanceSum,
   cleanRating, cleanCategories, cleanSampleError, WORK_TYPES, WASTES,
-  MODULES, hasModule, cleanModules, copySteps
+  MODULES, hasModule, cleanModules, copySteps, observerAgreement, toRecord, fromRecord
 } from "./core.js";
 import { outliers, histogram, lineBalance, autoBalance, standardWork, improvements, analyzeSampling, randomMoment, stepFrame } from "./advanced.js";
 import { stepChart, cycleChart, CLASS_COLORS, histogramChart, yamazumiChart, workChart, samplingChart } from "./charts.js";
@@ -1645,6 +1645,85 @@ function renderComparison() {
     : t("compare.incomplete");
   fillCompareSteps(a, b);
 }
+
+// ------------------------------------------------------------ iki gözlemci (ölçüm tutarlılığı)
+
+on("observer", async () => {
+  dialogOpen = true;
+  fillObserver();
+  $("observer-dialog").showModal();
+  $("observer-dialog").addEventListener("close", () => { dialogOpen = false; }, { once: true });
+});
+function fillObserver(prefA = null, prefB = null) {
+  const list = state.studies.filter((s) => !s.StudyType);
+  const a = prefA ?? (selectedStudy() && !selectedStudy().StudyType ? selectedStudy().Id : list[0]?.Id);
+  const sameVideo = (x) => list.find((s) => s.Id !== a && (s.ExpectedVideoName || videoLabel(s)) === (x?.ExpectedVideoName || videoLabel(x)));
+  const b = prefB ?? (sameVideo(list.find((s) => s.Id === a)) ?? list.find((s) => s.Id !== a))?.Id;
+  const fill = (id, selected) => $(id).replaceChildren(...list.map((s) => Object.assign(document.createElement("option"), { value: s.Id, textContent: `${s.Code} · ${s.Name}${s.Info?.Observer ? " · " + s.Info.Observer : ""}`, selected: s.Id === selected })));
+  fill("observer-a", a); fill("observer-b", b);
+  renderObserver();
+}
+for (const id of ["observer-a", "observer-b", "observer-tol"]) $(id).addEventListener("change", () => guard(renderObserver));
+function renderObserver() {
+  const a = state.studies.find((s) => s.Id === $("observer-a").value), b = state.studies.find((s) => s.Id === $("observer-b").value);
+  const tol = Number($("observer-tol").value);
+  if (!a || !b || a.Id === b.Id) {
+    $("observer-summary").textContent = t("obs.needTwo");
+    renderTable("observer-table", [], () => [], { empty: t("obs.needTwo") }); $("observer-defs").replaceChildren();
+    return;
+  }
+  const c = observerAgreement(a, b, { tolMs: Number.isFinite(tol) && tol > 0 ? Math.round(tol * 1000) : 500 });
+  const s3 = (v) => (v === null ? "—" : fmt3(v));
+  const sgn = (v) => (v === null ? "" : (v > 0 ? "+" : "") + fmt3(v));
+  renderTable("observer-table", c.Rows, (r) => [txt(r.Step), num(s3(r.MeanA)), num(s3(r.MeanB)), num(pct(r.DiffPercent, 1)), num(s3(r.StartDiff)), num(s3(r.EndDiff)),
+    num(`${r.Pairs} / ${Math.max(r.CountA, r.CountB)}`), txt(r.Status === "ok" ? "✓ " + t("obs.ok") : "⚠ " + r.Reasons.map((x) => t("obs.reason." + x)).join(", "))], { empty: t("analysis.empty") });
+  const head = [c.SameVideo ? "" : t("obs.otherVideo"), t("obs.summary", { k: c.Rows.length - c.Checked, n: c.Rows.length, m: s3(c.MeanBoundary), tol: fmt3(c.TolMs / 1000), pct: c.TolPct })].filter(Boolean);
+  $("observer-summary").textContent = head.join(" ");
+  const def = (txt_) => (txt_ === null ? t("obs.noStep") : txt_ ? `“${txt_}”` : t("obs.undefined"));
+  $("observer-defs").replaceChildren(...c.Rows.filter((r) => r.Status === "check").map((r) => {
+    const li = document.createElement("li"), d = r.Definition;
+    const start = d.Prev === null ? t("obs.cycleStart") : t("obs.prevEnd", { prev: d.Prev });
+    const lines = [
+      t("obs.line", { step: r.Step, s: sgn(r.StartSigned), e: sgn(r.EndSigned) }),
+      t("obs.startDef", { start }) + " " + (d.Prev === null ? "" : t("obs.ab", { a: def(d.StartA), b: def(d.StartB) })),
+      t("obs.endDef") + " " + t("obs.ab", { a: def(d.EndA), b: def(d.EndB) }),
+      d.Same ? (d.EndA ? t("obs.sameDef") : t("obs.writeDef")) : t("obs.diffDef")
+    ];
+    const b = document.createElement("b"); b.textContent = lines[0];
+    li.append(b, ...lines.slice(1).map((x) => { const sp = document.createElement("span"); sp.textContent = x; return sp; }));
+    return li;
+  }));
+  if (!c.Checked) { const li = document.createElement("li"); li.textContent = t("obs.allOk"); $("observer-defs").append(li); }
+}
+/** Demo: aynı sentetik videonun ikinci gözlemci ölçümü. B, Hazırlık adımını terminali eline aldığında bitiriyor (0,7 sn sonra);
+ *  A için bitiş anı yazılmamış. Diğer sınırlarda ±0,05 sn el titremesi. Etüt kodu DEMO-01-B; varsa yeniden oluşturulmaz. */
+on("observer-demo", async () => {
+  const demo = DEMOS[getLang()];
+  let a = state.studies.find((s) => s.Code === demo.code && s.ExpectedVideoName === demo.videoName);
+  if (!a) {
+    const response = await fetch(demo.package);
+    if (!response.ok) throw new Error(t("msg.demoFailed"));
+    a = importPackage(new Uint8Array(await response.arrayBuffer()));
+    await store.save(a);
+  }
+  let b = state.studies.find((s) => s.Code === demo.code + "-B" && s.ExpectedVideoName === demo.videoName);
+  if (!b) {
+    b = fromRecord(toRecord(a));
+    const first = deriveSteps(a)[0]?.Name;
+    const jitter = [0, 50, -50, 0, 50, -50, 0];
+    b.Id = crypto.randomUUID(); b.Code = demo.code + "-B"; b.Name = a.Name + " · " + t("obs.demoName");
+    b.Info = { ...(a.Info ?? {}), Observer: t("obs.b") };
+    b.Steps = cleanSteps(deriveSteps(a).map((st) => (st.Name === first ? { ...st, Note: t("obs.demoNote") } : st)));
+    b.Observations = a.Observations.map((o, i) => {
+      const late = o.Step === first ? 700 : 0, startLate = deriveSteps(a)[1]?.Name === o.Step ? 700 : 0;
+      return { ...o, StartMs: Math.max(0, o.StartMs + startLate + (startLate ? 0 : jitter[i % 7])), EndMs: o.EndMs + late + (late ? 0 : jitter[(i + 3) % 7]) };
+    }).map((o) => (o.EndMs > o.StartMs ? o : { ...o, EndMs: o.StartMs + 100 }));
+    b.Updated = new Date().toISOString();
+    await store.save(b);
+  }
+  await reloadStudies();
+  fillObserver(a.Id, b.Id);
+});
 
 on("apply-step", async () => {
   if (!state.current || state.selectedResult === null) return;

@@ -5,7 +5,7 @@ import {
   parseStrict, JsonError, JsonObject, RawNumber, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
 } from "./strict-json.js";
 
-export const VERSION = "1.9.4";
+export const VERSION = "1.10.0";
 export const EXTENSION = ".vzetud";
 export const CLASSES = ["", "VA", "SVA", "NVA"];
 const FORMAT = "video-zaman-etudu";
@@ -250,6 +250,79 @@ export function compareStudies(before, after) {
     Rows: rows, Before: tb, After: ta,
     Diff: tb !== null && ta !== null ? ta - tb : null,
     DiffPercent: tb && ta !== null ? ((ta - tb) / tb) * 100 : null
+  };
+}
+
+/**
+ * İki gözlemci karşılaştırması (ölçüm tutarlılığı): aynı videoyu iki kişi bağımsız ölçer.
+ * Adımlar ada göre, ölçümler çevrim numarası ve çevrim içindeki sırayla eşleşir. Her adım için iki kişinin
+ * ortalama süresi, süre farkı (%), başlangıç ve bitiş anı farkı (ortalama mutlak, sn) ve eşleşmeyen ölçüm sayısı.
+ * Sınır: başlangıç ya da bitişte ortalama mutlak fark tolMs'yi ya da süre farkı tolPct'yi aşarsa adım "check" olur.
+ * Tanım: sürekli zamanlamada adım, önceki adımın bitiş anında başlar ve kendi bitiş anında (adım notu) biter.
+ * Excluded ve süresi sıfır olan ölçümler dışarıda kalır. Tarayıcıya özgü; Windows sürümünde karşılığı yok.
+ */
+export function observerAgreement(a, b, { tolMs = 500, tolPct = 5 } = {}) {
+  const key = (s) => s.trim().toLocaleLowerCase("tr");
+  const valid = (study) => study.Observations.filter((o) => !o.Excluded && o.EndMs > o.StartMs)
+    .sort((x, y) => x.StartMs - y.StartMs || x.EndMs - y.EndMs);
+  const index = (study) => {
+    const m = new Map(), seen = new Map();
+    for (const o of valid(study)) {
+      const k = key(o.Step) + "|" + (o.Cycle ?? 1), i = seen.get(k) ?? 0;
+      seen.set(k, i + 1);
+      m.set(k + "#" + i, o);
+    }
+    return m;
+  };
+  const ia = index(a), ib = index(b);
+  const defs = (study) => {
+    const list = deriveSteps(study), out = new Map();
+    list.forEach((st, i) => out.set(key(st.Name), { End: st.Note ?? "", Start: i === 0 ? null : (list[i - 1].Note ?? ""), Prev: i === 0 ? null : list[i - 1].Name }));
+    return out;
+  };
+  const da = defs(a), db = defs(b);
+  const mean = (v) => (v.length ? v.reduce((s, x) => s + x, 0) / v.length : null);
+  const rows = [];
+  for (const name of [...stepOrder(a), ...stepOrder(b)]) {
+    const k = key(name);
+    if (rows.some((r) => key(r.Step) === k)) continue;
+    const pa = [...ia].filter(([x]) => x.startsWith(k + "|")), pb = [...ib].filter(([x]) => x.startsWith(k + "|"));
+    if (!pa.length && !pb.length) continue;
+    const pairs = pa.filter(([x]) => ib.has(x)).map(([x, o]) => [o, ib.get(x)]);
+    const durA = mean(pa.map(([, o]) => (o.EndMs - o.StartMs) / 1000)), durB = mean(pb.map(([, o]) => (o.EndMs - o.StartMs) / 1000));
+    const startDiff = mean(pairs.map(([x, y]) => Math.abs(y.StartMs - x.StartMs) / 1000));
+    const endDiff = mean(pairs.map(([x, y]) => Math.abs(y.EndMs - x.EndMs) / 1000));
+    const startSigned = mean(pairs.map(([x, y]) => (y.StartMs - x.StartMs) / 1000));
+    const endSigned = mean(pairs.map(([x, y]) => (y.EndMs - x.EndMs) / 1000));
+    const diffPct = durA && durB !== null ? ((durB - durA) / durA) * 100 : null;
+    const unmatched = pa.length + pb.length - 2 * pairs.length;
+    const reasons = [];
+    if (startDiff !== null && startDiff * 1000 > tolMs) reasons.push("start");
+    if (endDiff !== null && endDiff * 1000 > tolMs) reasons.push("end");
+    if (diffPct !== null && Math.abs(diffPct) > tolPct) reasons.push("duration");
+    if (unmatched > 0) reasons.push("unmatched");
+    if (!pairs.length) reasons.push("nopair");
+    const x = da.get(k), y = db.get(k);
+    rows.push({
+      Step: name, CountA: pa.length, CountB: pb.length, Pairs: pairs.length, Unmatched: unmatched,
+      MeanA: durA, MeanB: durB, DiffPercent: diffPct,
+      StartDiff: startDiff, EndDiff: endDiff, StartSigned: startSigned, EndSigned: endSigned,
+      Status: reasons.length ? "check" : "ok", Reasons: reasons,
+      Definition: {
+        Prev: x?.Prev ?? y?.Prev ?? null,
+        StartA: x ? x.Start : null, StartB: y ? y.Start : null,
+        EndA: x ? x.End : null, EndB: y ? y.End : null,
+        Same: (x?.End ?? "") === (y?.End ?? "") && (x?.Start ?? "") === (y?.Start ?? "")
+      }
+    });
+  }
+  const paired = rows.filter((r) => r.Pairs);
+  return {
+    Rows: rows,
+    SameVideo: (a.ExpectedVideoName || videoLabel(a)) === (b.ExpectedVideoName || videoLabel(b)),
+    Checked: rows.filter((r) => r.Status === "check").length,
+    MeanBoundary: paired.length ? mean(paired.flatMap((r) => [r.StartDiff, r.EndDiff])) : null,
+    TolMs: tolMs, TolPct: tolPct
   };
 }
 

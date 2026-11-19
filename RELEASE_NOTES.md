@@ -1,3 +1,10 @@
+# v1.10.0 (tarayıcı) · Video Zaman Etüdü — iki gözlemci karşılaştırması
+
+- **Çalışmalar → İki gözlemci karşılaştır…:** Aynı videoyu iki kişi bağımsız ölçer; adımlar ada, ölçümler çevrim ve sırayla eşleşir. Her adım için iki kişinin ortalama süresi, süre farkı (%), başlangıç ve bitiş anı farkı (ortalama mutlak, sn) ve eşleşen ölçüm sayısı. Sınır (varsayılan 0,5 sn ve %5) aşılan adımlarda başlangıç tanımı (önceki adımın bitişi ya da çevrimin başı) ve iki kişinin yazdığı bitiş anı yan yana gösterilir; tanım yoksa ya da farklıysa ne yapılacağı yazılır.
+- **Demo:** "Demo için ikinci gözlemci ölçümü ekle" düğmesi aynı sentetik videonun ikinci ölçümünü (DEMO-01-B) oluşturur: B, Hazırlık adımını terminali eline aldığında bitiriyor. İki adım işaretlenir, gerisi tutarlı çıkar.
+- **Windows sürümü:** Bu özellik yalnız tarayıcıda. Paket biçimi ve hesaplar değişmedi; iki sürüm birbirinin etütlerini açmaya devam eder.
+- Kod: `Web/js/core.js › observerAgreement`; test: `Web/tests/v20.test.mjs`.
+
 # v2.2.3 (Windows) · Video Zaman Etüdü — güvenlik güncellemesi
 
 - **SQLite güvenlik yaması:** Etütlerin saklandığı veritabanı kütüphanesi güncellendi. Önceki sürümün içindeki SQLite'ta bellek bozulmasına yol açabilen kritik bir açık vardı (CVE-2025-6965). Yeni sürüm SQLitePCLRaw 3.0.5 ve Microsoft.Data.Sqlite 8.0.28 kullanıyor.

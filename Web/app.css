@@ -191,6 +191,7 @@ input[type="date"] { font: inherit; color: var(--ink); padding: 4px 7px; border:
 
 dialog.wide { max-width: min(860px, 95vw); width: 860px; }
 .compare-summary { font-weight: 600; }
+.obs-defs { padding-left: 1.2em; } .obs-defs li { margin: 0 0 10px; } .obs-defs li > b, .obs-defs li > span { display: block; }
 
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; }
