@@ -26,8 +26,10 @@ async def main():
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
         await page.goto(URL + ("&" if "?" in URL else "?") + "lang=tr")
         await page.wait_for_selector("#studies tbody tr")
-        # v1.9: ilk açılışta kısa tur; kapatılınca bir daha kendiliğinden açılmaz
-        await page.wait_for_selector("#tour[open]")
+        # v1.9.3: ilk girişte iki seçenek kartı yön verir; tur boş açılışta kendiliğinden açılmaz, "Kısa tur" ile açılır
+        await page.wait_for_timeout(600)
+        check("boş açılışta tur kendiliğinden açılmaz", await page.locator("#tour[open]").count() == 0)
+        await page.click("#tour-open"); await page.wait_for_selector("#tour[open]")
         check("ilk açılışta kısa tur", "Kısa tur · 1 / 5" in await page.inner_text("#tour-count") and await page.is_disabled("#tour-back"))
         for _ in range(4): await page.click("#tour-next")
         check("turun son adımı", "5 İyileştirme" in await page.inner_text("#tour-title") and await page.inner_text("#tour-next") == "Bitir")
