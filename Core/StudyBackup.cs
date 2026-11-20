@@ -83,7 +83,14 @@ public static class StudyBackup
                     if (entry.Length > 32 * 1024 * 1024) throw new InvalidDataException();
                     using var input = entry.Open();
                     using var memory = new MemoryStream();
-                    input.CopyTo(memory);
+                    // Bildirilen boyut sahte olabilir (zip bombası): açılan veri de 32 MB ile sınırlanır.
+                    var buffer = new byte[81920];
+                    int read;
+                    while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        if (memory.Length + read > 32 * 1024 * 1024) throw new InvalidDataException();
+                        memory.Write(buffer, 0, read);
+                    }
                     var study = StudyTransfer.ImportBytes(memory.ToArray());
                     string text = Text(StudyTransfer.ExportBytes(study));
                     if (!known.Add(text)) { same++; continue; }

@@ -1,3 +1,7 @@
+# v1.10.1 (tarayıcı) · Video Zaman Etüdü — güvenlik düzeltmesi
+
+- Yedekten geri yüklemede açıldığında 32 MB'ı aşan dosya (zip bombası) artık belleğe alınmaz, okunamayan dosya olarak bildirilir. Aynı sınır Windows sürümünde de, bildirilen boyuta güvenmeden uygulanır.
+
 # v1.10.0 (tarayıcı) · Video Zaman Etüdü — iki gözlemci karşılaştırması
 
 - **Çalışmalar → İki gözlemci karşılaştır…:** Aynı videoyu iki kişi bağımsız ölçer; adımlar ada, ölçümler çevrim ve sırayla eşleşir. Her adım için iki kişinin ortalama süresi, süre farkı (%), başlangıç ve bitiş anı farkı (ortalama mutlak, sn) ve eşleşen ölçüm sayısı. Sınır (varsayılan 0,5 sn ve %5) aşılan adımlarda başlangıç tanımı (önceki adımın bitişi ya da çevrimin başı) ve iki kişinin yazdığı bitiş anı yan yana gösterilir; tanım yoksa ya da farklıysa ne yapılacağı yazılır.

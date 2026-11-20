@@ -27,6 +27,25 @@ export function makeBackup(studies, date = new Date()) {
   return { bytes: zip(files, date), count: files.length, skipped };
 }
 
+// Bir girdinin açılmış boyutu en fazla 32 MB (masaüstüyle aynı). Daha büyükse (zip bombası) okunmaz: null.
+const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
+async function inflateLimited(raw) {
+  const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+  const parts = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > MAX_ENTRY_BYTES) { await reader.cancel(); return null; }
+    parts.push(value);
+  }
+  const data = new Uint8Array(total);
+  let at = 0;
+  for (const part of parts) { data.set(part, at); at += part.length; }
+  return data;
+}
+
 /** ZIP baytları → [{name, data}]. Sıkıştırmasız (0) ve deflate (8) girdiler okunur. */
 export async function unzip(bytes) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -53,8 +72,10 @@ export async function unzip(bytes) {
     if (name.endsWith("/")) continue;
     let data;
     if (method === 0) data = raw;
-    else if (method === 8 && globalThis.DecompressionStream)
-      data = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer());
+    else if (method === 8 && globalThis.DecompressionStream) {
+      data = await inflateLimited(raw);
+      if (!data) { out.push({ name, data: null }); continue; }
+    }
     else { out.push({ name, data: null }); continue; }
     out.push({ name, data });
   }
