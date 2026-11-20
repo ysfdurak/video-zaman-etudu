@@ -55,6 +55,9 @@ public partial class MainWindow
     private readonly List<(Observation Row, int StepIndex, int Cycle)> undo = new();
     private Observation? selectedRow;
     private long? anchor, selectedStart, resumeAt;
+    // Açılışta duran (hiç oynatılmamış) MediaElement'e verilen konum ilk Play'de sıfırlanır;
+    // kaldığı yer burada tutulur ve oynatma başlayınca yeniden uygulanır.
+    private long? playFrom;
     private bool ready, playing, syncingTimeline, suppressSelection, fillingFilters;
 
     private double SelectedSpeed => speed.SelectedIndex >= 0 && speed.SelectedIndex < Speeds.Length ? Speeds[speed.SelectedIndex] : 1;
@@ -88,6 +91,7 @@ public partial class MainWindow
                 resumeAt = null;
                 long target = Math.Min(at, (long)timeline.Maximum);
                 video.Position = TimeSpan.FromMilliseconds(target);
+                playFrom = target;
                 UpdatePosition();
                 if (CurrentStep is StepDef st) SetStatus(L.T("status.resume", ("at", L.Clock(target)), ("step", st.Name), ("cycle", cycleBox.Text)));
             }
@@ -243,6 +247,7 @@ public partial class MainWindow
             return;
         }
         SetStatus(L.T("status.opening"));
+        playFrom = null;
         video.Source = null;
         video.Source = new Uri(current.Video);
         video.Pause();
@@ -268,6 +273,11 @@ public partial class MainWindow
         if (!ready) return;
         video.SpeedRatio = SelectedSpeed;
         video.Play();
+        if (playFrom is long from)
+        {
+            playFrom = null;
+            video.Position = TimeSpan.FromMilliseconds(from);
+        }
         playing = true;
     }
 
@@ -284,12 +294,13 @@ public partial class MainWindow
         deltaMs = Math.Clamp(deltaMs, -NudgeMaxMs, NudgeMaxMs);
         Pause();
         long target = Math.Clamp(PositionMs + deltaMs, 0, (long)timeline.Maximum);
+        playFrom = target;
         video.Position = TimeSpan.FromMilliseconds(target);
         UpdatePosition();
         if (anchor is long start && target <= start) SetStatus(L.T("status.nudgeBehind", ("s", L.Num3(start / 1000d))));
     }
 
-    private long PositionMs => (long)Math.Round(video.Position.TotalMilliseconds);
+    private long PositionMs => !playing && playFrom is long from ? from : (long)Math.Round(video.Position.TotalMilliseconds);
 
     private void UpdatePosition()
     {
@@ -306,6 +317,7 @@ public partial class MainWindow
     private void Seek(long time)
     {
         video.Position = TimeSpan.FromMilliseconds(time);
+        if (!playing) playFrom = time;
         position.Text = L.Clock(time);
         if (anchor is long start)
             SetStatus(L.T(time > start ? "status.measuring" : "status.nudgeBehind", ("s", L.Num3(start / 1000d))));

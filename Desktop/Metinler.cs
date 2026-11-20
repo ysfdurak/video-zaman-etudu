@@ -109,6 +109,8 @@ internal static class L
     /// <summary>Hata iletisi: çekirdek hata anahtar taşıyorsa geçerli dilde, değilse olduğu gibi.</summary>
     public static string ErrorText(Exception error)
     {
+        if (error is System.IO.FileNotFoundException or System.IO.FileLoadException or DllNotFoundException)
+            return T("d.missingFile", ("detail", error.Message));
         if (error.Data["key"] is not string key) return error.Message;
         var values = new List<(string, object?)>();
         foreach (System.Collections.DictionaryEntry entry in error.Data)

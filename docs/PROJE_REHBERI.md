@@ -171,7 +171,7 @@ Hesaplar `Web/js/advanced.js` ve `Core/Advanced.cs` içindedir. `Shared/ek-alanl
 - **Tarayıcı sürümünde etütler nerede?** O tarayıcının yerel deposunda (IndexedDB). Başka bilgisayara veya tarayıcıya `.vzetud` ile taşınır. Tarayıcı verisi temizlenirse silinir.
 - **Kullanım limiti / hesap neden yok?** Limit ve kullanıcı hesabı sunucu ister; bu V1.2 sunucusuz. Site hesap sistemi VPS'te kurulunca eklenir.
 - **Veriler nerede, nasıl yedeklenir?** Windows: `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite`. İki sürümde de "Tümünü yedekle (.zip)" ve geri yüklemek için "Etüdü içe al…".
-- **WPF arayüzü Linux'ta nasıl denendi?** Denenmedi; Windows'ta GitHub Actions denedi. `Desktop.exe --self-test` pencereyi iki dilde gerçekten kurar, düğmelerin arkasındaki yolları çalıştırır, sonuçları denetler ve ekran görüntüsü alır. Görüntüler iş günlüğüne de base64 olarak yazılır.
+- **WPF arayüzü Linux'ta nasıl denendi?** Denenmedi; Windows'ta GitHub Actions denedi. `VideoZamanEtudu.exe --self-test` pencereyi iki dilde gerçekten kurar, düğmelerin arkasındaki yolları çalıştırır, sonuçları denetler ve ekran görüntüsü alır. Görüntüler iş günlüğüne de base64 olarak yazılır.
 - **Tolerans neden toplanıyor, çarpılmıyor?** Kalemler aynı normal süreye eklenen paylardır; uygulamada yaygın olan toplamdır. Standart = Normal ÷ (1 − toplam tolerans).
 
 ## 6. Değişiklik yaparken

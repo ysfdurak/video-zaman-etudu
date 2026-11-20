@@ -160,6 +160,7 @@ public partial class MainWindow
         if (Advanced.RandomMoment(current!, (long)timeline.Maximum, random) is long at)
         {
             video.Position = TimeSpan.FromMilliseconds(at);
+            playFrom = at;
             UpdatePosition();
         }
     }
@@ -171,6 +172,7 @@ public partial class MainWindow
         int step = PositiveInt(sampleStep.Text, "s.every");
         long at = Math.Min((long)timeline.Maximum, PositionMs + step * 1000L);
         video.Position = TimeSpan.FromMilliseconds(at);
+        playFrom = at;
         UpdatePosition();
     }
 

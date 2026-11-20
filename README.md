@@ -5,7 +5,7 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | | Windows masaüstü (`Desktop/`) | Tarayıcı (`Web/`) |
 |---|---|---|
 | Teknoloji | C# / WPF, .NET 8 | HTML + JavaScript, bağımlılıksız |
-| Kurulum | ZIP'i çıkar, `Desktop.exe` | Adresi aç; sunucu gerekmez |
+| Kurulum | ZIP'i çıkar, `VideoZamanEtudu.exe` | Adresi aç; sunucu gerekmez |
 | Etütlerin yeri | `%LOCALAPPDATA%\VideoZamanEtudu\studies.sqlite` | Tarayıcının yerel deposu (IndexedDB) |
 | Video | Bilgisayarda kalır, yolu hatırlanır | Bilgisayarda kalır, tarayıcıya yüklenmez; Chrome/Edge'de izinle hatırlanır, diğerlerinde her oturumda yeniden seçilir |
 | Arayüz dili | Türkçe ve İngilizce (sağ üstteki düğme; seçim hatırlanır) | Türkçe ve İngilizce |
@@ -33,7 +33,7 @@ Masaüstü program, ilk derlemede NuGet bağımlılıkları yüklendikten sonra 
 
 **Video Work Study** (Video İş Etüdü) measures work steps from video, calculates standard time and exports the results to Excel. It comes in two versions that share the same calculation rules and the same `.vzetud` study package: a serverless browser version and a Windows desktop app (C# / WPF, .NET 8). Both are available in English and Turkish.
 
-- **Try it:** https://zaman-etudu.ysfdurak.com/?lang=en (click “Open demo study” for a three-cycle synthetic warehouse video with ready measurements). Windows: download the ZIP from [Releases](https://github.com/ysfdurak/video-zaman-etudu/releases/latest) and run `Desktop.exe`.
+- **Try it:** https://zaman-etudu.ysfdurak.com/?lang=en (click “Open demo study” for a three-cycle synthetic warehouse video with ready measurements). Windows: download the ZIP from [Releases](https://github.com/ysfdurak/video-zaman-etudu/releases/latest) and run `VideoZamanEtudu.exe`.
 - **Measuring:** times come from the video position (Start → Measure → Measure); a step list moves to the next step and cycle automatically, out-of-scope interruptions do not break the sequence, Ctrl+Z undoes the last record.
 - **Analysis:** VA / SVA / NVA classes, per-step sample sufficiency with Student-t, pace rating and allowances, normal and standard time, takt, outliers (IQR) and cycle variation.
 - **Lean tools:** line balancing (Yamazumi), standard work combination sheet, improvement ideas by the 7 wastes, step cards with video frames, work sampling, before/after comparison with side-by-side video.
@@ -179,7 +179,7 @@ Hesap veya paket kuralı değişirse ortak örnek dosyasını yeniden üret ve i
 dotnet run --project .\Tools\EsdegerUretici -c Release -- .\Shared\esdeger-ornekler.json .\demo\sentetik-depo-etudu.vzetud
 ```
 
-GitHub Actions, Windows üzerinde WPF projesini derler, bu kontrolleri çalıştırır ve ardından **arayüz öz-denemesini** yürütür: `Desktop.exe --self-test demo <klasör>` pencereyi Türkçe ve İngilizce kurar, demo etüdünü açar; süzgeç, adım ekleme, tolerans kalemleri, takt, adım temposu, Excel, yedek ve karşılaştırma yollarını dener ve her bölümün ekran görüntüsünü kaydeder (yapıt: **VideoZamanEtudu_OzDeneme**). Ayrı bir Linux işinde tarayıcı sürümünün testleri yürür. Yazdırma ve gerçek kullanım için örnek etütle elle kabul kontrolünü de uygulayın.
+GitHub Actions, Windows üzerinde WPF projesini derler, bu kontrolleri çalıştırır ve ardından **arayüz öz-denemesini** yürütür: `VideoZamanEtudu.exe --self-test demo <klasör>` pencereyi Türkçe ve İngilizce kurar, demo etüdünü açar; süzgeç, adım ekleme, tolerans kalemleri, takt, adım temposu, Excel, yedek ve karşılaştırma yollarını dener ve her bölümün ekran görüntüsünü kaydeder (yapıt: **VideoZamanEtudu_OzDeneme**). Ayrı bir Linux işinde tarayıcı sürümünün testleri yürür. Yazdırma ve gerçek kullanım için örnek etütle elle kabul kontrolünü de uygulayın.
 
 ## Windows yayın paketi
 
@@ -187,14 +187,14 @@ GitHub Actions, Windows üzerinde WPF projesini derler, bu kontrolleri çalışt
 dotnet publish .\Desktop\Desktop.csproj -c Release -r win-x64 --self-contained true -o .\Yayin\VideoZamanEtudu
 ```
 
-GitHub Releases için yayın klasörünün tamamını ZIP’leyin. Kullanıcı ZIP’i çıkardıktan sonra `Desktop.exe` dosyasını açar.
+GitHub Releases için yayın klasörünün tamamını ZIP’leyin. Kullanıcı ZIP’i çıkardıktan sonra `VideoZamanEtudu.exe` dosyasını açar.
 
 ### SDK kurmadan GitHub üzerinden Windows paketi alma
 
 1. Bu klasörün içeriğini, `.github` dizini dahil, GitHub deponuzun köküne gönderin.
 2. GitHub’da **Actions → Derleme ve kontroller (Windows + tarayıcı)** altında son çalışmayı açın. İş akışı depoya gönderimde otomatik başlar. Gerekirse **Run workflow** ile elle başlatabilirsiniz.
 3. Başarılı çalışmanın **Artifacts** bölümünden **VideoZamanEtudu_Windows_x64** paketini indirin. GitHub dış ZIP’in içinde `VideoZamanEtudu_Windows_x64.zip` dosyasını verir.
-4. İç ZIP’i çıkarıp `Desktop.exe` dosyasını açın. Yanındaki dosyaları aynı klasörde tutun. Paket 64 bit Intel/AMD Windows içindir.
+4. İç ZIP’i çıkarıp `VideoZamanEtudu.exe` dosyasını açın. Yanındaki dosyaları aynı klasörde tutun. Paket 64 bit Intel/AMD Windows içindir.
 
 ## Lisans
 

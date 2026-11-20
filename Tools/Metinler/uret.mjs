@@ -22,7 +22,9 @@ export const DESKTOP = {
     "d.filter.vzetud": "Video İş Etüdü paketi",
     "d.filter.zip": "Yedek (.zip)",
     "d.filter.excel": "Excel çalışma kitabı",
-    "d.filter.all": "Tüm dosyalar"
+    "d.filter.all": "Tüm dosyalar",
+    "d.autosaved": "otomatik kaydedildi {time}",
+    "d.missingFile": "Uygulamanın yanındaki bir dosya bulunamadı. ZIP'in içinden çalıştırıyorsanız önce ZIP'e sağ tıklayıp “Tümünü ayıkla” deyin ve ayıklanan klasördeki VideoZamanEtudu.exe dosyasını açın. Ayrıntı: {detail}"
   },
   en: {
     "edition": "Windows version · Your video never leaves your computer",
@@ -39,7 +41,9 @@ export const DESKTOP = {
     "d.filter.vzetud": "Video Work Study package",
     "d.filter.zip": "Backup (.zip)",
     "d.filter.excel": "Excel workbook",
-    "d.filter.all": "All files"
+    "d.filter.all": "All files",
+    "d.autosaved": "saved automatically at {time}",
+    "d.missingFile": "A file next to the application is missing. If you are running it from inside the ZIP, right-click the ZIP, choose “Extract all” and open VideoZamanEtudu.exe in the extracted folder. Detail: {detail}"
   }
 };
 

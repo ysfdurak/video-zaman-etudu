@@ -51,6 +51,8 @@ public partial class MainWindow : Window
     private readonly TextBox newSteps = new() { Width = 460, Height = 96, AcceptsReturn = true, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, TextWrapping = TextWrapping.NoWrap };
     private readonly Dictionary<string, TextBox> newInfo = new();
     private readonly TextBlock studiesStatus = Ui.Text("", 13.5, true, Ui.Accent);
+    // Her değişiklik kendiliğinden kaydedilir; son kayıt saati başlıkta görünür.
+    private readonly TextBlock savedHint = Ui.Hint("");
     private Button openButton = null!, exportButton = null!, deleteButton = null!, compareButton = null!;
     private readonly Button resumeLast = new() { Padding = new Thickness(12, 5, 12, 5), Margin = new Thickness(0, 0, 0, 10), HorizontalAlignment = HorizontalAlignment.Left, Background = Ui.Accent, Foreground = Brushes.White, FontWeight = FontWeights.SemiBold, Visibility = Visibility.Collapsed };
 
@@ -79,7 +81,7 @@ public partial class MainWindow : Window
         links.Children.Add(lang);
         DockPanel.SetDock(links, Dock.Right);
         top.Children.Add(links);
-        top.Children.Add(Ui.Stack(header, Ui.Hint(L.T("edition"))));
+        top.Children.Add(Ui.Stack(header, Ui.Row(Ui.Hint(L.T("edition")), savedHint)));
         DockPanel.SetDock(top, Dock.Top);
         var shell = new DockPanel { Margin = new Thickness(20, 14, 20, 14) };
         shell.Children.Add(top);
@@ -454,6 +456,7 @@ public partial class MainWindow : Window
         if (current == null) return;
         current.Updated = DateTime.Now;
         store.Save(current);
+        savedHint.Text = " · " + L.T("d.autosaved", ("time", current.Updated.ToString("HH:mm:ss")));
         ReloadStudies();
     }
 
@@ -516,6 +519,7 @@ public partial class MainWindow : Window
         ready = false;
         timeline.IsEnabled = false;
         current = null;
+        savedHint.Text = "";
         selectedRow = null;
         selectedResult = null;
         undo.Clear();
