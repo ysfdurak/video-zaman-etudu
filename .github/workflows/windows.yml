@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: write   # yalnız v* etiketinde sürüm (Release) oluşturmak için
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -44,7 +44,7 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "Öz-deneme başarısız ($($p.ExitCode))." }
       - name: Öz-deneme çıktısını yükle
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VideoZamanEtudu_OzDeneme
           path: ${{ runner.temp }}/oz-deneme
@@ -79,7 +79,7 @@ jobs:
           Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $zip
       - name: İndirilebilir Windows ZIP’ini yükle
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VideoZamanEtudu_Windows_x64
           path: ${{ runner.temp }}/VideoZamanEtudu_Windows_x64.zip
@@ -112,8 +112,8 @@ jobs:
     name: Tarayıcı sürümü
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
       - name: Çekirdek ve eşdeğerlik testleri (Shared/esdeger-ornekler.json)
@@ -129,7 +129,7 @@ jobs:
           test -f "$out/index.html" && test -f "$out/js/app.js"
       - name: Siteye konulacak web paketini yükle
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: VideoZamanEtudu_Web
           path: ${{ runner.temp }}/site
