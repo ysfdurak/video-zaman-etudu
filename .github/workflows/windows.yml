@@ -31,7 +31,7 @@ jobs:
       - name: Arayüz öz-denemesi (iki dil, demo etüdü, ekran görüntüleri)
         shell: pwsh
         run: |
-          $exe = Get-ChildItem -Recurse Desktop/bin/Release -Filter Desktop.exe | Select-Object -First 1
+          $exe = Get-ChildItem -Recurse Desktop/bin/Release -Filter VideoZamanEtudu.exe | Select-Object -First 1
           $out = Join-Path $env:RUNNER_TEMP 'oz-deneme'
           $p = Start-Process -FilePath $exe.FullName -ArgumentList '--self-test', (Resolve-Path demo), $out -PassThru -Wait -NoNewWindow
           if (Test-Path (Join-Path $out 'oz-deneme.txt')) { Get-Content (Join-Path $out 'oz-deneme.txt') -Encoding utf8 }
@@ -57,8 +57,8 @@ jobs:
           $publish = Join-Path $env:RUNNER_TEMP 'VideoZamanEtudu'
           dotnet publish Desktop/Desktop.csproj -c Release -r win-x64 --self-contained true -o $publish
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          if (!(Test-Path (Join-Path $publish 'Desktop.exe') -PathType Leaf)) {
-            throw 'Desktop.exe bulunamadı.'
+          if (!(Test-Path (Join-Path $publish 'VideoZamanEtudu.exe') -PathType Leaf)) {
+            throw 'VideoZamanEtudu.exe bulunamadı.'
           }
           # Güvenlik kapısı: paketteki gerçek SQLite sürümü CVE-2025-6965 düzeltmesini (3.50.2) içermeli.
           # Sürüm, e_sqlite3.dll içindeki sqlite3_version metninden okunur; eski ya da bulunamazsa paket üretilmez.
@@ -70,11 +70,18 @@ jobs:
           "Paketteki SQLite sürümü: $m"
           if ($m -lt [version]'3.50.2') { throw "SQLite $m, CVE-2025-6965 düzeltmesinden (3.50.2) eski." }
           Copy-Item demo (Join-Path $publish 'demo') -Recurse
+          # Başlangıç notu alt çizgiyle başlar: dosya listesinin en üstünde, kütüphane dosyaları arasında kaybolmaz.
           @'
-          Desktop.exe dosyasını çalıştırın.
-          Uygulama ayrı bir .NET kurulumu gerektirmez.
-          Örnek etüt ve video demo klasöründedir.
-          '@ | Set-Content -Encoding utf8 (Join-Path $publish 'BASLAT.txt')
+          VIDEO IS ETUDU · BASLAT / START
+          1. ZIP'i once ayiklayin (sag tik > Tumunu ayikla). ZIP'in icinden calistirmayin.
+          2. VideoZamanEtudu.exe dosyasini acin. Ayri bir .NET kurulumu gerekmez.
+          3. Ornek etut ve video "demo" klasorundedir; uygulamada "Demo etudu ac" ile acilir.
+          Diger dosyalari silmeyin; uygulama onlarla birlikte calisir.
+
+          1. Extract the ZIP first (right-click > Extract all). Do not run it from inside the ZIP.
+          2. Open VideoZamanEtudu.exe. No separate .NET installation is needed.
+          3. The sample study and video are in the "demo" folder ("Open demo study" in the app).
+          '@ | Set-Content -Encoding utf8 (Join-Path $publish '_BASLAT_START.txt')
           $zip = Join-Path $env:RUNNER_TEMP 'VideoZamanEtudu_Windows_x64.zip'
           Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $zip
       - name: İndirilebilir Windows ZIP’ini yükle

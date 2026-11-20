@@ -19,6 +19,14 @@
 - **Windows sürümü:** Bu özellik yalnız tarayıcıda. Paket biçimi ve hesaplar değişmedi; iki sürüm birbirinin etütlerini açmaya devam eder.
 - Kod: `Web/js/core.js › observerAgreement`; test: `Web/tests/v20.test.mjs`.
 
+# v2.2.4 (Windows) · Video İş Etüdü — gerçek Windows denemesinden düzeltmeler
+
+- **Uygulama dosyasının adı `VideoZamanEtudu.exe`** (önceden `Desktop.exe`). Paketteki başlangıç notu `_BASLAT_START.txt` adıyla listenin en üstünde durur.
+- **Kaldığı yerden devam gerçekten kaldığı yerden oynatır:** Etüt açılınca video son kaydın bitişine gidiyordu ama Oynat'a basınca baştan başlıyordu (WPF oynatıcısı hiç oynatılmamış videoda konumu sıfırlıyor). Konum saklanır ve oynatma başlarken uygulanır; rastgele an ve ince konumlama da aynı yolu kullanır.
+- **Anlaşılır hata:** Uygulama ZIP'in içinden açılıp yanındaki bir kütüphane bulunamazsa ham .NET mesajı yerine "önce ZIP'i ayıklayın" açıklaması çıkar. Beklenmeyen hatalarda da ne yapılacağı yazılır.
+- **Kayıt bilgisi:** Değişiklikler kendiliğinden kaydedilir; başlıkta "otomatik kaydedildi 14:32:05" görünür.
+- **Demo notu** güncel sekme adlarıyla (1 Çalışmalar … 4 Analiz) ve "Demo etüdü aç" kısa yoluyla yazıldı.
+
 # v2.2.3 (Windows) · Video Zaman Etüdü — güvenlik güncellemesi
 
 - **SQLite güvenlik yaması:** Etütlerin saklandığı veritabanı kütüphanesi güncellendi. Önceki sürümün içindeki SQLite'ta bellek bozulmasına yol açabilen kritik bir açık vardı (CVE-2025-6965). Yeni sürüm SQLitePCLRaw 3.0.5 ve Microsoft.Data.Sqlite 8.0.28 kullanıyor.

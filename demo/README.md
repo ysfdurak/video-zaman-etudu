@@ -2,10 +2,14 @@
 
 35 saniyelik animasyon üç toplama çevrimini, kapsam dışı beklemeyi, paralel taramayı ve seyrek kontrolü gösterir. Video ve etüt verisi bu demo için üretilmiştir.
 
-1. Uygulamada **Çalışmalar → Etüdü içe al…** ile `sentetik-depo-etudu.vzetud` dosyasını aç.
-2. **Video ve ölçüm → Videoyu yeniden seç** ile `sentetik-depo-etudu.mp4` dosyasını bağla. Örneğin 5. saniyedeki **Tarama** satırını seç ve videonun o konuma gittiğini kontrol et.
-3. **Analiz ve rapor** ekranında aşağıdaki sonuçları karşılaştır. **Excel’e aktar…** ile ham ölçüm ve analiz sayfalarını kontrol et.
-4. Manuel ölçümü de denemek için aynı videoyla yeni bir etüt aç. Videoda 2. saniyede **Başla**, 7. saniyede **Ölç** seç. Oynatıcıdaki konumu esas alan yaklaşık 5 saniyelik bir kayıt oluşmalı.
+En kısa yol: **1 Çalışmalar** sekmesinde **Demo etüdü aç**. Etüt ve video birlikte açılır.
+
+Elle denemek için:
+
+1. **1 Çalışmalar → Etüdü içe al…** ile `sentetik-depo-etudu.vzetud` dosyasını aç.
+2. **3 Ölçüm → Videoyu yeniden seç** ile `sentetik-depo-etudu.mp4` dosyasını bağla. Örneğin 5. saniyedeki **Tarama** satırını seç ve videonun o konuma gittiğini kontrol et.
+3. **4 Analiz** sekmesinde aşağıdaki sonuçları karşılaştır. **Excel’e aktar…** ile ham ölçüm ve analiz sayfalarını kontrol et.
+4. Manuel ölçümü de denemek için aynı videoyla yeni bir etüt aç. Videoda 2. saniyede **Başla**, 7. saniyede **Ölç** (ya da Enter) seç. Oynatıcıdaki konumu esas alan yaklaşık 5 saniyelik bir kayıt oluşmalı.
 
 | Kontrol | Beklenen |
 |---|---:|
