@@ -1,3 +1,8 @@
+# v1.10.3 (tarayıcı) · Anonim kullanım ölçümü ve geri bildirim
+
+- Yalnız herkese açık demoda (zaman-etudu.ysfdurak.com) ekran açılışları anonim sayılır ve sağ altta "Geri bildirim" düğmesi görünür (ortak servis: olcum.ysfdurak.com). Video ve etüt verisi gönderilmez, çerez yok; tarayıcıda Do Not Track / GPC açıksa hiçbir şey gönderilmez.
+- Kendi sunucuna ya da şirket içine kurulan kopyalar dışarıya istek atmaz.
+
 # v1.10.2 (tarayıcı) · Video İş Etüdü — yeni ad ve sade ilk ekran
 
 - Uygulamanın adı Video İş Etüdü oldu (İngilizce: Video Work Study); iş örneklemesi ve hat dengelemeyi de kapsadığı için. Adres ve `.vzetud` dosya biçimi değişmedi; eski etütler açılır.
