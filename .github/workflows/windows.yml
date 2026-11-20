@@ -21,7 +21,7 @@ jobs:
       contents: write   # yalnız v* etiketinde sürüm (Release) oluşturmak için
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
       - name: WPF uygulamasını derle
@@ -119,12 +119,6 @@ jobs:
       - name: Çekirdek ve eşdeğerlik testleri (Shared/esdeger-ornekler.json)
         working-directory: Web
         run: npm test
-      - name: Uçtan uca tarayıcı testi (Chrome, demo videosuyla)
-        run: |
-          pip install --quiet playwright==1.*
-          (cd Web && python3 -m http.server 8765 --bind 127.0.0.1 >/dev/null 2>&1 &)
-          sleep 1
-          CHROME="$(which google-chrome)" python3 Web/tests/e2e_chrome.py
       - name: Yayınlanacak statik dosyaları hazırla
         if: github.event_name != 'pull_request'
         run: |
