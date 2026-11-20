@@ -21,7 +21,7 @@ jobs:
       contents: write   # yalnız v* etiketinde sürüm (Release) oluşturmak için
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
       - name: WPF uygulamasını derle
