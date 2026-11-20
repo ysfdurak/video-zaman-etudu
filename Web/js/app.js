@@ -1,4 +1,4 @@
-// Video Zaman Etüdü — tarayıcı arayüzü. Desktop/MainWindow.xaml.cs ile aynı akış ve mesajlar.
+// Video İş Etüdü — tarayıcı arayüzü. Desktop/MainWindow.xaml.cs ile aynı akış ve mesajlar.
 import {
   newStudy, newObservation, seconds, videoLabel, analyzeSteps, analyzeCycles, studentInv, validateSettings,
   exportPackage, importPackage, suggestedFileName, parseNumber, parsePositiveInt, EXTENSION,
@@ -13,6 +13,7 @@ import { reportBytes } from "./report.js";
 import { makeBackup, readBackup, isZip } from "./backup.js";
 import { StudyStore } from "./store.js";
 import { t, result, getLang, setLang, locale, applyStatic } from "./i18n.js";
+let homeOwn = false; // ilk girişte "Kendin ölç" seçildi mi (form ve tablo açılır)
 
 /** Siteye konulduğunda Windows sürümünün indirme adresi (boşsa bağlantı gizlenir). */
 const DESKTOP_URL = document.documentElement.dataset.desktopUrl ?? "";
@@ -248,6 +249,9 @@ async function reloadStudies() {
   // İlk giriş: hiç etüt yoksa iki net seçenek (hazır sonucu gör / kendin ölç)
   $("start-choice").hidden = state.studies.length > 0 || !!state.current;
   $("demo").closest("p").hidden = !$("start-choice").hidden; // aynı demo bağlantısı kartta zaten var
+  // İlk girişte yalnız iki seçenek: form, düğmeler ve tablo "Kendin ölç" seçilince açılır (kayıtlı etüdü olan her şeyi görür).
+  $("home-work").hidden = !$("start-choice").hidden && !homeOwn;
+  $("start-import").hidden = $("start-choice").hidden || homeOwn;
   if (last) {
     $("resume-last-btn").textContent = t("resume.last", { code: last.Code, name: last.Name });
     if (!state.selectedStudyId) { state.selectedStudyId = last.Id; for (const id of ["open", "export", "delete"]) $(id).disabled = false; }
@@ -369,7 +373,8 @@ async function openDemo(analiz = false) {
 }
 on("demo", () => openDemo(false));
 on("start-demo", () => openDemo(true));
-on("start-own", () => { const el = $("new-name"); el.scrollIntoView({ block: "center", behavior: "smooth" }); el.focus({ preventScroll: true }); });
+on("start-import-btn", () => $("import").click());
+on("start-own", () => { homeOwn = true; $("home-work").hidden = false; $("start-import").hidden = true; const el = $("new-name"); el.scrollIntoView({ block: "center", behavior: "smooth" }); el.focus({ preventScroll: true }); });
 
 /** Demo videosu bağlı değilse sitenin kendi kopyasından bağlar. */
 async function attachDemoVideo(study) {

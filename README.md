@@ -1,6 +1,6 @@
-# Video Zaman Etüdü
+# Video İş Etüdü
 
-Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonuçları Excel'e aktaran Türkçe zaman etüdü aracı. **İki sürümü vardır**; ikisi aynı hesap kurallarını ve aynı `.vzetud` paket biçimini kullanır, bir sürümde açılan etüt diğerinde açılır.
+Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonuçları Excel'e aktaran Türkçe iş etüdü aracı (zaman etüdü, iş örneklemesi, hat dengeleme). Eski adı: Video Zaman Etüdü; adres ve dosya biçimi değişmedi. **İki sürümü vardır**; ikisi aynı hesap kurallarını ve aynı `.vzetud` paket biçimini kullanır, bir sürümde açılan etüt diğerinde açılır.
 
 | | Windows masaüstü (`Desktop/`) | Tarayıcı (`Web/`) |
 |---|---|---|
@@ -15,7 +15,7 @@ Video üzerinden iş adımlarını ölçen, standart süreyi hesaplayan ve sonu�
 | İleri analiz (v2.1 / v1.8) | Kayıt başına tempo, dağılım ve aykırı değer, hat dengeleme (Yamazumi), standart iş kombinasyon tablosu, iyileştirme fikirleri (7 israf), adım kartları (storyboard), iş örneklemesi, yan yana önce/sonra video | Aynısı |
 | Sade düzen (v2.2 / v1.9) | Beş sekme: Çalışmalar · Hazırlık · Ölçüm · Analiz · İyileştirme; analizde alt sekmeler, tek "Çıktı al" menüsü; etüdün kapsamı (yalın araçlar seçime göre), adımları başka etütten alma, toplu kayıt düzenleme, etüt durumu ve onay, kısa tur | Aynısı |
 
-Windows **v2.2.3** ile tarayıcı **v1.10.1** aynı özelliklere sahiptir; iki fark var: tarayıcı v1.9.x çevrimdışı çalışmayı ekler (Windows zaten internet gerektirmez), tarayıcı v1.10 **iki gözlemci karşılaştırmasını** ekler (aynı videoyu iki kişi ölçer, fark çıkan adımda başlangıç/bitiş tanımı gösterilir; Windows'ta yok). Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
+Windows **v2.2.3** ile tarayıcı **v1.10.2** aynı özelliklere sahiptir; iki fark var: tarayıcı v1.9.x çevrimdışı çalışmayı ekler (Windows zaten internet gerektirmez), tarayıcı v1.10 **iki gözlemci karşılaştırmasını** ekler (aynı videoyu iki kişi ölçer, fark çıkan adımda başlangıç/bitiş tanımı gösterilir; Windows'ta yok). Bir sürümde kaydedilen etüt ve **Tümünü yedekle** ile alınan .zip yedeği diğerinde açılır. Yeni alanları taşıyan paketler eski Windows v1.2'de de açılır; v1.2 bu alanları görmez ve adım temposu yerine genel tempoyu kullanır.
 
 Eşdeğerlik `Shared/esdeger-ornekler.json` ile sınanır: 61 hesap örneği, 175 t değeri ve 86 paket kabul/ret senaryosu hem C# (`Checks`) hem JavaScript (`Web/tests`) tarafında aynı sonucu vermek zorundadır. v2 alanları (adım listesi, notlar, adım temposu, takt, tolerans kalemleri, karşılaştırma) için `Shared/ek-alanlar.json` aynı işi görür: tarayıcı çekirdeği üretir, C# aynı paketi bayt bayt aynı metinle yazmak ve aynı sonuçları bulmak zorundadır.
 
@@ -29,7 +29,7 @@ Masaüstü program, ilk derlemede NuGet bağımlılıkları yüklendikten sonra 
 
 ## English
 
-**Video Time Study** (Video Zaman Etüdü) measures work steps from video, calculates standard time and exports the results to Excel. It comes in two versions that share the same calculation rules and the same `.vzetud` study package: a serverless browser version and a Windows desktop app (C# / WPF, .NET 8). Both are available in English and Turkish.
+**Video Work Study** (Video İş Etüdü) measures work steps from video, calculates standard time and exports the results to Excel. It comes in two versions that share the same calculation rules and the same `.vzetud` study package: a serverless browser version and a Windows desktop app (C# / WPF, .NET 8). Both are available in English and Turkish.
 
 - **Try it:** https://zaman-etudu.ysfdurak.com/?lang=en (click “Open demo study” for a three-cycle synthetic warehouse video with ready measurements). Windows: download the ZIP from [Releases](https://github.com/ysfdurak/video-zaman-etudu/releases/latest) and run `Desktop.exe`.
 - **Measuring:** times come from the video position (Start → Measure → Measure); a step list moves to the next step and cycle automatically, out-of-scope interruptions do not break the sequence, Ctrl+Z undoes the last record.

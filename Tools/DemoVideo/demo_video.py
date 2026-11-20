@@ -18,8 +18,8 @@ FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
 BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 TEXT = {
-    "tr": {"header": "VİDEO ZAMAN ETÜDÜ / SENTETİK DEPO DEMOSU", "cycle": "Çevrim", "unit": "sn"},
-    "en": {"header": "VIDEO TIME STUDY / SYNTHETIC WAREHOUSE DEMO", "cycle": "Cycle", "unit": "s"},
+    "tr": {"header": "VİDEO İŞ ETÜDÜ / SENTETİK DEPO DEMOSU", "cycle": "Çevrim", "unit": "sn"},
+    "en": {"header": "VIDEO WORK STUDY / SYNTHETIC WAREHOUSE DEMO", "cycle": "Cycle", "unit": "s"},
 }
 # (başlangıç, bitiş, çevrim, kapsam dışı, {dil: (adım, açıklama)})
 SEGMENTS = [

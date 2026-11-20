@@ -1,4 +1,4 @@
-# MCP Seviye 1 planı — Video Zaman Etüdü
+# MCP Seviye 1 planı — Video İş Etüdü
 
 **Amaç:** Claude (Claude Desktop ya da MCP destekleyen başka bir istemci) etütleri okuyup soru yanıtlayabilsin. Örnek sorular: "PKT-07'de hangi adım yetersiz, kaç gözlem daha lazım?", "Önce/sonra farkı ne?", "En çok israf nerede?"
 

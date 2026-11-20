@@ -19,7 +19,7 @@ export const DESKTOP = {
     "bulk.hint": "Ctrl veya Shift ile birden çok kayıt seçin. Boş bırakılan alan değişmez.",
     "d.minus": "−", "d.plus": "+",
     "d.filter.package": "Etüt paketi veya yedek (.vzetud, .zip)",
-    "d.filter.vzetud": "Video Zaman Etüdü paketi",
+    "d.filter.vzetud": "Video İş Etüdü paketi",
     "d.filter.zip": "Yedek (.zip)",
     "d.filter.excel": "Excel çalışma kitabı",
     "d.filter.all": "Tüm dosyalar"
@@ -36,7 +36,7 @@ export const DESKTOP = {
     "bulk.hint": "Select several records with Ctrl or Shift. Fields left empty stay unchanged.",
     "d.minus": "−", "d.plus": "+",
     "d.filter.package": "Study package or backup (.vzetud, .zip)",
-    "d.filter.vzetud": "Video Time Study package",
+    "d.filter.vzetud": "Video Work Study package",
     "d.filter.zip": "Backup (.zip)",
     "d.filter.excel": "Excel workbook",
     "d.filter.all": "All files"

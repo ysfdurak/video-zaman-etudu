@@ -1,4 +1,4 @@
-# Mülakatta sorulabilecek sorular · Video Zaman Etüdü
+# Mülakatta sorulabilecek sorular · Video İş Etüdü
 
 Bu kart, projeyi kendi ağzınla anlatabilmen için. Cevaplar kısa tutuldu; ayrıntısı belirtilen belgede. Kod yapay zekâ (Claude) ile yazıldı; kapsam, öncelik ve aşağıdaki kararlar senin. Bunu saklama, açıkça söyle: "Ürünü ve kararları ben belirledim, kodu yapay zekâyla yazdım, her kararın nedenini anlatabilirim."
 

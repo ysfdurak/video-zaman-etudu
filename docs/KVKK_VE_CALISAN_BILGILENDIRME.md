@@ -1,8 +1,8 @@
-# Video Zaman Etüdü · KVKK ve çalışan bilgilendirme
+# Video İş Etüdü · KVKK ve çalışan bilgilendirme
 
 > **Not:** Bu belge bir başlangıç şablonudur, hukuki görüş değildir. Kullanmadan önce kurumunun hukuk ya da KVKK sorumlusuna onaylat. Veri sorumlusu uygulamayı kuran kurumdur; bu depo yalnızca aracı sağlar.
 
-Video Zaman Etüdü, iş adımlarının süresini videodan ölçer. Video çalışanın görüntüsünü içerir; görüntü ve ona bağlanan süre ölçümleri kişisel veridir.
+Video İş Etüdü, iş adımlarının süresini videodan ölçer. Video çalışanın görüntüsünü içerir; görüntü ve ona bağlanan süre ölçümleri kişisel veridir.
 
 ## Hangi kişisel veriler işleniyor?
 

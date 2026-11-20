@@ -1,4 +1,4 @@
-# Proje rehberi — Video Zaman Etüdü
+# Proje rehberi — Video İş Etüdü
 
 Bu rehber kodu kendin yazmamış olsan bile projeyi anlatabilmen, soruları cevaplayabilmen ve değişiklik isteyebilmen için hazırlandı.
 

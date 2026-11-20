@@ -151,7 +151,7 @@ public static class StudyTransfer
                 kind.ValueKind != JsonValueKind.String || kind.GetString() != Format ||
                 !root.TryGetProperty("Version", out var version) ||
                 version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out var number))
-                throw Keyed(new InvalidDataException("Bu dosya bir Video Zaman Etüdü paketi değil."), "pkg.notPackage");
+                throw Keyed(new InvalidDataException("Bu dosya bir Video İş Etüdü paketi değil."), "pkg.notPackage");
             if (number != Version)
                 throw Keyed(new InvalidDataException("Bu etüt paketi sürümü desteklenmiyor."), "pkg.version");
             data = root.Deserialize<Package>()

@@ -1,3 +1,8 @@
+# v1.10.2 (tarayıcı) · Video İş Etüdü — yeni ad ve sade ilk ekran
+
+- Uygulamanın adı Video İş Etüdü oldu (İngilizce: Video Work Study); iş örneklemesi ve hat dengelemeyi de kapsadığı için. Adres ve `.vzetud` dosya biçimi değişmedi; eski etütler açılır.
+- İlk girişte yalnız iki seçenek (Hazır sonucu gör / Kendin ölç) ve içe alma satırı görünür; form, düğmeler ve etüt listesi "Kendin ölç" ile açılır. Kayıtlı etüdü olan ekranı eskisi gibi görür.
+
 # v1.10.1 (tarayıcı) · Video Zaman Etüdü — güvenlik düzeltmesi
 
 - Yedekten geri yüklemede açıldığında 32 MB'ı aşan dosya (zip bombası) artık belleğe alınmaz, okunamayan dosya olarak bildirilir. Aynı sınır Windows sürümünde de, bildirilen boyuta güvenmeden uygulanır.

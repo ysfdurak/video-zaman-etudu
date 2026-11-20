@@ -1,11 +1,11 @@
-// Video Zaman Etüdü — tarayıcı çekirdeği.
+// Video İş Etüdü — tarayıcı çekirdeği.
 // Core/Study.cs ve Core/StudyTransfer.cs ile aynı kurallar. İki sürümün eşdeğerliği
 // Shared/esdeger-ornekler.json ile hem C# (Checks) hem JavaScript (Web/tests) tarafında sınanır.
 import {
   parseStrict, JsonError, JsonObject, RawNumber, readInt32, readInt64, readDouble, readBool, readString, readObject, readArray
 } from "./strict-json.js";
 
-export const VERSION = "1.10.1";
+export const VERSION = "1.10.2";
 export const EXTENSION = ".vzetud";
 export const CLASSES = ["", "VA", "SVA", "NVA"];
 const FORMAT = "video-zaman-etudu";
@@ -601,9 +601,9 @@ export function importPackage(bytes) {
     const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
     const root = parseStrict(text);
     if (!(root instanceof JsonObject) || typeof root.get("Kind") !== "string" || root.get("Kind") !== FORMAT || !root.has("Version"))
-      throw new PackageError("Bu dosya bir Video Zaman Etüdü paketi değil.", "pkg.notPackage");
+      throw new PackageError("Bu dosya bir Video İş Etüdü paketi değil.", "pkg.notPackage");
     let version;
-    try { version = readInt32(root.get("Version")); } catch { throw new PackageError("Bu dosya bir Video Zaman Etüdü paketi değil.", "pkg.notPackage"); }
+    try { version = readInt32(root.get("Version")); } catch { throw new PackageError("Bu dosya bir Video İş Etüdü paketi değil.", "pkg.notPackage"); }
     if (version !== PACKAGE_VERSION) throw new PackageError("Bu etüt paketi sürümü desteklenmiyor.", "pkg.version");
     for (const required of ["Kind", "Version", "Name", "Code", "VideoName", "Settings", "Observations", "Frequency"])
       if (!root.has(required)) throw new JsonError();

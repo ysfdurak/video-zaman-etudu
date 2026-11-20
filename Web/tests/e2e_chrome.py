@@ -25,7 +25,9 @@ async def main():
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
         await page.goto(URL + ("&" if "?" in URL else "?") + "lang=tr")
-        await page.wait_for_selector("#studies tbody tr")
+        await page.wait_for_selector("#start-choice:not([hidden])")
+        # ilk giriş sade: iki seçenek kartı ve içe alma satırı; form, düğmeler ve tablo "Kendin ölç" ile açılır
+        check("ilk girişte form ve tablo gizli", await page.locator("#home-work").is_hidden() and await page.locator("#start-import").is_visible())
         # v1.9.3: ilk girişte iki seçenek kartı yön verir; tur boş açılışta kendiliğinden açılmaz, "Kısa tur" ile açılır
         await page.wait_for_timeout(600)
         check("boş açılışta tur kendiliğinden açılmaz", await page.locator("#tour[open]").count() == 0)
@@ -34,9 +36,11 @@ async def main():
         for _ in range(4): await page.click("#tour-next")
         check("turun son adımı", "5 İyileştirme" in await page.inner_text("#tour-title") and await page.inner_text("#tour-next") == "Bitir")
         await page.click("#tour-next"); await page.wait_for_timeout(150)
-        await page.reload(); await page.wait_for_selector("#studies tbody tr"); await page.wait_for_timeout(300)
+        await page.reload(); await page.wait_for_selector("#start-choice:not([hidden])"); await page.wait_for_timeout(300)
         check("tur bir kez gösterilir, sağ üstten yeniden açılır", await page.locator("#tour[open]").count() == 0)
         await page.click("#tour-open"); check("tur yeniden açılır", await page.locator("#tour[open]").count() == 1); await page.click("#tour-skip")
+        await page.click("#start-own"); await page.wait_for_timeout(200)
+        check("Kendin ölç formu ve tabloyu açar", await page.locator("#home-work").is_visible() and await page.locator("#start-import").is_hidden() and await page.evaluate("document.activeElement.id") == "new-name")
         check("açılış: boş liste mesajı", "Henüz etüt yok" in await page.inner_text("#studies tbody"))
         check("seçim yokken Aç/Dışa aktar/Sil/Karşılaştır kapalı", all([await page.is_disabled(f"#{i}") for i in ["open", "export", "delete", "compare"]]))
         status = lambda: page.inner_text("#status")
