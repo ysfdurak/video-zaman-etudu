@@ -94,7 +94,8 @@ public partial class MainWindow
                 video.Position = TimeSpan.FromMilliseconds(target);
                 playFrom = target;
                 UpdatePosition();
-                if (CurrentStep is StepDef st) SetStatus(L.T("status.resume", ("at", L.Clock(target)), ("step", st.Name), ("cycle", cycleBox.Text)));
+                // İletide kaydın bittiği an yazılır; video ise oynatılabilsin diye birkaç kare önceye konur.
+                if (CurrentStep is StepDef st) SetStatus(L.T("status.resume", ("at", L.Clock(Math.Min(at, (long)timeline.Maximum))), ("step", st.Name), ("cycle", cycleBox.Text)));
             }
             RenderSegments();
         };
