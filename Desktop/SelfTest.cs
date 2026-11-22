@@ -98,6 +98,8 @@ internal static class SelfTest
         Pump(400);
         var study = window.TestCurrent;
         Check("demo etüdü açılır", study is { Code: "DEMO-01" }, study?.Name ?? "yok");
+        Check("kaldığın yer videonun sonuysa biraz önceye konur", MainWindow.ResumeTarget(35000, 35000) == 34750 && MainWindow.ResumeTarget(12000, 35000) == 12000 && MainWindow.ResumeTarget(100, 50) == 0,
+            $"{MainWindow.ResumeTarget(35000, 35000)}");
         if (study is null) { window.Close(); return; }
         Check("adım listesi ölçümlerden çıkar (6 adım)", window.TestStepChips == 6, window.TestStepChips.ToString());
         Check("kaldığı yerden: sıradaki kayıt ilk adım, çevrim 4", window.TestNow == L.T("now.value", ("step", study.Steps[0].Name), ("cycle", 4)), window.TestNow);
