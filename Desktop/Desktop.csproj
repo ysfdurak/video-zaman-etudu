@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net8.0-windows</TargetFramework><OutputType>WinExe</OutputType><UseWPF>true</UseWPF><EnableWindowsTargeting>true</EnableWindowsTargeting><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><Version>2.2.4</Version><RootNamespace>VideoZamanEtudu</RootNamespace><AssemblyName>VideoZamanEtudu</AssemblyName></PropertyGroup>
+  <PropertyGroup><TargetFramework>net8.0-windows</TargetFramework><OutputType>WinExe</OutputType><UseWPF>true</UseWPF><EnableWindowsTargeting>true</EnableWindowsTargeting><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><Version>2.2.5</Version><RootNamespace>VideoZamanEtudu</RootNamespace><AssemblyName>VideoZamanEtudu</AssemblyName></PropertyGroup>
   <ItemGroup><EmbeddedResource Include="Metinler.json" LogicalName="VideoZamanEtudu.Metinler.json"/></ItemGroup>
   <ItemGroup><ProjectReference Include="../Core/Core.csproj"/><PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.15"/><!-- Microsoft.Data.Sqlite 10 SQLitePCLRaw 3.x ile geliyor (CVE-2025-6965 düzeltmeli SQLite). Native paket yine de açıkça sabit: geçişli sürüm geriye düşmesin. --><PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5"/><PackageReference Include="ClosedXML" Version="0.105.1"/></ItemGroup>
 </Project>

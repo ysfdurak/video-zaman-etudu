@@ -16,7 +16,8 @@ namespace VideoZamanEtudu;
 /// </summary>
 public partial class MainWindow
 {
-    private readonly MediaElement video = new() { LoadedBehavior = MediaState.Manual, UnloadedBehavior = MediaState.Manual, Stretch = Stretch.Uniform };
+    // ScrubbingEnabled: duraklatılmışken konum değişince kare gösterilir (yoksa kaldığın yere dönüşte ve kaydırmada siyah ekran kalıyordu).
+    private readonly MediaElement video = new() { LoadedBehavior = MediaState.Manual, UnloadedBehavior = MediaState.Manual, Stretch = Stretch.Uniform, ScrubbingEnabled = true };
     private readonly Slider timeline = new() { IsMoveToPointEnabled = true, IsEnabled = false, Margin = new Thickness(0, 2, 0, 4) };
     private readonly Canvas segments = new() { Height = 10, Background = Ui.Brush("#E3EAEE"), ClipToBounds = true, Margin = new Thickness(5, 6, 5, 0) };
     private readonly Rectangle liveSegment = new() { Height = 10, Fill = Ui.Brush("#17364A"), Opacity = 0.35, Visibility = Visibility.Collapsed };
@@ -89,7 +90,7 @@ public partial class MainWindow
             if (ready && resumeAt is long at)
             {
                 resumeAt = null;
-                long target = Math.Min(at, (long)timeline.Maximum);
+                long target = ResumeTarget(at, (long)timeline.Maximum);
                 video.Position = TimeSpan.FromMilliseconds(target);
                 playFrom = target;
                 UpdatePosition();
@@ -268,16 +269,24 @@ public partial class MainWindow
         LoadVideo();
     }
 
+    /// <summary>Kaldığın yere dönüş konumu: videonun tam sonu değil, son kareden biraz önce (sonda Oynat bir şey yapmıyordu).</summary>
+    internal static long ResumeTarget(long at, long duration) => Math.Max(0, Math.Min(at, duration - EndMarginMs));
+    private const long EndMarginMs = 250;
+
     private void Play()
     {
         if (!ready) return;
+        long? from = playFrom;
+        playFrom = null;
+        // Video sona gelmişse Oynat baştan başlatır. Sondaki MediaElement Play() çağrısını yok sayar; önce Stop gerekir.
+        if (from is null && PositionMs >= (long)timeline.Maximum - EndMarginMs) from = 0;
+        if (from is long f)
+        {
+            video.Stop();
+            video.Position = TimeSpan.FromMilliseconds(f);
+        }
         video.SpeedRatio = SelectedSpeed;
         video.Play();
-        if (playFrom is long from)
-        {
-            playFrom = null;
-            video.Position = TimeSpan.FromMilliseconds(from);
-        }
         playing = true;
     }
 

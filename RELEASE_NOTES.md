@@ -1,3 +1,9 @@
+# v2.2.5 (Windows) · Video İş Etüdü — kaldığın yere dönüşte video
+
+- Kaldığın etüde dönünce video son kayda, yani çoğu zaman videonun tam sonuna konuyordu: ekran siyah kalıyor, **Oynat** hiçbir şey yapmıyordu. Artık son kareden biraz önceye konur; video sona gelmişse **Oynat** baştan başlatır.
+- Duraklatılmışken zaman çubuğu kaydırılınca ya da ◀/▶ ile ilerleyince ilgili kare gösterilir (önceden oynatana kadar siyah kalıyordu).
+- Bulan: gerçek Windows 11 bilgisayarda 2.2.4 denemesi (22.11.2026).
+
 # v1.10.3 (tarayıcı) · Anonim kullanım ölçümü ve geri bildirim
 
 - Yalnız herkese açık demoda (zaman-etudu.ysfdurak.com) ekran açılışları anonim sayılır ve sağ altta "Geri bildirim" düğmesi görünür (ortak servis: olcum.ysfdurak.com). Video ve etüt verisi gönderilmez, çerez yok; tarayıcıda Do Not Track / GPC açıksa hiçbir şey gönderilmez.
