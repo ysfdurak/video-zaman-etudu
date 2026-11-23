@@ -1,0 +1,26 @@
+name: Örnek veri (Commons)
+# Yalnız ornek-arama dalının PR'ında çalışır; açık lisanslı örnekleri arar/indirir ve ornek-veri dalına yazar. Birleştirilmez.
+on:
+  pull_request:
+    paths:
+      - Tools/OrnekVeri/**
+      - .github/workflows/ornek-veri.yml
+permissions:
+  contents: write
+jobs:
+  ornek:
+    if: github.head_ref == 'ornek-arama'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - run: python3 Tools/OrnekVeri/commons.py Tools/OrnekVeri/istek.json "$RUNNER_TEMP/cikti"
+      - name: ornek-veri dalına yaz
+        run: |
+          cd "$RUNNER_TEMP/cikti"
+          git init -q -b ornek-veri
+          git config user.name "github-actions[bot]"; git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A; git commit -qm "Örnek veri: ${{ github.event.pull_request.head.sha }}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ornek-veri
