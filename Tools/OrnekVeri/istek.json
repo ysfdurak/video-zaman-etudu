@@ -1,16 +1,64 @@
-{"ara": [
- "filetype:video warehouse worker",
- "filetype:video lifting boxes",
- "filetype:video assembly line worker",
- "filetype:video packing boxes",
- "filetype:video manual handling",
- "filetype:video picking order warehouse",
- "filetype:video sewing machine factory",
- "filetype:video bricklayer",
- "filetype:video palletizing",
- "filetype:video kitchen worker preparing",
- "filetype:bitmap worker lifting box",
- "filetype:bitmap warehouse worker carrying",
- "filetype:bitmap worker bending",
- "filetype:bitmap assembly line worker"
-]}
+{
+ "ara": [
+  "filetype:video warehouse",
+  "filetype:video forklift loading",
+  "filetype:video ergonomics",
+  "filetype:video NIOSH",
+  "filetype:video carrying sacks",
+  "filetype:video conveyor sorting packages",
+  "filetype:video brick making",
+  "filetype:video bread bakery worker",
+  "filetype:video handicraft workshop",
+  "filetype:video potter wheel",
+  "filetype:video loading truck boxes",
+  "filetype:video supermarket shelf stocking",
+  "filetype:video Protéjase en el trabajo"
+ ],
+ "indir": [
+  {
+   "dosya": "File:Construction Workers and Musculoskeletal Disorders.webm",
+   "ad": "v-insaat-kas",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:Trabajos en bodegas - Protéjase en el trabajo.webm",
+   "ad": "v-bodega",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:Trabajos en establecimientos de comidas rápidas - Protéjase en el trabajo.webm",
+   "ad": "v-fastfood",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:AMC Airmen palletize equipment for KC-46 during Talisman Sabre 25 (971808).webm",
+   "ad": "v-palet-hava",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:Plastic Industry (4) - Pallet packer.webm",
+   "ad": "v-palet-paket",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:Plastic Industry (7) - Loading dock.webm",
+   "ad": "v-yukleme",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:Assembly line.webm",
+   "ad": "v-montaj",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:Singer sewing machine at Götebortgs Remfabrik.webm",
+   "ad": "v-dikis",
+   "transcode": "480p.vp9.webm"
+  },
+  {
+   "dosya": "File:WV0053-D149 Pallet.ogv",
+   "ad": "v-palet-ogv",
+   "transcode": "480p.vp9.webm"
+  }
+ ]
+}
