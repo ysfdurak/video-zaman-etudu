@@ -11,5 +11,8 @@
   },
   "routes": [
     { "pattern": "zaman-etudu.ysfdurak.com", "custom_domain": true }
-  ]
+  ],
+  // PR önizlemeleri (Workers Builds → npx wrangler preview) bu bölümü ister. Proje yalnızca statik
+  // dosya sunduğu için önizlemenin ayrı bir ayarı yok; bölüm bilerek boş.
+  "previews": {}
 }
