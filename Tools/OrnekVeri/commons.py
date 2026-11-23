@@ -151,3 +151,16 @@ if "pexels_ara" in istek:
             liste.append(k)
         print(q, "->", len(liste))
     json.dump(liste, open(os.path.join(CIKTI, "px_adaylar.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+
+
+if "pexels_kucuk" in istek:
+    UA2 = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"}
+    os.makedirs(os.path.join(CIKTI, "px_kucuk"), exist_ok=True)
+    for x in istek["pexels_kucuk"]:
+        tur, i = x.split(":")
+        th = ("https://images.pexels.com/videos/%s/pexels-photo-%s.jpeg?w=360" % (i, i)) if tur == "v" else ("https://images.pexels.com/photos/%s/pexels-photo-%s.jpeg?w=360" % (i, i))
+        try:
+            with urllib.request.urlopen(urllib.request.Request(th, headers=UA2), timeout=60) as r, open(os.path.join(CIKTI, "px_kucuk", "%s_%s.jpg" % (tur, i)), "wb") as f:
+                f.write(r.read())
+        except Exception as e:
+            print("HATA", x, e)
