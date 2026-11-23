@@ -21,6 +21,14 @@ jobs:
       contents: write   # yalnız v* etiketinde sürüm (Release) oluşturmak için
     steps:
       - uses: actions/checkout@v7
+      - name: Elle yayımlamada etiket zaten varsa o etiketin commit'ini derle
+        if: github.event_name == 'workflow_dispatch' && startsWith(inputs.surum, 'v')
+        shell: pwsh
+        env:
+          SURUM: ${{ inputs.surum }}
+        run: |
+          git fetch --depth=1 origin "refs/tags/$($env:SURUM):refs/tags/$($env:SURUM)" 2>$null
+          if ($LASTEXITCODE -eq 0) { git checkout --force $env:SURUM; "Etiket $env:SURUM derleniyor." } else { $global:LASTEXITCODE = 0; "Etiket yok; bu commit derlenip etiket oluşturulacak." }
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '8.0.x'
@@ -107,6 +115,17 @@ jobs:
           $lines[1..$last] | Set-Content -Encoding utf8 $notesFile
           $title = $lines[0].TrimStart('#', ' ')
           $zip = Join-Path $env:RUNNER_TEMP 'VideoZamanEtudu_Windows_x64.zip'
+          # Release GitHub arayüzünden elle açılmışsa (etiket de onunla oluşur) ve dosyası yoksa ZIP o Release'e eklenir.
+          # Dosyası olan bir Release'e dokunulmaz: yayımlanmış dosya değişmez.
+          $etiket = if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') { $env:SURUM } else { $env:GITHUB_REF_NAME }
+          $adet = gh release view $etiket --json assets --jq '.assets | length' 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            if ([int]$adet -gt 0) { Write-Output "::error::$etiket zaten yayımlanmış ve $adet dosyası var. Yayımlanmış dosyalar değiştirilmez; sürümü artırıp yeni sürüm yayımla."; exit 1 }
+            gh release upload $etiket $zip
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            exit 0
+          }
+          $global:LASTEXITCODE = 0
           if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
             # Etiket yoksa bu derlemenin commit'inde oluşturulur.
             gh release create $env:SURUM $zip --title $title --notes-file $notesFile --target $env:GITHUB_SHA
