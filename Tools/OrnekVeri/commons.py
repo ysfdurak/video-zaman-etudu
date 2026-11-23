@@ -57,19 +57,32 @@ if "ara" in istek:
                 b["thumbHata"] = str(e)[:100]
     json.dump(liste, open(os.path.join(CIKTI, "adaylar.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print(len(liste), "aday")
+def turevler(dosya):
+    r = get({"action": "query", "titles": dosya, "prop": "videoinfo", "viprop": "derivatives"})
+    for p in r.get("query", {}).get("pages", {}).values():
+        return (p.get("videoinfo") or [{}])[0].get("derivatives") or []
+    return []
+
+
 if "indir" in istek:
     kayit = []
     for x in istek["indir"]:
-        b = bilgi([x["dosya"]])[0]
-        url = b["url"]
-        if x.get("transcode") and b.get("mime", "").startswith("video"):
-            # Commons dönüştürülmüş kopya: .../transcoded/a/ab/Ad.webm/Ad.webm.480p.vp9.webm
-            ad = url.rsplit("/", 1)[1]
-            url = url.replace("/commons/", "/commons/transcoded/", 1) + "/" + ad + "." + x["transcode"]
-        uz = url.rsplit(".", 1)[1]
-        yol = os.path.join(CIKTI, x["ad"] + "." + uz)
-        indir(url, yol)
-        b["yerel"] = os.path.basename(yol); b["indirilen"] = url
+        try:
+            b = bilgi([x["dosya"]])[0]
+            url = b["url"]
+            if x.get("transcode") and (b.get("mime") or "").startswith(("video", "application/ogg")):
+                tv = turevler(x["dosya"])
+                hedef = int(x["transcode"].split("p")[0])
+                adaylar = sorted([d for d in tv if d.get("type", "").startswith("video/webm") and d.get("height")], key=lambda d: abs(d["height"] - hedef))
+                if adaylar:
+                    url = adaylar[0]["src"]
+            uz = url.rsplit(".", 1)[1].split("?")[0]
+            yol = os.path.join(CIKTI, x["ad"] + "." + uz)
+            indir(url, yol)
+            b["yerel"] = os.path.basename(yol); b["indirilen"] = url
+            print("indirildi", yol, os.path.getsize(yol))
+        except Exception as e:
+            b = {"dosya": x["dosya"], "hata": str(e)[:200]}
+            print("HATA", x["dosya"], e)
         kayit.append(b)
-        print("indirildi", yol, os.path.getsize(yol))
     json.dump(kayit, open(os.path.join(CIKTI, "kaynaklar.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
