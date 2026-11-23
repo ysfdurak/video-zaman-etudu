@@ -1,5 +1,7 @@
 """Wikimedia Commons'tan açık lisanslı örnek video/fotoğraf arar ve indirir (yalnız CI'da çalışır; çıktı ornek-veri dalına yazılır).
-istek.json: {"ara": ["sorgu", ...]} ya da {"indir": [{"dosya": "File:...", "ad": "kisa-ad"}]}"""
+istek.json: {"ara": ["sorgu", ...]} ya da {"indir": [{"dosya": "File:...", "ad": "kisa-ad"}]}
+ya da {"url": [{"url": "https://...", "ad": "kisa-ad", "kaynak": "sayfa adresi", "lisans": "Pexels License"}]}: indirilir, videolar 720p H.264 ve VP9'a çevrilir."""
+import subprocess
 import json, os, sys, urllib.parse, urllib.request
 
 API = "https://commons.wikimedia.org/w/api.php"
@@ -86,3 +88,35 @@ if "indir" in istek:
             print("HATA", x["dosya"], e)
         kayit.append(b)
     json.dump(kayit, open(os.path.join(CIKTI, "kaynaklar.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+
+
+if "url" in istek:
+    kayit = []
+    UA2 = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"}
+    for x in istek["url"]:
+        b = dict(x)
+        try:
+            ham = os.path.join(CIKTI, "_ham_" + x["ad"])
+            with urllib.request.urlopen(urllib.request.Request(x["url"], headers=UA2), timeout=300) as r, open(ham, "wb") as f:
+                b["sonAdres"] = r.geturl(); b["tur"] = r.headers.get("Content-Type")
+                while True:
+                    k = r.read(1 << 20)
+                    if not k:
+                        break
+                    f.write(k)
+            if (b["tur"] or "").startswith("video"):
+                for uz, arg in (("mp4", ["-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart"]), ("webm", ["-c:v", "libvpx-vp9", "-b:v", "0", "-crf", "34", "-deadline", "realtime", "-cpu-used", "8"])):
+                    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", ham, "-vf", "scale=-2:'min(720,ih)'", "-an"] + arg + [os.path.join(CIKTI, x["ad"] + "." + uz)], check=True)
+                b["yerel"] = [x["ad"] + ".mp4", x["ad"] + ".webm"]
+                b["sure"] = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", os.path.join(CIKTI, x["ad"] + ".mp4")], capture_output=True, text=True).stdout.strip()
+            else:
+                yol = os.path.join(CIKTI, x["ad"] + ".jpg")
+                subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", ham, "-vf", "scale='min(1600,iw)':-2", yol], check=True)
+                b["yerel"] = [x["ad"] + ".jpg"]
+            os.remove(ham)
+            print("indirildi", x["ad"], b.get("sure"))
+        except Exception as e:
+            b["hata"] = str(e)[:200]
+            print("HATA", x["ad"], e)
+        kayit.append(b)
+    json.dump(kayit, open(os.path.join(CIKTI, "kaynaklar_url.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)

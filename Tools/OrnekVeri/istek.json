@@ -1,64 +1,76 @@
 {
- "ara": [
-  "filetype:video warehouse",
-  "filetype:video forklift loading",
-  "filetype:video ergonomics",
-  "filetype:video NIOSH",
-  "filetype:video carrying sacks",
-  "filetype:video conveyor sorting packages",
-  "filetype:video brick making",
-  "filetype:video bread bakery worker",
-  "filetype:video handicraft workshop",
-  "filetype:video potter wheel",
-  "filetype:video loading truck boxes",
-  "filetype:video supermarket shelf stocking",
-  "filetype:video Protéjase en el trabajo"
- ],
- "indir": [
+ "url": [
   {
-   "dosya": "File:Construction Workers and Musculoskeletal Disorders.webm",
-   "ad": "v-insaat-kas",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4292578/",
+   "ad": "px-4292578",
+   "kaynak": "https://www.pexels.com/video/man-lifting-box-inside-the-warehouse-4292578/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:Trabajos en bodegas - Protéjase en el trabajo.webm",
-   "ad": "v-bodega",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4292580/",
+   "ad": "px-4292580",
+   "kaynak": "https://www.pexels.com/video/man-lifting-boxes-inside-the-warehouse-4292580/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:Trabajos en establecimientos de comidas rápidas - Protéjase en el trabajo.webm",
-   "ad": "v-fastfood",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4292900/",
+   "ad": "px-4292900",
+   "kaynak": "https://www.pexels.com/video/man-lifting-boxes-inside-the-warehouse-4292900/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:AMC Airmen palletize equipment for KC-46 during Talisman Sabre 25 (971808).webm",
-   "ad": "v-palet-hava",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4292579/",
+   "ad": "px-4292579",
+   "kaynak": "https://www.pexels.com/video/men-working-inside-the-warehouse-4292579/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:Plastic Industry (4) - Pallet packer.webm",
-   "ad": "v-palet-paket",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4291724/",
+   "ad": "px-4291724",
+   "kaynak": "https://www.pexels.com/video/man-working-inside-the-warehouse-4291724/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:Plastic Industry (7) - Loading dock.webm",
-   "ad": "v-yukleme",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4281236/",
+   "ad": "px-4281236",
+   "kaynak": "https://www.pexels.com/video/men-working-in-a-warehouse-4281236/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:Assembly line.webm",
-   "ad": "v-montaj",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4281405/",
+   "ad": "px-4281405",
+   "kaynak": "https://www.pexels.com/video/men-working-in-a-warehouse-4281405/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:Singer sewing machine at Götebortgs Remfabrik.webm",
-   "ad": "v-dikis",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/4293550/",
+   "ad": "px-4293550",
+   "kaynak": "https://www.pexels.com/video/person-carrying-a-box-4293550/",
+   "lisans": "Pexels License"
   },
   {
-   "dosya": "File:WV0053-D149 Pallet.ogv",
-   "ad": "v-palet-ogv",
-   "transcode": "480p.vp9.webm"
+   "url": "https://www.pexels.com/download/video/37546343/",
+   "ad": "px-37546343",
+   "kaynak": "https://www.pexels.com/video/asian-workers-loading-boxes-into-truck-37546343/",
+   "lisans": "Pexels License"
+  },
+  {
+   "url": "https://www.pexels.com/download/video/37831020/",
+   "ad": "px-37831020",
+   "kaynak": "https://www.pexels.com/video/worker-unloading-boxes-from-delivery-truck-37831020/",
+   "lisans": "Pexels License"
+  },
+  {
+   "url": "https://www.pexels.com/download/video/36307128/",
+   "ad": "px-36307128",
+   "kaynak": "https://www.pexels.com/video/men-unloading-boxes-from-delivery-van-outdoors-36307128/",
+   "lisans": "Pexels License"
+  },
+  {
+   "url": "https://www.pexels.com/download/video/4284182/",
+   "ad": "px-4284182",
+   "kaynak": "https://www.pexels.com/video/men-getting-items-from-the-shelves-in-the-warehouse-4284182/",
+   "lisans": "Pexels License"
   }
  ]
 }
