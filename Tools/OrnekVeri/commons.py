@@ -120,3 +120,34 @@ if "url" in istek:
             print("HATA", x["ad"], e)
         kayit.append(b)
     json.dump(kayit, open(os.path.join(CIKTI, "kaynaklar_url.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+
+
+if "pexels_ara" in istek:
+    import re
+    UA2 = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36", "Accept": "text/html"}
+    os.makedirs(os.path.join(CIKTI, "px_kucuk"), exist_ok=True)
+    liste, gor = [], set()
+    for q in istek["pexels_ara"]:
+        tur = "foto" if q.startswith("foto:") else "video"
+        qq = q.split(":", 1)[1] if ":" in q else q
+        adres = "https://www.pexels.com/search/" + ("videos/" if tur == "video" else "") + urllib.parse.quote(qq) + "/"
+        try:
+            with urllib.request.urlopen(urllib.request.Request(adres, headers=UA2), timeout=60) as r:
+                html = r.read().decode("utf-8", "replace")
+        except Exception as e:
+            print("HATA arama", q, e); continue
+        desen = r"/video/([a-z0-9-]+)-(\d{5,})/" if tur == "video" else r"/photo/([a-z0-9-]+)-(\d{5,})/"
+        for slug, i in re.findall(desen, html):
+            if (tur, i) in gor:
+                continue
+            gor.add((tur, i))
+            k = {"no": len(liste), "tur": tur, "id": i, "slug": slug, "sorgu": qq}
+            th = ("https://images.pexels.com/videos/%s/pexels-photo-%s.jpeg?w=320" % (i, i)) if tur == "video" else ("https://images.pexels.com/photos/%s/pexels-photo-%s.jpeg?w=320" % (i, i))
+            try:
+                with urllib.request.urlopen(urllib.request.Request(th, headers=UA2), timeout=60) as r, open(os.path.join(CIKTI, "px_kucuk", "%03d.jpg" % k["no"]), "wb") as f:
+                    f.write(r.read())
+            except Exception as e:
+                k["thumbHata"] = str(e)[:80]
+            liste.append(k)
+        print(q, "->", len(liste))
+    json.dump(liste, open(os.path.join(CIKTI, "px_adaylar.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
